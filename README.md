@@ -8,8 +8,7 @@ Prerequesties:
 -Eigen  
 -PCL 1.8  
 -OpenCV >= 3.0  
--ElasticFusion (only for fusing point clouds)  
--g2o (included in _3rdParty_ folder)
+-g2o
 
 ### Building:  
 
@@ -36,16 +35,16 @@ cmake -D CMAKE_INSTALL_PREFIX=/usr/local ..
 make -j$(nproc)
 sudo make install
 ```
-4. Build ElasticFusion using [instruction on Github](https://github.com/mp3guy/ElasticFusion).  
-5. Build g2o and install it:
+4. Build g2o and install it:
 ```commandline
-cd 3rdParty/g2o
+git clone https://github.com/RainerKuemmerle/g2o.git
+cd g2o
 mkdir build && cd build
 cmake ..
 make -j$(nproc)
 sudo make install
 ```
-6. Build PlaneLoc:
+5. Build PlaneLoc:
 ```commandline
 mkdir build && cd build
 cmake ..
