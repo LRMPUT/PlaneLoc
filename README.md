@@ -11,7 +11,7 @@ Prerequesties:
 -ElasticFusion (only for fusing point clouds)  
 -g2o (included in _3rdParty_ folder)
 
-###Building:  
+### Building:  
 
 Tested on Ubuntu 14.04.  
 1. Install Boost and Eigen:
@@ -52,7 +52,7 @@ cmake ..
 make -j$(nproc)
 ```
 
-###Launching:  
+### Launching:  
 
 1. Adjust settings file in _res/settings.xml_ for your dataset.  
 2. Launch demo:

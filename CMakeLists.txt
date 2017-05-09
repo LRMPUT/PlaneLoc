@@ -36,92 +36,10 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-#OpenGM
-set(OPENGM_EXTERNAL_LIBS_DIR "/home/jachu/lib/opengm-master/build/src/external" CACHE PATH "OpenGM external library directory")
-set(OPENGM_MAXFLOW_INCLUDE_DIR "/home/jachu/lib/opengm-master/src/external/MaxFlow-v3.02.src-patched" CACHE PATH "OpenGM MaxFlow include directory")
-
-include_directories(/usr/local/include)
-include_directories(${OPENGM_MAXFLOW_INCLUDE_DIR})
-link_directories(${OPENGM_EXTERNAL_LIBS_DIR})
-set(OPENGM_LIBRARIES
-	external-library-maxflow)
-
 #g2o library
 find_package(G2O REQUIRED)
 include_directories(${G2O_INCLUDE_DIR})
 link_directories(${G2O_LIBRARY_DIRS})
-
-#zlib library
-find_package(ZLIB REQUIRED)
-include_directories(${ZLUB_INCLUDE_DIR})
-link_directories(${ZLIB_LIBRARY_DIRS})
-
-#ElasticFusion
-find_package(GLUT REQUIRED)
-include_directories(${GLUT_INCLUDE_DIRS} )
-
-find_package(CUDA REQUIRED)
-include_directories(${CUDA_INCLUDE_DIRS})
-
-find_package(Pangolin 0.1 REQUIRED)
-include_directories(${Pangolin_INCLUDE_DIRS})
-
-find_package(efusion REQUIRED)
-include_directories(${EFUSION_INCLUDE_DIR})
-
-#-------------------------------------------------------
-
-set(pngToKlg_SOURCES
-	utils/pngToKlg.cpp)
-add_executable(pngToKlg
-				${pngToKlg_SOURCES})
-target_link_libraries(pngToKlg
-					${OpenCV_LIBS}
-					${Boost_LIBRARIES}
-					${ZLIB_LIBRARY})
-
-#-------------------------------------------------------
-
-set(convertGt_SOURCES
-	utils/convertGt.cpp)
-add_executable(convertGt
-				${convertGt_SOURCES})
-target_link_libraries(convertGt)
-
-#-------------------------------------------------------
-
-set(makeCloudsEFusion_SOURCES
-	utils/makeCloudsEFusion.cpp)
-add_executable(makeCloudsEFusion
-				${makeCloudsEFusion_SOURCES})
-target_link_libraries(makeCloudsEFusion
-						${OpenCV_LIBS}
-						${Boost_LIBRARIES}
-						${GLUT_LIBRARY}
-						${CUDA_LIBRARIES}
-						${Pangolin_LIBRARIES}
-						${EFUSION_LIBRARY}
-						${PCL_LIBRARIES})
-
-#-------------------------------------------------------
-
-set(convert7places_SOURCES
-        utils/convert7places.cpp)
-add_executable(convert7places
-        ${convert7places_SOURCES})
-target_link_libraries(convert7places
-        ${OpenCV_LIBS}
-        ${Boost_LIBRARIES}
-        ${ZLIB_LIBRARY})
-
-#-------------------------------------------------------
-
-set(illustration_SOURCES
-		utils/illustration.cpp)
-add_executable(illustration
-		${illustration_SOURCES})
-target_link_libraries(illustration
-                    ${PCL_LIBRARIES})
 
 #-------------------------------------------------------
 
