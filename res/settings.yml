@@ -1,0 +1,202 @@
+%YAML:1.0
+#
+#    Copyright (c) 2017 Mobile Robots Laboratory at Poznan University of Technology:
+#    -Jan Wietrzykowski name.surname [at] put.poznan.pl
+#
+#    Permission is hereby granted, free of charge, to any person obtaining a copy
+#    of this software and associated documentation files (the "Software"), to deal
+#    in the Software without restriction, including without limitation the rights
+#    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#    copies of the Software, and to permit persons to whom the Software is
+#    furnished to do so, subject to the following conditions:
+#
+#    The above copyright notice and this permission notice shall be included in all
+#    copies or substantial portions of the Software.
+#
+#    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#    SOFTWARE.
+
+segmentation:
+
+  curvThresh: 0.02
+  
+#  areaMult: 50
+#
+#  randSamp: 0.05
+#
+#  planeDistThresh: 0.10
+#
+#  minNumInlier: 10
+#
+#  stddevAngleDeg: 180
+#
+#  smoothCost: 0.002
+
+  stepThresh: 0.05
+
+  areaThresh: 0.1000
+
+  normalThresh: 0.95
+
+fileGrabber:
+
+  # ICL-NIUM Office room traj2 loop
+  #datasetDirPath: "../res/office_room_traj2_loop"
+
+  #readObjLabeling: 0
+
+  #readAccel: 0
+
+  #readPose: 1
+
+  #depthScale: 5000
+  
+  #imageFrame: 0
+  
+  # TUM freiburg1 room
+  #datasetDirPath: "../res/freiburg1_room"
+
+  #readObjLabeling: 0
+
+  #readAccel: 0
+
+  #readPose: 1
+
+  #depthScale: 5000
+  
+  #imageFrame: 0
+
+  # NYU depth v2 
+  #datasetDirPath: "../res/NYUv2"
+
+  #readObjLabeling: 1
+
+  #readAccel: 1
+
+  #readPose: 0
+
+  #depthScale: 1000
+  
+  #imageFrame: 8
+  
+    # NYU depth v2 living room
+  datasetDirPath: "../res/NYUv2_living_rooms_part1/living_room_0003_proc"
+
+  readObjLabeling: 0
+
+  readAccel: 0
+
+  readPose: 1
+
+  depthScale: 5000
+
+  imageFrame: 0
+
+#    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+#
+#    readObjLabeling: 0
+#
+#    readAccel: 0
+#
+#    readPose: 1
+#
+#    depthScale: 1000
+#
+#    imageFrame: 0
+
+map:
+  
+  readFromFile: 1
+  
+  #mapFile: "../res/office_room_traj2_loop/cloud_merged.ply"
+  
+  #mapFile: "../res/freiburg1_room/cloud_merged.ply"
+  
+  #mapFile: "../res/NYUv2_kitchens/kitchens_part1/kitchen_0004_proc/cloud_merged.ply"
+  
+#  mapFile: "../res/NYUv2_living_rooms_part1/living_room_0003_proc/cloud_merged.ply"
+
+  mapFiles:
+    - "../res/NYUv2_living_rooms_part1/living_room_0003_proc/cloud_merged.ply"
+#    - "../res/PUT_Indoor/2017_04_04_test1/cloud_merged.ply"
+#    - "../res/PUT_Indoor/2017_04_04_test2/cloud_merged.ply"
+#    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
+#    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
+#    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
+  
+matching:
+
+  histDistThresh: 1.3
+
+  planeDistThresh: 5.0
+
+  intAreaThresh: 0.1
+
+  scoreThresh: 0.00
+
+  sinValsThresh: 0.001
+
+  planeEqDiffThresh: 0.05
+
+planeSlam:
+  # NYUv2
+#  cameraMatrix: !!opencv-matrix
+#    rows: 3
+#    cols: 3
+#    dt: f
+#    data: [5.1885790117450188e+02, 0.0, 3.2558244941119034e+02,
+#           0.0, 5.1946961112127485e+02, 2.5373616633400465e+02,
+#           0.0, 0.0, 1.0]
+
+  # PUT Indoor
+  cameraMatrix: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: f
+    data: [537.4087, 0.0, 320.3762,
+           0.0, 537.4836, 235.9355,
+           0.0, 0.0, 1.0]
+
+  gtOffset:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+
+  drawVis: 0
+
+  visualizeSegmentation: 0
+
+  visualizeMatching: 0
+
+  stopEveryFrame: 0
+
+  stopWrongFrame: 0
+
+  saveRes: 1
+
+  loadRes: 0
+
+  saveVis: 0
+
+  framesFromPly: 1
+
+
+  poseDiffThresh: 0.11
+
+
+  scoreThresh: 1.1
+
+  scoreDiffThresh: 0.2
+
+  fitThresh: 0.07
+
+
