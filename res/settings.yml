@@ -85,29 +85,29 @@ fileGrabber:
   #imageFrame: 8
   
     # NYU depth v2 living room
-  datasetDirPath: "../res/NYUv2_living_rooms_part1/living_room_0003_proc"
-
-  readObjLabeling: 0
-
-  readAccel: 0
-
-  readPose: 1
-
-  depthScale: 5000
-
-  imageFrame: 0
-
-#    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+#  datasetDirPath: "../res/NYUv2_living_rooms_part1/living_room_0003_proc"
 #
-#    readObjLabeling: 0
+#  readObjLabeling: 0
 #
-#    readAccel: 0
+#  readAccel: 0
 #
-#    readPose: 1
+#  readPose: 1
 #
-#    depthScale: 1000
+#  depthScale: 5000
 #
-#    imageFrame: 0
+#  imageFrame: 0
+
+    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+
+    readObjLabeling: 0
+
+    readAccel: 0
+
+    readPose: 1
+
+    depthScale: 1000
+
+    imageFrame: 0
 
 map:
   
@@ -122,12 +122,12 @@ map:
 #  mapFile: "../res/NYUv2_living_rooms_part1/living_room_0003_proc/cloud_merged.ply"
 
   mapFiles:
-    - "../res/NYUv2_living_rooms_part1/living_room_0003_proc/cloud_merged.ply"
+#    - "../res/NYUv2_living_rooms_part1/living_room_0003_proc/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test1/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test2/cloud_merged.ply"
-#    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
-#    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
-#    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
+    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
+    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
+    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
   
 matching:
 
