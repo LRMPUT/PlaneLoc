@@ -36,6 +36,8 @@
 #include <pcl/features/normal_3d.h>
 
 #include <g2o/types/slam3d/se3quat.h>
+#include <LineSeg.hpp>
+#include <LineDet.hpp>
 
 #include "PlaneSlam.hpp"
 #include "Misc.hpp"
@@ -108,6 +110,7 @@ void PlaneSlam::run(){
 	int unkCnt = 0;
 
     double meanDist = 0.0;
+    double meanAngDist = 0.0;
     int meanCnt = 0;
 
 	// Map
@@ -134,6 +137,8 @@ void PlaneSlam::run(){
 	{
 
 	}
+
+    cout << "reading global settings" << endl;
 	bool drawVis = bool((int)settings["planeSlam"]["drawVis"]);
     bool visualizeSegmentation = bool((int)settings["planeSlam"]["visualizeSegmentation"]);
     bool visualizeMatching = bool((int)settings["planeSlam"]["visualizeMatching"]);
@@ -168,6 +173,7 @@ void PlaneSlam::run(){
 	}
 	ofstream logFile("../output/log.out");
 	int curFrameIdx;
+    cout << "Starting the loop" << endl;
 	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, pointCloudRead)) >= 0){
 		cout << "curFrameIdx = " << curFrameIdx << endl;
 
@@ -229,6 +235,10 @@ void PlaneSlam::run(){
 		    viewer->addPointCloud(pointCloud, "cloud", v1);
         }
 
+        vector<LineSeg> lineSegs;
+        LineDet::detectLineSegments(settings,
+                                    rgb,
+                                    lineSegs);
 
 		if(!pointCloud->empty()){
 			pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
@@ -338,6 +348,7 @@ void PlaneSlam::run(){
 				cout << "planesTrans.size() = " << planesTrans.size() << endl;
 				vector<double> planesTransDiff;
                 vector<double> planesTransDiffEucl;
+                vector<double> planesTransDiffAng;
 				for(int t = 0; t < planesTrans.size(); ++t){
 					g2o::SE3Quat planesTransSE3Quat(planesTrans[t]);
 
@@ -360,11 +371,22 @@ void PlaneSlam::run(){
 	//				}
 
                     g2o::SE3Quat diffSE3Quat = planesTransSE3Quat.inverse() * poseSE3Quat;
+//                    g2o::SE3Quat diffInvSE3Quat = poseSE3Quat * planesTransSE3Quat.inverse();
 					Vector6d diffLog = diffSE3Quat.log();
+//                    cout << "diffLog = " << diffSE3Quat.log().transpose() << endl;
+//                    cout << "diffInvLog = " << diffInvSE3Quat.log().transpose() << endl;
 					double diff = diffLog.transpose() * diffLog;
                     double diffEucl = diffSE3Quat.toVector().head<3>().norm();
+                    Eigen::Vector3d diffLogAng = Misc::logMap(diffSE3Quat.rotation());
+                    double diffAng = diffLogAng.transpose() * diffLogAng;
+//                    Eigen::Vector3d diffAngEuler = diffInvSE3Quat.rotation().toRotationMatrix().eulerAngles(1, 0, 2);
+//                    cout << "diffAngEuler = " << diffAngEuler.transpose() << endl;
+//                    double diffAng = std::min(diffAngEuler[0], pi - diffAngEuler[0]);
 					planesTransDiff.push_back(diff);
                     planesTransDiffEucl.push_back(diffEucl);
+                    cout << "planesTransDiffEucl[" << t << "] = " << planesTransDiffEucl[t] << endl;
+                    planesTransDiffAng.push_back(diffAng);
+                    cout << "planesTransDiffAng[" << t << "] = " << planesTransDiffAng[t] << endl;
 					cout << "planesTransDiff[" << t << "] = " << planesTransDiff[t] << endl;
 				}
 
@@ -405,6 +427,7 @@ void PlaneSlam::run(){
 					}
 
                     meanDist += planesTransDiffEucl.front();
+                    meanAngDist += planesTransDiffAng.front();
                     ++meanCnt;
 				}
 				else{
@@ -468,7 +491,8 @@ void PlaneSlam::run(){
 	cout << "incorrCnt = " << incorrCnt << endl;
 	cout << "unkCnt = " << unkCnt << endl;
     if(meanCnt > 0){
-        cout << "meanDist = " << meanDist / meanCnt << endl;
+        cout << "meanDist = " << meanDist / meanCnt << " m " << endl;
+        cout << "meanAngDist = " << meanAngDist * 180.0 / pi / meanCnt << " deg" << endl;
     }
 
     if(drawVis){

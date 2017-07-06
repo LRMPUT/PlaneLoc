@@ -52,7 +52,9 @@ set(PlaneSlam_SOURCES
 	src/Map.cpp
 	src/Misc.cpp
 	src/UnionFind.cpp
-	src/SegInfo.cpp)
+	src/SegInfo.cpp
+	src/LineDet.cpp
+	src/LineSeg.cpp)
 	
 add_library(PlaneSlam
 			${PlaneSlam_SOURCES})

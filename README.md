@@ -57,5 +57,5 @@ make -j$(nproc)
 2. Launch demo:
 
 ```commandline
-./demoPlaneSlam -s ../res/settings.xml
+./demoPlaneSlam -s ../res/settings.yml
 ```

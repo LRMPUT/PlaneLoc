@@ -106,6 +106,8 @@ Map::Map(const cv::FileStorage& settings)
                                                       v1,
                                                       v2*/);
 
+        cout << "object instances in map: " << objInstances.size() << endl;
+
         if(viewer) {
             viewer->removeAllPointClouds(v1);
             viewer->removeAllShapes(v1);
