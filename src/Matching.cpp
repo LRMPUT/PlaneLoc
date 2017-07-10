@@ -33,6 +33,7 @@
 #include <pcl/common/transforms.h>
 #include <pcl/registration/icp.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/octree/octree_search.h>
 
 #include <g2o/types/slam3d/se3quat.h>
 #include <UnionFind.h>
@@ -485,8 +486,12 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                 framePc->insert(framePc->end(), curFramePc->begin(), curFramePc->end());
             }
 
-            pcl::KdTreeFLANN<pcl::PointXYZRGB> kdTree;
-            kdTree.setInputCloud(mapPc);
+//            pcl::KdTreeFLANN<pcl::PointXYZRGB> kdTree;
+//            kdTree.setInputCloud(mapPc);
+			pcl::octree::OctreePointCloudSearch<pcl::PointXYZRGB> octree(0.005);
+            octree.setInputCloud(mapPc);
+            octree.addPointsFromInputCloud();
+//            cout << "octree.getEpsilon() = " << octree.getEpsilon() << endl;
 
             for(int t = 0; t < bestTrans.size(); ++t) {
                 cout << "fit score on transformation " << t << endl;
@@ -502,9 +507,16 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                 double fitScore = 0.0;
                 int ptCnt = 0;
                 for(int p = 0; p < framePcTrans->size(); ++p){
-                    kdTree.nearestKSearch(framePcTrans->at(p), 1, nnIndices, nnDists);
+//                    kdTree.nearestKSearch(framePcTrans->at(p), 1, nnIndices, nnDists);
+
+//                    int nnInd;
+//                    float nnDist;
+//                    octree.approxNearestSearch(framePcTrans->at(p), nnInd, nnDist);
+//
+                    octree.nearestKSearch(framePcTrans->at(p), 1, nnIndices, nnDists);
 
                     fitScore += nnDists[0];
+//                    fitScore += nnDist;
                     ++ptCnt;
                 }
                 if(ptCnt > 0){

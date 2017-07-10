@@ -131,7 +131,7 @@ map:
   
 matching:
 
-  histDistThresh: 1.3
+  histDistThresh: 2.5
 
   planeDistThresh: 5.0
 
