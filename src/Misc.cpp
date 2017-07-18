@@ -23,6 +23,8 @@
 
 #include "Misc.hpp"
 
+#include <g2o/types/slam3d/se3quat.h>
+
 using namespace std;
 using namespace cv;
 
@@ -221,4 +223,13 @@ bool Misc::checkIfAlignedWithNormals(const Eigen::Vector3f& testedNormal,
     }
 
     return isAligned;
+}
+
+double Misc::transformLogDist(Vector7d trans1, Vector7d trans2) {
+	g2o::SE3Quat trans(trans1);
+	g2o::SE3Quat transComp(trans2);
+	g2o::SE3Quat diff = trans.inverse() * transComp;
+	Vector6d logMapDiff = diff.log();
+	double dist = logMapDiff.transpose() * logMapDiff;
+	return dist;
 }

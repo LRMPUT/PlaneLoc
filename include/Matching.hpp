@@ -64,6 +64,24 @@ public:
                                               int viewPort1 = -1,
                                               int viewPort2 = -1);
 
+    static Vector7d bestTransformPointsDirsDists(const std::vector<Eigen::Vector3d>& points1,
+                                                 const std::vector<Eigen::Vector3d>& points2,
+                                                 const std::vector<double>& pointsW,
+                                                 const std::vector<Eigen::Vector3d>& dirs1,
+                                                 const std::vector<Eigen::Vector3d>& dirs2,
+                                                 const std::vector<double>& dirsW,
+                                                 const std::vector<double> &dists1,
+                                                 const std::vector<double> &dists2,
+                                                 const std::vector<Eigen::Vector3d> &distDirs1,
+                                                 const std::vector<double> &distsW,
+                                                 const std::vector<Eigen::Vector3d> &distPts1,
+                                                 const std::vector<Eigen::Vector3d> &distPts2,
+                                                 const std::vector<Eigen::Vector3d> &distPtsDirs1,
+                                                 const std::vector<double> &distsPtsW,
+                                                 double sinValsThresh,
+                                                 bool &fullConstrRot,
+                                                 bool &fullConstrTrans);
+
 private:
 
     struct ValidTransform{
@@ -119,10 +137,23 @@ private:
                                 double sinValsThresh,
 								bool& fullConstr);
 
-	static Vector7d bestTransformPlanes(const std::vector<Eigen::Vector4d> planes1,
-                                        const std::vector<Eigen::Vector4d> planes2,
+	static Vector7d bestTransformPlanes(const std::vector<Eigen::Vector4d>& planes1,
+                                        const std::vector<Eigen::Vector4d>& planes2,
                                         double sinValsThresh,
                                         bool &fullConstr);
+
+	static Vector7d bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d>& points1,
+                                               const std::vector<Eigen::Vector3d>& points2,
+                                               const std::vector<double>& pointsW,
+                                               const std::vector<Eigen::Vector3d>& dirs1,
+                                               const std::vector<Eigen::Vector3d>& dirs2,
+                                               const std::vector<double>& dirsW,
+                                               double sinValsThresh,
+                                               bool compTrans,
+                                               bool &fullConstrRot,
+                                               bool &fullConstrTrans);
+
+
 
 	static double scoreTransformByProjection(const Vector7d& transform,
 								const std::vector<std::pair<int, int>> triplet,

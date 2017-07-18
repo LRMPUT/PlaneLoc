@@ -34,6 +34,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "Types.hpp"
+
 static constexpr float pi = 3.14159265359;
 
 template<class T>
@@ -76,6 +78,9 @@ public:
 	static bool checkIfAlignedWithNormals(const Eigen::Vector3f& testedNormal,
                                             pcl::PointCloud<pcl::Normal>::ConstPtr normals,
                                             bool& alignConsistent);
+
+	static double transformLogDist(Vector7d trans1,
+									Vector7d trans2);
 };
 
 static constexpr uint8_t colors[][3] = {

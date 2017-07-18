@@ -126,8 +126,8 @@ map:
 #    - "../res/PUT_Indoor/2017_04_04_test1/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test2/cloud_merged.ply"
     - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
-#    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
-#    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
+    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
+    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
   
 matching:
 
@@ -181,9 +181,9 @@ planeSlam:
 
   stopWrongFrame: 0
 
-  saveRes: 0
+  saveRes: 1
 
-  loadRes: 1
+  loadRes: 0
 
   saveVis: 0
 
@@ -193,10 +193,10 @@ planeSlam:
   poseDiffThresh: 0.11
 
 
-  scoreThresh: 1.2
+  scoreThresh: 1.1
 
   scoreDiffThresh: 0.2
 
-  fitThresh: 100
+  fitThresh: 0.07
 
 

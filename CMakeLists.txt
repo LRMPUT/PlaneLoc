@@ -58,7 +58,22 @@ set(PlaneSlam_SOURCES
 	
 add_library(PlaneSlam
 			${PlaneSlam_SOURCES})
-			
+
+#-------------------------------------------------------
+
+set(unitTests_SOURCES
+        tests/Tests.cpp)
+add_executable(unitTests
+        ${unitTests_SOURCES})
+target_link_libraries(unitTests
+        PlaneSlam
+        ${OpenCV_LIBS}
+        ${Boost_LIBRARIES}
+        ${PCL_LIBRARIES}
+        ${OPENGM_LIBRARIES}
+        ${G2O_TYPES_SLAM3D}
+        ${G2O_TYPES_SBA})
+
 #-------------------------------------------------------
 
 if(BUILD_DEMO_OBJEXTRACT)
@@ -89,11 +104,7 @@ if(BUILD_DEMO_PLANESLAM)
 						${PCL_LIBRARIES}
 						${OPENGM_LIBRARIES}
 						${G2O_TYPES_SLAM3D}
-						${G2O_TYPES_SBA}
-						${GLUT_LIBRARY}
-						${CUDA_LIBRARIES}
-						${Pangolin_LIBRARIES}
-						${EFUSION_LIBRARY})
+						${G2O_TYPES_SBA})
 					
 endif(BUILD_DEMO_PLANESLAM)
 			
