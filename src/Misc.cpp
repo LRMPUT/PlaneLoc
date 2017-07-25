@@ -116,6 +116,7 @@ Eigen::Vector3d Misc::logMap(Eigen::Quaterniond quat)
 {
 	Eigen::Vector3d res;
 
+    normalizeAndUnify(quat);
 	double qvNorm = sqrt(quat.x()*quat.x() + quat.y()*quat.y() + quat.z()*quat.z());
 	if(qvNorm > 1e-6){
 		res[0] = quat.x()/qvNorm;
@@ -232,4 +233,12 @@ double Misc::transformLogDist(Vector7d trans1, Vector7d trans2) {
 	Vector6d logMapDiff = diff.log();
 	double dist = logMapDiff.transpose() * logMapDiff;
 	return dist;
+}
+
+double Misc::rotLogDist(Eigen::Vector4d rot1, Eigen::Vector4d rot2) {
+    Eigen::Quaterniond r1(rot1[3], rot1[0], rot1[1], rot1[2]);
+    Eigen::Quaterniond r2(rot2[3], rot2[0], rot2[1], rot2[2]);
+    Eigen::Vector3d logDiff = logMap(r1.inverse() * r2);
+
+    return logDiff.transpose() * logDiff;
 }

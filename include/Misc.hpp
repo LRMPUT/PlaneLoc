@@ -81,6 +81,9 @@ public:
 
 	static double transformLogDist(Vector7d trans1,
 									Vector7d trans2);
+
+    static double rotLogDist(Eigen::Vector4d rot1,
+                             Eigen::Vector4d rot2);
 };
 
 static constexpr uint8_t colors[][3] = {
