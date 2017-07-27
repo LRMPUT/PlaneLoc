@@ -14,13 +14,21 @@
 
 using namespace std;
 
-Eigen::Vector3d closestPointOnLine(Eigen::Vector3d pt,
-                                   Eigen::Vector3d p,
-                                   Eigen::Vector3d n)
+Eigen::Vector3d closestPointOnLine(const Eigen::Vector3d &pt,
+                                   const Eigen::Vector3d &p,
+                                   const Eigen::Vector3d &n)
 {
-    n.normalize();
-    double t = (pt - p).dot(n);
-    return p + t * n;
+    static constexpr double eps = 1e-6;
+    double nnorm = n.norm();
+    if(nnorm > eps) {
+        double t = (pt - p).dot(n) / (nnorm * nnorm);
+//        cout << "pt = " << pt.transpose() << endl;
+//        cout << "(" << p.transpose() << ") + " << t << " * (" << n.transpose() << ") = (" << (p + t * n).transpose() << ")" << endl;
+        return p + t * n;
+    }
+    else{
+        return Eigen::Vector3d::Zero();
+    }
 }
 
 void transformObjs(const std::vector<Eigen::Vector3d> &points,
@@ -65,6 +73,7 @@ void addPointsDirsDists(const std::vector<Eigen::Vector3d> &points,
                         const std::vector<Eigen::Vector4d> &planes,
                         const std::vector<Vector6d> &lines,
                         std::vector<Eigen::Vector3d> &retPoints,
+                        std::vector<Eigen::Vector3d> &retVirtPoints,
                         std::vector<Eigen::Vector3d> &retDirs,
                         std::vector<double> &retDists,
                         std::vector<Eigen::Vector3d> &retDistDirs,
@@ -73,6 +82,12 @@ void addPointsDirsDists(const std::vector<Eigen::Vector3d> &points,
 {
     for(int p = 0; p < points.size(); ++p){
         retPoints.push_back(points[p]);
+        for(int l = 0; l < lines.size(); ++l){
+            Eigen::Vector3d virtPoint = closestPointOnLine(points[p],
+                                                           lines[l].head<3>(),
+                                                           lines[l].tail<3>());
+            retVirtPoints.push_back(virtPoint);
+        }
     }
     for(int pl = 0; pl < planes.size(); ++pl){
         Eigen::Vector3d n = planes[pl].head<3>();
@@ -104,6 +119,7 @@ void addPointsDirsDists(const std::vector<Eigen::Vector3d> &points,
 }
 
 void testFullConstr(const std::vector<Eigen::Vector3d> &points,
+                    const std::vector<Eigen::Vector3d> &virtPoints,
                     const std::vector<Eigen::Vector3d> &dirs,
                     const std::vector<double> &dists,
                     const std::vector<Eigen::Vector3d> &distDirs,
@@ -114,14 +130,30 @@ void testFullConstr(const std::vector<Eigen::Vector3d> &points,
 {
     {
         int rotEqNum = dirs.size();
-        if (points.size() > 0) {
-            rotEqNum += points.size() - 1;
+        if (points.size() + virtPoints.size() > 0) {
+            rotEqNum += points.size() + virtPoints.size() - 1;
         }
         Eigen::MatrixXd rotMat(3, rotEqNum);
         int rotEqCnt = 0;
-        //treating points as directions from the first point
+
+        // treating points as directions from the first point
+        Eigen::Vector3d origPoint;
+        if(points.size() > 0){
+            origPoint = points[0];
+        }
+        else if(virtPoints.size() > 0){
+            origPoint = virtPoints[0];
+        }
         for (int p = 1; p < points.size(); ++p) {
-            rotMat.block<3, 1>(0, rotEqCnt++) = points[p] - points[0];
+            rotMat.block<3, 1>(0, rotEqCnt++) = points[p] - origPoint;
+        }
+        // same for virtual points
+        int vpStart = 0;
+        if(points.size() == 0){
+            vpStart = 1;
+        }
+        for(int vp = vpStart; vp < virtPoints.size(); ++vp){
+            rotMat.block<3, 1>(0, rotEqCnt++) = virtPoints[vp] - origPoint;
         }
 
         for (int d = 0; d < dirs.size(); ++d) {
@@ -153,9 +185,9 @@ void testFullConstr(const std::vector<Eigen::Vector3d> &points,
         }
         if(fullConstrRot) {
             for (int p = 0; p < points.size(); ++p) {
-                transMat.block<3, 1>(0, transEqCnt++) = (Eigen::Vector3d() << 1.0, 0.0, 0.0).finished();
-                transMat.block<3, 1>(0, transEqCnt++) = (Eigen::Vector3d() << 0.0, 1.0, 0.0).finished();
-                transMat.block<3, 1>(0, transEqCnt++) = (Eigen::Vector3d() << 0.0, 0.0, 1.0).finished();
+                transMat.block<3, 1>(0, transEqCnt++) = Eigen::Vector3d::UnitX();
+                transMat.block<3, 1>(0, transEqCnt++) = Eigen::Vector3d::UnitY();
+                transMat.block<3, 1>(0, transEqCnt++) = Eigen::Vector3d::UnitZ();
             }
             cout << "distPts.size() = " << distPts.size() << endl;
             cout << "distPtsDirs.size() = " << distPtsDirs.size() << endl;
@@ -198,7 +230,7 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
         cout << "planes[" << pl << "] = " << planes[pl].transpose() << endl;
     }
     for(int l = 0; l < lines.size(); ++l){
-        cout << "lines[" << l << "] = " << lines[l].size() << endl;
+        cout << "lines[" << l << "] = " << lines[l].transpose() << endl;
     }
 
     Eigen::Vector3d trans = transform.head<3>();
@@ -206,6 +238,7 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
     Eigen::Matrix3d rotMat = Eigen::Quaterniond(rot[3], rot[0], rot[1], rot[2]).toRotationMatrix();
 
     std::vector<Eigen::Vector3d> retPoints;
+    std::vector<Eigen::Vector3d> retVirtPoints;
     std::vector<Eigen::Vector3d> retDirs;
     std::vector<double> retDists;
     std::vector<Eigen::Vector3d> retDistDirs;
@@ -215,6 +248,7 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
                        planes,
                        lines,
                        retPoints,
+                       retVirtPoints,
                        retDirs,
                        retDists,
                        retDistDirs,
@@ -224,6 +258,7 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
     bool fullConstrRot = true;
     bool fullConstrTrans = true;
     testFullConstr(retPoints,
+                   retVirtPoints,
                    retDirs,
                    retDists,
                    retDistDirs,
@@ -246,6 +281,7 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
                   trans);
 
     std::vector<Eigen::Vector3d> retTransPoints;
+    std::vector<Eigen::Vector3d> retTransVirtPoints;
     std::vector<Eigen::Vector3d> retTransDirs;
     std::vector<double> retTransDists;
     std::vector<Eigen::Vector3d> retTransDistDirs;
@@ -255,6 +291,7 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
                        transPlanes,
                        transLines,
                        retTransPoints,
+                       retTransVirtPoints,
                        retTransDirs,
                        retTransDists,
                        retTransDistDirs,
@@ -267,6 +304,9 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
     Vector7d transformComp = Matching::bestTransformPointsDirsDists(retTransPoints,
                                                                     retPoints,
                                                                     vector<double>(retPoints.size(), 1.0),
+                                                                    retTransVirtPoints,
+                                                                    retVirtPoints,
+                                                                    vector<double>(retVirtPoints.size(), 1.0),
                                                                     retTransDirs,
                                                                     retDirs,
                                                                     vector<double>(retDirs.size(), 1.0),
@@ -359,18 +399,36 @@ TEST_CASE("best transformations are correct", "[transformations]"){
         points.back() *= distScale;
     }
     for(int pl = 0; pl < numPls; ++pl){
-        planes.push_back(Eigen::Vector4d::Random());
-        planes.back().head<3>().normalize();
-        planes.back()[3] *= distScale;
+        Eigen::Vector3d n = Eigen::Vector3d::Random();
+        // avoid numerical errors due to dividing by small numbers
+        while(n.norm() < 1e-6){
+            n = Eigen::Vector3d::Random();
+        }
+        n.normalize();
+
+        Eigen::Vector4d curPl = Eigen::Vector4d::Random();
+        curPl.head<3>() = n;
+        curPl[3] *= distScale;
+        planes.push_back(curPl);
     }
     for(int l = 0; l < numLines; ++l){
-        lines.push_back(Vector6d::Random());
-        lines.back().head<3>() *= distScale;
-        lines.back().tail<3>().normalize();
+        Eigen::Vector3d n = Eigen::Vector3d::Random();
+        // avoid numerical errors due to dividing by small numbers
+        while(n.norm() < 1e-6){
+            n = Eigen::Vector3d::Random();
+        }
+        n.normalize();
+        Eigen::Vector3d p = Eigen::Vector3d::Random();
+        p *= distScale;
         // move point to be closest to the origin
-        lines.back().head<3>() = closestPointOnLine(Eigen::Vector3d::Zero(),
-                                                    lines.back().head<3>(),
-                                                    lines.back().tail<3>());
+        p = closestPointOnLine(Eigen::Vector3d::Zero(),
+                                                    p,
+                                                    n);
+
+        Vector6d curLine;
+        curLine.head<3>() = p;
+        curLine.tail<3>() = n;
+        lines.push_back(curLine);
     }
 
 
@@ -469,9 +527,99 @@ TEST_CASE("best transformations are correct", "[transformations]"){
         }
 
         //points + lines
+        for(int cpts = 0; cpts <= numPts; ++cpts){
+            for(int clines = 0; clines <= numLines; ++clines) {
+                std::default_random_engine gen;
+                std::uniform_int_distribution<int> distrPts(0, numPts - 1);
+
+                vector<Eigen::Vector3d> curPts;
+                for (int p = 0; p < cpts; ++p) {
+                    int idx = distrPts(gen);
+                    curPts.push_back(points[idx]);
+                }
+
+                std::uniform_int_distribution<int> distrLines(0, numLines - 1);
+
+                vector<Vector6d> curLines;
+                for (int l = 0; l < clines; ++l) {
+                    int idx = distrLines(gen);
+                    curLines.push_back(lines[idx]);
+                }
+
+                testTransform(curPts,
+                              vector<Eigen::Vector4d>(),
+                              curLines,
+                              transform,
+                              sinValsThresh);
+            }
+        }
 
         //planes + lines
+        for(int cpls = 0; cpls <= numPls; ++cpls){
+            for(int clines = 0; clines <= numLines; ++clines) {
+                std::default_random_engine gen;
+                std::uniform_int_distribution<int> distrPls(0, numPls - 1);
+
+                vector<Eigen::Vector4d> curPls;
+                for (int pl = 0; pl < cpls; ++pl) {
+                    int idx = distrPls(gen);
+                    curPls.push_back(planes[idx]);
+                }
+
+                std::uniform_int_distribution<int> distrLines(0, numLines - 1);
+
+                vector<Vector6d> curLines;
+                for (int l = 0; l < clines; ++l) {
+                    int idx = distrLines(gen);
+                    curLines.push_back(lines[idx]);
+                }
+
+                testTransform(vector<Eigen::Vector3d>(),
+                              curPls,
+                              curLines,
+                              transform,
+                              sinValsThresh);
+            }
+        }
 
         //points + planes + lines
+        for(int cpts = 0; cpts <= numPts; ++cpts){
+            for(int cpls = 0; cpls <= numPls; ++cpls) {
+                for(int clines = 0; clines <= numLines; ++clines) {
+                    std::default_random_engine gen;
+
+                    std::uniform_int_distribution<int> distrPts(0, numPts - 1);
+
+                    vector<Eigen::Vector3d> curPts;
+                    for (int p = 0; p < cpts; ++p) {
+                        int idx = distrPts(gen);
+                        curPts.push_back(points[idx]);
+                    }
+
+
+                    std::uniform_int_distribution<int> distrPls(0, numPls - 1);
+
+                    vector<Eigen::Vector4d> curPls;
+                    for (int pl = 0; pl < cpls; ++pl) {
+                        int idx = distrPls(gen);
+                        curPls.push_back(planes[idx]);
+                    }
+
+                    std::uniform_int_distribution<int> distrLines(0, numLines - 1);
+
+                    vector<Vector6d> curLines;
+                    for (int l = 0; l < clines; ++l) {
+                        int idx = distrLines(gen);
+                        curLines.push_back(lines[idx]);
+                    }
+
+                    testTransform(curPts,
+                                  curPls,
+                                  curLines,
+                                  transform,
+                                  sinValsThresh);
+                }
+            }
+        }
     }
 }

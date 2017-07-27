@@ -899,8 +899,10 @@ Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1
         Eigen::Matrix4d C2 = Eigen::Matrix4d::Zero();
         Eigen::Matrix4d C3 = Eigen::Matrix4d::Zero();
 
-        cout << "points" << endl;
+//        cout << "points" << endl;
         for(int i = 0; i < points1.size(); ++i){
+//            cout << "points1[" << i << "] = " << points1[i].transpose() << endl;
+//            cout << "points2[" << i << "] = " << points2[i].transpose() << endl;
 
             Eigen::Matrix4d Q = Misc::matrixQ(Eigen::Quaterniond(0,
                                                                  0.5 * points1[i](0),
@@ -910,14 +912,14 @@ Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1
                                                                  0.5 * points2[i](0),
                                                                  0.5 * points2[i](1),
                                                                  0.5 * points2[i](2)));
-			cout << "Q = " << Q << endl;
-			cout << "W = " << W << endl;
+//			cout << "Q = " << Q << endl;
+//			cout << "W = " << W << endl;
             C1 += -2 * Q.transpose() * W * pointsW[i];
             C2 += Eigen::Matrix4d::Identity() * pointsW[i];
             C3 += 2 * (W - Q) * pointsW[i];
         }
 
-        cout << "dirs" << endl;
+//        cout << "dirs" << endl;
         for(int i = 0; i < dirs1.size(); ++i){
 
             Eigen::Matrix4d Q = Misc::matrixQ(Eigen::Quaterniond(0,
@@ -928,14 +930,14 @@ Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1
                                                                  dirs2[i](0),
                                                                  dirs2[i](1),
                                                                  dirs2[i](2)).normalized());
-			cout << "Q = " << Q << endl;
-			cout << "W = " << W << endl;
+//			cout << "Q = " << Q << endl;
+//			cout << "W = " << W << endl;
             C1 += -2 * Q.transpose() * W * dirsW[i];
         }
 
-		cout << "C1 = " << C1 << endl;
-        cout << "C2 = " << C2 << endl;
-        cout << "C3 = " << C3 << endl;
+//		cout << "C1 = " << C1 << endl;
+//        cout << "C2 = " << C2 << endl;
+//        cout << "C3 = " << C3 << endl;
 
         Eigen::Matrix4d C1t = C1.transpose();
         Eigen::Matrix4d C2t = C2.transpose();
@@ -949,7 +951,7 @@ Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1
             fullConstrTrans = false;
         }
         Eigen::Matrix4d A = 0.5 * (C3t * C2pC2tInv * C3 - C1 - C1t);
-		cout << "A = " << A << endl;
+//		cout << "A = " << A << endl;
 
 //        Eigen::JacobiSVD<Eigen::Matrix4d> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
 ////		cout << "Rank = " << svd.rank() << endl;
@@ -965,8 +967,8 @@ Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1
         Eigen::EigenSolver<Eigen::Matrix4d> esolver(A);
         Eigen::Vector4d evals = esolver.eigenvalues().real();
         Eigen::Matrix4d evectors = esolver.eigenvectors().real();
-        cout << "evals = " << evals << endl;
-        cout << "evectors = " << evectors << endl;
+//        cout << "evals = " << evals << endl;
+//        cout << "evectors = " << evectors << endl;
 
         int numMaxEvals = 0;
         int maxEvalInd = 0;
@@ -1024,6 +1026,9 @@ Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1
 Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3d> &points1,
                                                 const std::vector<Eigen::Vector3d> &points2,
                                                 const std::vector<double> &pointsW,
+                                                const std::vector<Eigen::Vector3d>& virtPoints1,
+                                                const std::vector<Eigen::Vector3d>& virtPoints2,
+                                                const std::vector<double>& virtPointsW,
                                                 const std::vector<Eigen::Vector3d> &dirs1,
                                                 const std::vector<Eigen::Vector3d> &dirs2,
                                                 const std::vector<double> &dirsW,
@@ -1043,9 +1048,24 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
     fullConstrRot = true;
     fullConstrTrans = true;
 
-    retTransform = bestTransformPointsAndDirs(points1,
-                                              points2,
-                                              pointsW,
+    vector<Eigen::Vector3d> mergedPoints1;
+    mergedPoints1.reserve(points1.size() + virtPoints1.size());
+    mergedPoints1.insert(mergedPoints1.end(), points1.begin(), points1.end());
+    mergedPoints1.insert(mergedPoints1.end(), virtPoints1.begin(), virtPoints1.end());
+
+    vector<Eigen::Vector3d> mergedPoints2;
+    mergedPoints2.reserve(points2.size() + virtPoints2.size());
+    mergedPoints2.insert(mergedPoints2.end(), points2.begin(), points2.end());
+    mergedPoints2.insert(mergedPoints2.end(), virtPoints2.begin(), virtPoints2.end());
+
+    vector<double> mergedPointsW;
+    mergedPointsW.reserve(pointsW.size() + virtPointsW.size());
+    mergedPointsW.insert(mergedPointsW.end(), pointsW.begin(), pointsW.end());
+    mergedPointsW.insert(mergedPointsW.end(), virtPointsW.begin(), virtPointsW.end());
+
+    retTransform = bestTransformPointsAndDirs(mergedPoints1,
+                                              mergedPoints2,
+                                              mergedPointsW,
                                               dirs1,
                                               dirs2,
                                               dirsW,
@@ -1054,9 +1074,9 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
                                               fullConstrRot,
                                               fullConstrTrans);
 
-    cout << "fullConstrRot = " << fullConstrRot << endl;
-    cout << "fullConstrTrans = " << fullConstrTrans << endl;
-    cout << "retTransform = " << retTransform.transpose() << endl;
+//    cout << "fullConstrRot = " << fullConstrRot << endl;
+//    cout << "fullConstrTrans = " << fullConstrTrans << endl;
+//    cout << "retTransform = " << retTransform.transpose() << endl;
 
     {
         int numEq;
@@ -1080,7 +1100,7 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
             A.resize(numEq, 3);
             Eigen::MatrixXd b;
             b.resize(numEq, 1);
-            cout << "Adding dists" << endl;
+//            cout << "Adding dists" << endl;
             for (int d = 0; d < dists1.size(); ++d) {
 //			cout << "d = " << d << endl;
                 Eigen::Vector3d n1 = distDirs1[d];
@@ -1093,7 +1113,7 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
                 b(d) = d1 - d2;
             }
             if (fullConstrRot) {
-                cout << "Adding points" << endl;
+//                cout << "Adding points" << endl;
                 for (int p = 0; p < points1.size(); ++p) {
 //			cout << "p = " << p << endl;
                     Eigen::Vector3d p1 = points1[p];
@@ -1109,7 +1129,7 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
                     b.block<3, 1>(dists1.size() + 3 * p, 0) = p1 - p2trans.head<3>();
                 }
 
-                cout << "Adding dists points" << endl;
+//                cout << "Adding dists points" << endl;
                 for (int dp = 0; dp < distPts1.size(); ++dp) {
                     double d1 = distPtsDirs1[dp].dot(distPts1[dp]);
 
@@ -1125,9 +1145,9 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
                 }
             }
 
-            cout << "computing full piv LU" << endl;
-            cout << "A = " << A << endl;
-            cout << "b = " << b << endl;
+//            cout << "computing full piv LU" << endl;
+//            cout << "A = " << A << endl;
+//            cout << "b = " << b << endl;
             Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
 //        lu.setThreshold(sinValsThresh);
 
@@ -1138,14 +1158,14 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
 //		cout << "AtAinv * At * b" << endl;
 //            Eigen::Vector3d t = AtAinv * At * b;
 //		cout << "trans = " << trans << endl;
-            cout << "lu.rank() = " << lu.rank() << endl;
+//            cout << "lu.rank() = " << lu.rank() << endl;
             if (lu.rank() >= 3) {
                 fullConstrTrans = true;
 
-                cout << "solving equation" << endl;
+//                cout << "solving equation" << endl;
                 Eigen::Vector3d t = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-                cout << "t = " << t << endl;
-                cout << "error = " << (A * t - b) << endl;
+//                cout << "t = " << t << endl;
+//                cout << "error = " << (A * t - b) << endl;
 
                 retTransform.head<3>() = t;
             } else {
