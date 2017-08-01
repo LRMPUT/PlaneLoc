@@ -57,6 +57,8 @@ public:
 
 	static cv::Mat projectTo3D(cv::Mat depth, cv::Mat cameraParams);
 
+    static cv::Mat reprojectTo2D(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points, cv::Mat cameraParams);
+
 	static bool nextChoice(std::vector<int>& choice, int N);
 
 	static Eigen::Quaterniond planeEqToQuat(Eigen::Vector4d planeEq);

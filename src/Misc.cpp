@@ -55,6 +55,23 @@ cv::Mat Misc::projectTo3D(cv::Mat depth, cv::Mat cameraParams){
 	return xyz;
 }
 
+cv::Mat Misc::reprojectTo2D(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points, cv::Mat cameraParams)
+{
+    float fx = cameraParams.at<float>(0, 0);
+    float fy = cameraParams.at<float>(1, 1);
+    float cx = cameraParams.at<float>(0, 2);
+    float cy = cameraParams.at<float>(1, 2);
+    Mat uvd(1, points->size(), CV_32FC3);
+    for(int p = 0; p < points->size(); ++p){
+        double d = points->at(p).z;
+
+        uvd.at<Vec3f>(0, p)[0] = points->at(p).x * fx / d + cx;
+        uvd.at<Vec3f>(0, p)[1] = points->at(p).y * fy / d + cy;
+        uvd.at<Vec3f>(0, p)[2] = d;
+    }
+    return uvd;
+}
+
 bool Misc::nextChoice(std::vector<int>& choice, int N)
 {
 	int chidx = choice.size() - 1;

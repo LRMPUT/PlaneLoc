@@ -8,12 +8,15 @@
 #include <opencv2/opencv.hpp>
 
 #include "LineSeg.hpp"
+#include "ObjInstance.hpp"
 
 class LineDet {
 public:
     static void detectLineSegments(const cv::FileStorage &settings,
-                                    cv::Mat image,
-                                    std::vector<LineSeg> &lineSegs);
+                                   cv::Mat rgb,
+                                   const std::vector<ObjInstance> &planes,
+                                   cv::Mat cameraMatrix,
+                                   std::vector<LineSeg> &lineSegs);
 private:
 
 };

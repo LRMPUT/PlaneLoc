@@ -43,7 +43,7 @@ void transformObjs(const std::vector<Eigen::Vector3d> &points,
                    double transNoise = 0.0)
 {
     for(int p = 0; p < points.size(); ++p){
-        retPoints.push_back(rotMat * points[p] + trans);
+        retPoints.push_back(rotMat * points[p] + trans + transNoise * Eigen::Vector3d::Random());
     }
     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
     T.block<3, 3>(0,0) = rotMat;
@@ -51,6 +51,8 @@ void transformObjs(const std::vector<Eigen::Vector3d> &points,
     Eigen::Matrix4d Tinvt = T.inverse().transpose();
     for(int pl = 0; pl < planes.size(); ++pl){
         Eigen::Vector4d planeTrans = Tinvt * planes[pl];
+        planeTrans.head<3>() += rotNoise * Eigen::Vector3d::Random();
+        planeTrans.tail<1>() += transNoise * Eigen::MatrixXd::Random(1, 1);
         double nNorm = planeTrans.head<3>().norm();
         planeTrans /= nNorm;
         retPlanes.push_back(planeTrans);
@@ -58,8 +60,9 @@ void transformObjs(const std::vector<Eigen::Vector3d> &points,
     for(int l = 0; l < lines.size(); ++l){
         Eigen::Vector3d p = lines[l].head<3>();
         Eigen::Vector3d n = lines[l].tail<3>();
-        Eigen::Vector3d pTrans = rotMat * p + trans;
-        Eigen::Vector3d nTrans = rotMat * n;
+        Eigen::Vector3d pTrans = rotMat * p + trans + transNoise * Eigen::Vector3d::Random();
+        Eigen::Vector3d nTrans = rotMat * n + rotNoise * Eigen::Vector3d::Random();
+        nTrans.normalize();
         // move point to be closest to the origin
         pTrans = closestPointOnLine(Eigen::Vector3d::Zero(), pTrans, nTrans);
         Vector6d lTrans;
@@ -278,7 +281,9 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
                   transPlanes,
                   transLines,
                   rotMat,
-                  trans);
+                  trans,
+                  0.01,
+                  0.01);
 
     std::vector<Eigen::Vector3d> retTransPoints;
     std::vector<Eigen::Vector3d> retTransVirtPoints;
@@ -363,17 +368,18 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
     if(fullConstrRot == true &&
        fullConstrTrans == true)
     {
-        REQUIRE(dist < 0.001);
+        REQUIRE(dist < 0.4);
     }
     if(fullConstrRot == true){
         double rotDist = Misc::rotLogDist(transform.tail<4>(), transformComp.tail<4>());
-        REQUIRE(rotDist < 0.001);
+        REQUIRE(rotDist < 0.2);
     }
     if(fullConstrTrans == true){
         Eigen::Vector3d t = transform.head<3>();
         Eigen::Vector3d tComp = transformComp.head<3>();
         Eigen::Vector3d tDiff = t - tComp;
-        REQUIRE(tDiff.transpose() * tDiff < 0.001);
+        double tDist = tDiff.transpose() * tDiff;
+        REQUIRE(tDist < 0.2);
     }
 }
 

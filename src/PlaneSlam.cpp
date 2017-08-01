@@ -235,10 +235,13 @@ void PlaneSlam::run(){
 		    viewer->addPointCloud(pointCloud, "cloud", v1);
         }
 
-//        vector<LineSeg> lineSegs;
-//        LineDet::detectLineSegments(settings,
-//                                    rgb,
-//                                    lineSegs);
+		vector<ObjInstance> planeObjInstances;
+        vector<LineSeg> lineSegs;
+        LineDet::detectLineSegments(settings,
+                                    rgb,
+                                    planeObjInstances,
+                                    cameraParams,
+                                    lineSegs);
 
 		if(!pointCloud->empty()){
 			pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
