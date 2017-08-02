@@ -72,6 +72,39 @@ cv::Mat Misc::reprojectTo2D(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points, 
     return uvd;
 }
 
+Eigen::Vector3d Misc::projectPointOnPlane(const Eigen::Vector3d &pt, const Eigen::Vector4d &plane)
+{
+    Eigen::Vector4d planeNorm = toNormalPlaneEquation(plane);
+    Eigen::Vector3d n = planeNorm.head<3>();
+    double d = planeNorm[3];
+    Eigen::Vector3d plPt = n * d;
+    double ndist = n.dot(pt - plPt);
+    return pt - ndist * n;
+}
+
+Eigen::Vector3d Misc::projectPointOnPlane(const Eigen::Vector2d &pt, const Eigen::Vector4d &plane, cv::Mat cameraMatrix)
+{
+    float fx = cameraMatrix.at<float>(0, 0);
+    float fy = cameraMatrix.at<float>(1, 1);
+    float cx = cameraMatrix.at<float>(0, 2);
+    float cy = cameraMatrix.at<float>(1, 2);
+    Eigen::Vector4d planeNorm = toNormalPlaneEquation(plane);
+    Eigen::Vector3d n = planeNorm.head<3>();
+    double dpl = planeNorm[3];
+    Eigen::Vector3d pnnorm;
+    pnnorm[0] = (pt[0] - cx) / fx;
+    pnnorm[0] = (pt[1] - cy) / fy;
+    pnnorm[0] = 1;
+    double ncast = n.dot(pnnorm);
+    if(ncast > 1e-6) {
+        double d = dpl / ncast;
+        return pnnorm * d;
+    }
+    else{
+        return Eigen::Vector3d();
+    }
+}
+
 bool Misc::nextChoice(std::vector<int>& choice, int N)
 {
 	int chidx = choice.size() - 1;
@@ -127,6 +160,12 @@ void Misc::normalizeAndUnify(Eigen::Vector4d& v){
 	{
 		v = -v;
 	}
+}
+
+Eigen::Vector4d Misc::toNormalPlaneEquation(Eigen::Vector4d plane)
+{
+    double nnorm = plane.head<3>().norm();
+    return plane / nnorm;
 }
 
 Eigen::Vector3d Misc::logMap(Eigen::Quaterniond quat)
@@ -258,4 +297,20 @@ double Misc::rotLogDist(Eigen::Vector4d rot1, Eigen::Vector4d rot2) {
     Eigen::Vector3d logDiff = logMap(r1.inverse() * r2);
 
     return logDiff.transpose() * logDiff;
+}
+
+cv::Mat Misc::colorIds(cv::Mat ids) {
+    cv::Mat colIm(ids.size(), CV_8UC3, Scalar(0, 0, 0));
+    for(int r = 0; r < ids.rows; ++r){
+        for(int c = 0; c < ids.cols; ++c){
+            int id = ids.at<int>(r, c);
+            if(id >= 0){
+                int colIdx = (id % sizeof(colors)/sizeof(uint8_t)/3);
+                colIm.at<Vec3b>(r, c) = cv::Vec3b(colors[colIdx][2],
+                                                  colors[colIdx][1],
+                                                  colors[colIdx][0]);
+            }
+        }
+    }
+    return colIm;
 }

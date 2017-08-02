@@ -28,6 +28,10 @@ public:
 
     const Eigen::Vector3d &getP2() const;
 
+    void setP1(const Eigen::Vector3d &p1);
+
+    void setP2(const Eigen::Vector3d &p2);
+
 private:
     std::vector<int> frameIds;
 

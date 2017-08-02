@@ -16,7 +16,10 @@ public:
                                    cv::Mat rgb,
                                    const std::vector<ObjInstance> &planes,
                                    cv::Mat cameraMatrix,
-                                   std::vector<LineSeg> &lineSegs);
+                                   std::vector<LineSeg> &lineSegs,
+                                   pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                   int viewPort1 = -1,
+                                   int viewPort2 = -1);
 private:
 
 };

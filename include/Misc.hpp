@@ -59,6 +59,10 @@ public:
 
     static cv::Mat reprojectTo2D(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points, cv::Mat cameraParams);
 
+    static Eigen::Vector3d projectPointOnPlane(const Eigen::Vector3d &pt, const Eigen::Vector4d &plane);
+
+    static Eigen::Vector3d projectPointOnPlane(const Eigen::Vector2d &pt, const Eigen::Vector4d &plane, cv::Mat cameraMatrix);
+
 	static bool nextChoice(std::vector<int>& choice, int N);
 
 	static Eigen::Quaterniond planeEqToQuat(Eigen::Vector4d planeEq);
@@ -66,6 +70,8 @@ public:
 	static void normalizeAndUnify(Eigen::Quaterniond& q);
 
 	static void normalizeAndUnify(Eigen::Vector4d& q);
+
+    static Eigen::Vector4d toNormalPlaneEquation(Eigen::Vector4d plane);
 
 	static Eigen::Vector3d logMap(Eigen::Quaterniond quat);
 
@@ -86,6 +92,8 @@ public:
 
     static double rotLogDist(Eigen::Vector4d rot1,
                              Eigen::Vector4d rot2);
+
+    static cv::Mat colorIds(cv::Mat ids);
 };
 
 static constexpr uint8_t colors[][3] = {

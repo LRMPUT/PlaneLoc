@@ -37,4 +37,12 @@ const Eigen::Vector3d &LineSeg::getP2() const {
     return p2;
 }
 
+void LineSeg::setP1(const Eigen::Vector3d &p1) {
+    LineSeg::p1 = p1;
+}
+
+void LineSeg::setP2(const Eigen::Vector3d &p2) {
+    LineSeg::p2 = p2;
+}
+
 

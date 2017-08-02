@@ -34,6 +34,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/impl/point_types.hpp>
 #include <pcl/features/normal_3d.h>
+#include <pcl/features/integral_image_normal.h>
 
 #include <g2o/types/slam3d/se3quat.h>
 #include <LineSeg.hpp>
@@ -205,7 +206,8 @@ void PlaneSlam::run(){
             }
 		}
 		else{
-			pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+            pointCloudNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>(rgb.cols, rgb.rows));
+			pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>(rgb.cols, rgb.rows));
 
 			Mat xyz = Misc::projectTo3D(depth, cameraParams);
 
@@ -227,21 +229,31 @@ void PlaneSlam::run(){
 	//											(int)rgb.at<Vec3b>(row, col)[0] << ", " <<
 	//											(int)rgb.at<Vec3b>(row, col)[1] << ", " <<
 	//											(int)rgb.at<Vec3b>(row, col)[2] << ") " << endl;
-					pointCloud->push_back(p);
+					pointCloud->at(col, row) = p;
+                    pointCloudNormals->at(col, row).x = p.x;
+                    pointCloudNormals->at(col, row).y = p.y;
+                    pointCloudNormals->at(col, row).z = p.z;
+                    pointCloudNormals->at(col, row).r = p.r;
+                    pointCloudNormals->at(col, row).g = p.g;
+                    pointCloudNormals->at(col, row).b = p.b;
 				}
 			}
+            
+            // Create the normal estimation class, and pass the input dataset to it
+            pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::PointXYZRGBNormal> ne;
+            ne.setNormalEstimationMethod(ne.AVERAGE_3D_GRADIENT);
+            ne.setMaxDepthChangeFactor(0.05f);
+            ne.setNormalSmoothingSize(20.0f);
+            ne.setInputCloud(pointCloud);
+            ne.setViewPoint(0.0, 0.0, 0.0);
+            
+            ne.compute(*pointCloudNormals);
+            cout << "pointCloudNormals->size() = " << pointCloudNormals->size() << endl;
+
 		}
         if(drawVis) {
 		    viewer->addPointCloud(pointCloud, "cloud", v1);
         }
-
-		vector<ObjInstance> planeObjInstances;
-        vector<LineSeg> lineSegs;
-        LineDet::detectLineSegments(settings,
-                                    rgb,
-                                    planeObjInstances,
-                                    cameraParams,
-                                    lineSegs);
 
 		if(!pointCloud->empty()){
 			pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
@@ -264,6 +276,16 @@ void PlaneSlam::run(){
                                       v1,
                                       v2);
             }
+
+            vector<LineSeg> lineSegs;
+            LineDet::detectLineSegments(settings,
+                                        rgb,
+                                        curObjInstances,
+                                        cameraParams,
+                                        lineSegs,
+                                        viewer,
+                                        v1,
+                                        v2);
 
 			bool stopFlag = stopEveryFrame;
 
