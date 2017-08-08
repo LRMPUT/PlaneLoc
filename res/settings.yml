@@ -173,7 +173,7 @@ planeSlam:
 
   drawVis: 0
 
-  visualizeSegmentation: 1
+  visualizeSegmentation: 0
 
   visualizeMatching: 0
 

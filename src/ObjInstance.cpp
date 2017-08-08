@@ -41,7 +41,7 @@ using namespace std;
 ObjInstance::ObjInstance(int iid,
 					ObjType itype,
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
-					const std::vector<SegInfo>& isvs)
+					const std::vector<PlaneSeg>& isvs)
 	: id(iid),
 	  type(itype),
 	  points(ipoints),
@@ -321,7 +321,7 @@ ObjInstance ObjInstance::merge(const std::vector<const ObjInstance*>& objInstanc
                                int viewPort2)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr newPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
-    std::vector<SegInfo> newSvs;
+    std::vector<PlaneSeg> newSvs;
 
     Eigen::Vector3d meanLogMap;
     meanLogMap << 0.0, 0.0, 0.0;
@@ -358,7 +358,7 @@ ObjInstance ObjInstance::merge(const std::vector<const ObjInstance*>& objInstanc
         proj.setModelCoefficients(mdlCoeff);
         proj.filter(*pointsProj);
 
-        const vector<SegInfo>& svs = objInstances[o]->getSvs();
+        const vector<PlaneSeg>& svs = objInstances[o]->getSvs();
 
         newPoints->insert(newPoints->end(), pointsProj->begin(), pointsProj->end());
         newSvs.insert(newSvs.end(), svs.begin(), svs.end());

@@ -28,6 +28,7 @@
 #include <map>
 #include <chrono>
 #include <thread>
+#include <queue>
 
 #include <pcl/features/normal_3d.h>
 #include <pcl/segmentation/supervoxel_clustering.h>
@@ -35,17 +36,16 @@
 
 #include <Eigen/Eigen>
 
-#include "Segmentation2.hpp"
+#include "PlaneSegmentation.hpp"
 #include "Misc.hpp"
 #include "Exceptions.hpp"
-#include "UnionFind.h"
 
 
 using namespace std;
 
 
 
-void Segmentation2::segment(const cv::FileStorage& fs,
+void PlaneSegmentation::segment(const cv::FileStorage& fs,
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,
 						pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
 						std::vector<ObjInstance>& objInstances,
@@ -108,7 +108,7 @@ void Segmentation2::segment(const cv::FileStorage& fs,
         pc->push_back(pt);
     }
 
-    vector<SegInfo> svsInfo;
+    vector<PlaneSeg> svsInfo;
     pcl::PointCloud<pcl::PointXYZL>::Ptr pcLabSegm;
     {
         double svRes = 0.01;
@@ -245,8 +245,8 @@ void Segmentation2::segment(const cv::FileStorage& fs,
         cout << "create obj instances" << endl;
         int curObjInstId = 0;
 		for(int pl = 0; pl < planeCandidates.size(); ++pl){
-//            SegInfo curPlaneInfo;
-            std::vector<SegInfo> svs;
+//            PlaneSeg curPlaneInfo;
+            std::vector<PlaneSeg> svs;
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr points(new pcl::PointCloud<pcl::PointXYZRGB>());
 			for(int sv = 0; sv < planeCandidates[pl].size(); ++sv){
                 int curSvIdx = planeCandidates[pl][sv];
@@ -290,7 +290,7 @@ void Segmentation2::segment(const cv::FileStorage& fs,
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcVox(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::PointCloud<pcl::Normal>::Ptr pcNormalsVox(new pcl::PointCloud<pcl::Normal>());
         for(int sv = 0; sv < svLabels.size(); ++sv) {
-            SegInfo& curSv = svsInfo[sv];
+            PlaneSeg& curSv = svsInfo[sv];
             pcVox->insert(pcVox->end(),
                           svsInfo[sv].getPoints()->begin(),
                           svsInfo[sv].getPoints()->end());
@@ -363,8 +363,99 @@ void Segmentation2::segment(const cv::FileStorage& fs,
     }
 }
 
+void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs, UnionFind &sets, double curvThresh, double normalThresh, double stepThresh)
+{
+    vector<bool> visited(segs.size(), false);
+    map<pair<int, int>, int> edgeVer;
+//    vector<pair<int, int>> edges;
+    priority_queue<SegEdge> bestEdges;
+    for(int ps = 0; ps < segs.size(); ++ps){
+        int curSeg = sets.findSet(ps);
+        
+        if(!visited[curSeg]) {
+            for (int n = 0; n < segs[ps].getAdjSegs().size(); ++n) {
+                int nh = sets.findSet(segs[ps].getAdjSegs()[n]);
+        
+                int u = std::min(curSeg, nh);
+                int v = std::max(curSeg, nh);
+                
+                if(edgeVer.count(make_pair(u, v)) == 0){
+                    edgeVer[make_pair(u, v)] = 1;
+                    
+                    double score = compEdgeScore(segs[curSeg], segs[nh], normalThresh, stepThresh);
+                    SegEdge curEdge(u, v, 1, score);
+                    // -score, so we sort in descending order
+                    bestEdges.push(curEdge);
+                }
+            }
+        }
+    }
+    
+    vector<pair<int, int>> toMerge;
+    while(!bestEdges.empty()){
+        const SegEdge &curEdge = bestEdges.top();
+        bestEdges.pop();
+    
+//        int u = 
+//        int newestVer = edgeVer.find(make_pair(u, v));
+//
+//        // if the newest version
+//        if(curEdgeVerIt->ver != curEdge.ver) {
+//            if (checkIfCoplanar(segs[curEdge.u], segs[curEdge.v], curvThresh, normalThresh, stepThresh)) {
+//                toMerge.push_back(make_pair(u, v));
+//            }
+//        }
+    }
+    
+    
+}
 
-float Segmentation2::compSvToPlaneDist(pcl::PointNormal sv,
+bool PlaneSegmentation::checkIfCoplanar(const PlaneSeg &seg1,
+                                        const PlaneSeg &seg2,
+                                        double curvThresh,
+                                        double normalThresh,
+                                        double stepThresh)
+{
+    bool coplanar = false;
+    // if planar enough
+    if((seg1.getSegCurv() < curvThresh && seg2.getSegCurv() < 2*curvThresh) ||
+       (seg1.getSegCurv() < 2*curvThresh && seg2.getSegCurv() < curvThresh))
+    {
+        Eigen::Vector3f centrVec = seg2.getSegCentroid() -
+                                   seg1.getSegCentroid();
+        float step1 = std::fabs(centrVec.dot(seg2.getSegNormal()));
+        float step2 = std::fabs((-centrVec).dot(seg1.getSegNormal()));
+        // if there is no step between segments
+        if(step1 < stepThresh && step2 < stepThresh){
+            float normalScore = seg1.getSegNormal().dot(seg2.getSegNormal());
+            
+            if(normalScore > normalThresh) {
+                coplanar = true;
+            }
+        }
+        
+    }
+    return coplanar;
+}
+
+double
+PlaneSegmentation::compEdgeScore(const PlaneSeg &seg1, const PlaneSeg &seg2, double normalThresh, double stepThresh) {
+    double score = 0.0;
+    
+    Eigen::Vector3f centrVec = seg2.getSegCentroid() -
+                               seg1.getSegCentroid();
+    double step1 = std::fabs(centrVec.dot(seg2.getSegNormal()));
+    double step2 = std::fabs((-centrVec).dot(seg1.getSegNormal()));
+    double stepScore = std::max(1.0, std::exp(-(max(step1, step2) - stepThresh)/stepThresh));
+    
+    double normalScore = seg1.getSegNormal().dot(seg2.getSegNormal());
+    
+    score = normalScore * stepScore;
+    
+    return score;
+}
+
+float PlaneSegmentation::compSvToPlaneDist(pcl::PointNormal sv,
 									pcl::PointNormal plane)
 {
 	Eigen::Vector3f svNorm = sv.getNormalVector3fMap();
@@ -383,8 +474,8 @@ float Segmentation2::compSvToPlaneDist(pcl::PointNormal sv,
 }
 
 
-void Segmentation2::compPlaneNormals(const std::vector<int>& svLabels,
-                                    const std::vector<SegInfo>& svsInfo,
+void PlaneSegmentation::compPlaneNormals(const std::vector<int>& svLabels,
+                                    const std::vector<PlaneSeg>& svsInfo,
 									pcl::PointCloud<pcl::PointNormal>::Ptr planeNorm,
 									std::vector<std::vector<int>>& planeSvsIdx)
 {
@@ -446,7 +537,7 @@ void Segmentation2::compPlaneNormals(const std::vector<int>& svLabels,
 
 
 
-void Segmentation2::compSupervoxelsAreaEst(const std::map<uint32_t, pcl::Supervoxel<pcl::PointXYZRGB>::Ptr >& idToSv,
+void PlaneSegmentation::compSupervoxelsAreaEst(const std::map<uint32_t, pcl::Supervoxel<pcl::PointXYZRGB>::Ptr >& idToSv,
 										std::vector<float>& svAreaEst)
 {
 	svAreaEst.clear();
@@ -471,6 +562,12 @@ void Segmentation2::compSupervoxelsAreaEst(const std::map<uint32_t, pcl::Supervo
 	}
 //	cout << "svAreaEst = " << svAreaEst << endl;
 }
+
+
+
+
+
+
 
 
 

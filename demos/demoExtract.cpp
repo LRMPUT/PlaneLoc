@@ -36,7 +36,7 @@
 #include <pcl/features/normal_3d.h>
 
 #include "FileGrabber.hpp"
-#include "Segmentation2.hpp"
+#include "PlaneSegmentation.hpp"
 #include "Exceptions.hpp"
 #include "Misc.hpp"
 #include "Types.hpp"
@@ -124,7 +124,7 @@ int main(int argc, char * argv[]){
 			pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
 			vector<ObjInstance> curObjInstances;
 //			pcl::PointCloud<pcl::PointXYZRGBA>::Ptr pointCloudCol(new pcl::PointCloud<pcl::PointXYZRGBA>());
-			Segmentation2::segment(fs,
+			PlaneSegmentation::segment(fs,
 								pointCloud,
 								pointCloudLab,
 								curObjInstances,

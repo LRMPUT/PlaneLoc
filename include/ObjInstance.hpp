@@ -36,7 +36,7 @@
 #include <pcl/surface/convex_hull.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-#include "SegInfo.hpp"
+#include "PlaneSeg.hpp"
 
 // only planes in a current version
 class ObjInstance{
@@ -56,7 +56,7 @@ public:
 	ObjInstance(int iid,
 				ObjType itype,
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
-				const std::vector<SegInfo>& isvs);
+				const std::vector<PlaneSeg>& isvs);
 
 	inline int getId() const {
 		return id;
@@ -70,7 +70,7 @@ public:
 		return points;
 	}
 
-	inline const std::vector<SegInfo>& getSvs() const {
+	inline const std::vector<PlaneSeg>& getSvs() const {
 		return svs;
 	}
 
@@ -119,7 +119,7 @@ private:
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
 
-	std::vector<SegInfo> svs;
+	std::vector<PlaneSeg> svs;
 
 	Eigen::Vector4d paramRep;
 

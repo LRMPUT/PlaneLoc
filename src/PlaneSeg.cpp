@@ -27,16 +27,18 @@
 
 #include <Misc.hpp>
 #include <Exceptions.hpp>
-#include "SegInfo.hpp"
+#include "PlaneSeg.hpp"
 
 using namespace std;
 
-void SegInfo::calcSegProp(){
+void PlaneSeg::calcSegProp(){
 //    Eigen::Vector4f curPlaneParams;
     pcl::computePointNormal(*points, segPlaneParams, segCurv);
 
     segNormal = segPlaneParams.head<3>();
     segNormal.normalize();
+    
+    segNormalIntDiff = segCurv;
 
     // check if aligned with majority of normals
 //    bool alignError = false;
@@ -67,4 +69,25 @@ void SegInfo::calcSegProp(){
         }
     }
     areaEst = curAreaCoeff * pi;
+}
+
+PlaneSeg PlaneSeg::merge(const PlaneSeg &planeSeg) {
+    PlaneSeg merged;
+    merged.addPointsAndNormals(points, normals);
+    merged.addPointsAndNormals(planeSeg.getPoints(), planeSeg.getNormals());
+    
+    merged.addOrigPlaneSegs(origPlaneSegs);
+    merged.addOrigPlaneSegs(planeSeg.getOrigPlaneSegs());
+    
+    merged.calcSegProp();
+    
+    set<int> intPlaneSegs;
+    intPlaneSegs.insert(merged.getOrigPlaneSegs().begin(), merged.getOrigPlaneSegs().end());
+    for(const int &nh : adjSegs){
+        if(intPlaneSegs.count(nh) == 0){
+            merged.addAdjSeg(nh);
+        }
+    }
+    
+    return merged;
 }

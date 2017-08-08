@@ -12,16 +12,17 @@
 using namespace std;
 
 void LineDet::detectLineSegments(const cv::FileStorage &settings,
-                                 cv::Mat rgb,
-                                 const std::vector<ObjInstance> &planes,
-                                 cv::Mat cameraMatrix,
-                                 std::vector<LineSeg> &lineSegs,
-                                 pcl::visualization::PCLVisualizer::Ptr viewer,
-                                 int viewPort1,
-                                 int viewPort2)
+                                cv::Mat rgb,
+                                cv::Mat depth,
+                                const std::vector<ObjInstance> &planes,
+                                cv::Mat cameraMatrix,
+                                std::vector<LineSeg> &lineSegs,
+                                pcl::visualization::PCLVisualizer::Ptr viewer,
+                                int viewPort1,
+                                int viewPort2)
 {
     static constexpr double minImgLineLen = 50;
-    static constexpr double lineNhSize = 10;
+    static constexpr double lineNhSize = 15;
     static constexpr double shadingLevel = 0.005;
 //    static constexpr bool visualize = true;
 
@@ -46,10 +47,16 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
             }
         }
         cout << "Detected " << linesLsdThresh.size() << " lines" << endl;
-
+        if(viewer) {
+            viewer->removeAllPointClouds(viewPort1);
+            viewer->removeAllShapes(viewPort1);
+        }
+        
         cv::Mat planesMasks(rgb.size(), CV_32SC1, cv::Scalar(-1));
         cv::Mat planesDists(rgb.size(), CV_32FC1, cv::Scalar(std::numeric_limits<float>::max()));
         for(int pl = 0; pl < planes.size(); ++pl){
+//            cv::Mat curPlMask(rgb.size(), CV_32SC1, cv::Scalar(-1));
+            
             cv::Mat pointsReproj = Misc::reprojectTo2D(planes[pl].getPoints(), cameraMatrix);
             for(int pt = 0; pt < pointsReproj.cols; ++pt){
                 int u = std::round(pointsReproj.at<cv::Vec3f>(pt)[0]);
@@ -63,6 +70,19 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                     }
                 }
             }
+//            if(viewer){
+//                cout << "pl " << pl << endl;
+//                viewer->addPointCloud(planes[pl].getPoints(), string("plane_") + to_string(pl), viewPort1);
+//
+//                viewer->resetStoppedFlag();
+//
+//                while (!viewer->wasStopped()){
+//                    viewer->spinOnce (50);
+//                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//                }
+//
+//                viewer->removePointCloud(string("plane_") + to_string(pl), viewPort1);
+//            }
         }
 
         cv::Mat planesMasksImg;
@@ -75,6 +95,7 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
 
             cv::imshow("Detected segments", imageDisp);
             cv::imshow("Projected planes", planesMasksImg);
+            
 
 
             viewer->removeAllPointClouds(viewPort1);
@@ -87,9 +108,11 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
 //                                                         string("plane1_") + to_string(pl),
 //                                                         viewPort1);
             }
+            
+            
 
             viewer->initCameraParameters();
-            viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+            viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
         }
 
         std::default_random_engine gen;
@@ -220,7 +243,7 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
             if(viewer){
                 viewer->resetStoppedFlag();
 
-                cv::imshow("Current line segment", nhImg);
+                cv::imshow("Current line segment", nhImg * 0.25 + rgb);
                 while (!viewer->wasStopped()){
                     viewer->spinOnce (50);
                     cv::waitKey(50);

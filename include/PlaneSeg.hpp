@@ -21,8 +21,8 @@
     SOFTWARE.
 */
 
-#ifndef OBJEXTRACT_SVINFO_HPP
-#define OBJEXTRACT_SVINFO_HPP
+#ifndef INCLUDE_PLANESEG_HPP
+#define INCLUDE_PLANESEG_HPP
 
 #include <vector>
 
@@ -31,32 +31,34 @@
 #include <pcl/impl/point_types.hpp>
 #include <pcl/common/common_headers.h>
 
-class SegInfo {
+class PlaneSeg {
 public:
-    SegInfo()
+    PlaneSeg()
             : id(-1),
               label(0),
               normAlignConsistent(true),
               points(new pcl::PointCloud<pcl::PointXYZRGB>()),
               normals(new pcl::PointCloud<pcl::Normal>())
     {}
-    SegInfo(int iid,
-            int ilabel,
-           pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
-           pcl::PointCloud<pcl::Normal>::Ptr inormals,
-           std::vector<int> iadjSegs)
+    PlaneSeg(int iid,
+             int ilabel,
+             pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
+             pcl::PointCloud<pcl::Normal>::Ptr inormals,
+             const std::vector<int> &iorigPlaneSegs,
+             const std::vector<int> &iadjSegs)
             : id(iid),
               label(ilabel),
               normAlignConsistent(true),
               points(ipoints),
               normals(inormals),
+              origPlaneSegs(iorigPlaneSegs),
               adjSegs(iadjSegs)
     {
         calcSegProp();
     }
 
     void setId(int id) {
-        SegInfo::id = id;
+        PlaneSeg::id = id;
     }
     void setPoints(pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints){
         points = ipoints;
@@ -69,11 +71,15 @@ public:
     void setLabel(int ilabel){
         label = ilabel;
     }
-
+    
     void setSegNormal(Eigen::Vector3f isegNormal){
         segNormal = isegNormal;
     }
-
+    
+    void setOrigPlaneSegs(const std::vector<int> &origPlaneSegs) {
+        PlaneSeg::origPlaneSegs = origPlaneSegs;
+    }
+    
     void setSegCentroid(Eigen::Vector3f isegCentroid){
         segCentroid = isegCentroid;
     }
@@ -89,7 +95,11 @@ public:
     const pcl::PointCloud<pcl::Normal>::Ptr &getNormals() const {
         return normals;
     }
-
+    
+    const std::vector<int> &getOrigPlaneSegs() const {
+        return origPlaneSegs;
+    }
+    
     int getId() const {
         return id;
     }
@@ -101,7 +111,11 @@ public:
     const Eigen::Vector3f &getSegNormal() const {
         return segNormal;
     }
-
+    
+    double getSegNormalIntDiff() const {
+        return segNormalIntDiff;
+    }
+    
     float getSegCurv() const {
         return segCurv;
     }
@@ -149,25 +163,39 @@ public:
         normals->insert(normals->end(), newNorms->begin(), newNorms->end());
     }
 
+    void addOrigPlaneSegs(const std::vector<int> &newOrigPlaneSegs){
+        origPlaneSegs.insert(origPlaneSegs.end(), newOrigPlaneSegs.begin(), newOrigPlaneSegs.end());
+    }
+    
     void addAdjSeg(int newNh){
         adjSegs.push_back(newNh);
     }
-
+    
+    void addAdjSegs(const std::vector<int> &newAdjSegs){
+        adjSegs.insert(adjSegs.end(), newAdjSegs.begin(), newAdjSegs.end());
+    }
+    
     void calcSegProp();
+    
+    PlaneSeg merge(const PlaneSeg &planeSeg);
 
 private:
     int id;
     int label;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
     pcl::PointCloud<pcl::Normal>::Ptr normals;
+    std::vector<int> origPlaneSegs;
+    
     Eigen::Vector3f segNormal;
+    double segNormalIntDiff;
     Eigen::Vector4f segPlaneParams;
     Eigen::Vector3f segCentroid;
     float segCurv;
-    std::vector<int> adjSegs;
     bool normAlignConsistent;
     float areaEst;
+    
+    std::vector<int> adjSegs;
 };
 
 
-#endif //OBJEXTRACT_SVINFO_HPP
+#endif //INCLUDE_PLANESEG_HPP

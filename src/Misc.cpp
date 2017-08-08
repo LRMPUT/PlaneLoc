@@ -84,6 +84,8 @@ Eigen::Vector3d Misc::projectPointOnPlane(const Eigen::Vector3d &pt, const Eigen
 
 Eigen::Vector3d Misc::projectPointOnPlane(const Eigen::Vector2d &pt, const Eigen::Vector4d &plane, cv::Mat cameraMatrix)
 {
+//    cout << "pt = " << pt.transpose() << endl;
+//    cout << "plane = " << plane.transpose() << endl;
     float fx = cameraMatrix.at<float>(0, 0);
     float fy = cameraMatrix.at<float>(1, 1);
     float cx = cameraMatrix.at<float>(0, 2);
@@ -91,17 +93,23 @@ Eigen::Vector3d Misc::projectPointOnPlane(const Eigen::Vector2d &pt, const Eigen
     Eigen::Vector4d planeNorm = toNormalPlaneEquation(plane);
     Eigen::Vector3d n = planeNorm.head<3>();
     double dpl = planeNorm[3];
+//    cout << "n = " << n.transpose() << endl;
+//    cout << "dpl = " << dpl << endl;
     Eigen::Vector3d pnnorm;
     pnnorm[0] = (pt[0] - cx) / fx;
-    pnnorm[0] = (pt[1] - cy) / fy;
-    pnnorm[0] = 1;
+    pnnorm[1] = (pt[1] - cy) / fy;
+    pnnorm[2] = 1;
+//    cout << "pnnorm = " << pnnorm.transpose() << endl;
     double ncast = n.dot(pnnorm);
-    if(ncast > 1e-6) {
-        double d = dpl / ncast;
+//    cout << "ncast = " << ncast << endl;
+    if(std::abs(ncast) > 1e-6) {
+        double d = -dpl / ncast;
+//        cout << "d = " << d << endl;
+//        cout << "pnnorm * d = " << (pnnorm * d).transpose() << endl;
         return pnnorm * d;
     }
     else{
-        return Eigen::Vector3d();
+        return Eigen::Vector3d::Zero();
     }
 }
 

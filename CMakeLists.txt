@@ -46,13 +46,13 @@ link_directories(${G2O_LIBRARY_DIRS})
 set(PlaneSlam_SOURCES
 	src/Matching.cpp
 	src/FileGrabber.cpp
-	src/Segmentation2.cpp
+        src/PlaneSegmentation.cpp
 	src/ObjInstance.cpp
 	src/PlaneSlam.cpp
 	src/Map.cpp
 	src/Misc.cpp
 	src/UnionFind.cpp
-	src/SegInfo.cpp
+		src/PlaneSeg.cpp
 	src/LineDet.cpp
 	src/LineSeg.cpp)
 	

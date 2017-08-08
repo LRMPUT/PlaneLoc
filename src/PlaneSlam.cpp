@@ -43,7 +43,7 @@
 #include "PlaneSlam.hpp"
 #include "Misc.hpp"
 #include "Matching.hpp"
-#include "Segmentation2.hpp"
+#include "PlaneSegmentation.hpp"
 
 using namespace std;
 using namespace cv;
@@ -241,8 +241,8 @@ void PlaneSlam::run(){
             
             // Create the normal estimation class, and pass the input dataset to it
             pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::PointXYZRGBNormal> ne;
-            ne.setNormalEstimationMethod(ne.AVERAGE_3D_GRADIENT);
-            ne.setMaxDepthChangeFactor(0.05f);
+            ne.setNormalEstimationMethod(ne.COVARIANCE_MATRIX);
+            ne.setMaxDepthChangeFactor(0.02f);
             ne.setNormalSmoothingSize(20.0f);
             ne.setInputCloud(pointCloud);
             ne.setViewPoint(0.0, 0.0, 0.0);
@@ -260,14 +260,14 @@ void PlaneSlam::run(){
 			vector<ObjInstance> curObjInstances;
 
 			if(!loadRes && !visualizeSegmentation){
-				Segmentation2::segment(settings,
+				PlaneSegmentation::segment(settings,
 									pointCloudNormals,
 									pointCloudLab,
 									curObjInstances,
 									false);
 			}
             else if(visualizeSegmentation){
-                Segmentation2::segment(settings,
+                PlaneSegmentation::segment(settings,
                                       pointCloudNormals,
                                       pointCloudLab,
                                       curObjInstances,
@@ -278,14 +278,20 @@ void PlaneSlam::run(){
             }
 
             vector<LineSeg> lineSegs;
-            LineDet::detectLineSegments(settings,
-                                        rgb,
-                                        curObjInstances,
-                                        cameraParams,
-                                        lineSegs,
-                                        viewer,
-                                        v1,
-                                        v2);
+            
+            {
+                viewer->addPointCloud(pointCloud, "cloud_raw", v2);
+                
+                LineDet::detectLineSegments(settings,
+                                            rgb,
+                                            depth,
+                                            curObjInstances,
+                                            cameraParams,
+                                            lineSegs,
+                                            viewer,
+                                            v1,
+                                            v2);
+            }
 
 			bool stopFlag = stopEveryFrame;
 

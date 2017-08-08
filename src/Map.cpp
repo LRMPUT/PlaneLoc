@@ -33,7 +33,7 @@
 #include <g2o/types/slam3d/se3quat.h>
 
 #include "Map.hpp"
-#include "Segmentation2.hpp"
+#include "PlaneSegmentation.hpp"
 #include "Exceptions.hpp"
 #include "Types.hpp"
 
@@ -79,7 +79,7 @@ Map::Map(const cv::FileStorage& settings)
 //    		vector<ObjInstance> curObjInstances;
             allObjInstances.push_back(vector<ObjInstance>());
 
-            Segmentation2::segment(settings,
+            PlaneSegmentation::segment(settings,
                                   pointCloudNormal,
                                   pointCloudLab,
                                   allObjInstances.back(),
