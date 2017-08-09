@@ -64,7 +64,14 @@ private:
 		return fabs(plane.normal_x * dx + plane.normal_y * dy + plane.normal_z * dz);
 	}
     
-    static void mergeSegments(std::vector<PlaneSeg> &segs, UnionFind &sets, double curvThresh, double normalThresh, double stepThresh);
+    static void mergeSegments(std::vector<PlaneSeg> &segs,
+							  UnionFind &sets,
+							  double curvThresh,
+							  double normalThresh,
+							  double stepThresh,
+                              pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                              int viewPort1 = -1,
+                              int viewPort2 = -1);
     
     static bool checkIfCoplanar(const PlaneSeg &seg1,
                                 const PlaneSeg &seg2,
@@ -72,7 +79,17 @@ private:
                                 double normalThresh,
                                 double stepThresh);
     
-    static double compEdgeScore(const PlaneSeg &seg1, const PlaneSeg &seg2, double normalThresh, double stepThresh);
+    static double compEdgeScore(const PlaneSeg &seg1,
+                                   const PlaneSeg &seg2,
+                                   double curvThresh,
+                                   double normalThresh,
+                                   double stepThresh);
+    
+    static void drawSegments(pcl::visualization::PCLVisualizer::Ptr viewer,
+                                 std::string name,
+                                 int vp,
+                                 std::vector<PlaneSeg> segs,
+                                 UnionFind &sets);
 
 	static float compSvToPlaneDist(pcl::PointNormal svNorm,
 									pcl::PointNormal planeNorm);
@@ -99,9 +116,7 @@ struct SegEdge{
     SegEdge(int u, int v) : u(u), v(v) {}
 };
 
-bool operator<(const SegEdge &l, const SegEdge &r){
-    return l.w > r.w;
-}
+bool operator<(const SegEdge &l, const SegEdge &r);
 
 
 #endif /* INCLUDE_PLANESEGMENTATION_HPP_ */

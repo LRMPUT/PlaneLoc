@@ -71,8 +71,10 @@ void PlaneSeg::calcSegProp(){
     areaEst = curAreaCoeff * pi;
 }
 
-PlaneSeg PlaneSeg::merge(const PlaneSeg &planeSeg) {
+PlaneSeg PlaneSeg::merge(const PlaneSeg &planeSeg, UnionFind &sets) {
     PlaneSeg merged;
+    int mid = sets.findSet(id);
+    merged.setId(mid);
     merged.addPointsAndNormals(points, normals);
     merged.addPointsAndNormals(planeSeg.getPoints(), planeSeg.getNormals());
     
@@ -81,10 +83,27 @@ PlaneSeg PlaneSeg::merge(const PlaneSeg &planeSeg) {
     
     merged.calcSegProp();
     
-    set<int> intPlaneSegs;
-    intPlaneSegs.insert(merged.getOrigPlaneSegs().begin(), merged.getOrigPlaneSegs().end());
-    for(const int &nh : adjSegs){
-        if(intPlaneSegs.count(nh) == 0){
+    set<pair<int, int>> addedEdges;
+    
+    for(const int &as : adjSegs){
+        int nh = sets.findSet(as);
+        
+        pair<int, int> ep = make_pair(min(mid, nh), max(mid, nh));
+        if(mid != nh &&
+            addedEdges.count(ep) == 0)
+        {
+            addedEdges.insert(ep);
+            merged.addAdjSeg(nh);
+        }
+    }
+    for(const int &as : planeSeg.getAdjSegs()){
+        int nh = sets.findSet(as);
+        
+        pair<int, int> ep = make_pair(min(mid, nh), max(mid, nh));
+        if(mid != nh &&
+           addedEdges.count(ep) == 0)
+        {
+            addedEdges.insert(ep);
             merged.addAdjSeg(nh);
         }
     }

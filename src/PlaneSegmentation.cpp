@@ -185,101 +185,73 @@ void PlaneSegmentation::segment(const cv::FileStorage& fs,
     }
 
 
-    vector<int> svLabels(svsInfo.size(), 0);
+    vector<int> svLabels(svsInfo.size(), -1);
 	{
 		UnionFind sets(svsInfo.size());
+        
 
-		// flood fill through segments to connect segments belonging to the same planes
-		cout << "flood fill through segments" << endl;
-        vector<bool> isVisited(svsInfo.size(), false);
-        vector<vector<int> > planeCandidates;
-		for(int sv = 0; sv < svsInfo.size(); ++sv){
-			// if not visited and planar enough
-			if(!isVisited[sv] && svsInfo[sv].getSegCurv() < curvThresh){
-				queue<int> nodeQ;
-				nodeQ.push(sv);
-				isVisited[sv] = true;
-
-				vector<int> curVisited;
-				float curVisitedAreaCoeff = 0.0;
-				while(!nodeQ.empty()){
-					int curIdx = nodeQ.front();
-					nodeQ.pop();
-//                    cout << "curIdx = " << curIdx << endl;
-
-					curVisited.push_back(curIdx);
-					curVisitedAreaCoeff += svsInfo[curIdx].getAreaEst();
-					for(int nh = 0; nh < svsInfo[curIdx].getAdjSegs().size(); ++nh){
-						int nhIdx = svsInfo[curIdx].getAdjSegs()[nh];
-						// if not visited
-						if(!isVisited[nhIdx])
-						{
-                            // if planar enough
-                            if(svsInfo[nhIdx].getSegCurv() < 2*curvThresh) {
-                                Eigen::Vector3f centrVec = svsInfo[nhIdx].getSegCentroid() -
-                                                           svsInfo[curIdx].getSegCentroid();
-                                float step1 = std::fabs(centrVec.dot(svsInfo[nhIdx].getSegNormal()));
-                                float step2 = std::fabs((-centrVec).dot(svsInfo[curIdx].getSegNormal()));
-                                if(step1 < stepThresh && step2 < stepThresh){
-                                    float normalScore = svsInfo[curIdx].getSegNormal().dot(svsInfo[nhIdx].getSegNormal());
-
-                                    if(normalScore > normalThresh) {
-                                        nodeQ.push(nhIdx);
-                                        isVisited[nhIdx] = true;
-                                    }
-                                }
-
-                            }
-						}
-					}
-				}
-
-
-				if(curVisitedAreaCoeff >= areaThresh){
-					planeCandidates.push_back(curVisited);
-				}
-			}
-		}
-
-        // create obj instances - plane instances in current version
-        cout << "create obj instances" << endl;
+        vector<PlaneSeg> planeSegs = svsInfo;
+        
+        mergeSegments(planeSegs,
+                       sets,
+                       curvThresh,
+                       normalThresh,
+                       stepThresh/*,
+                     viewer,
+                     viewPort1,
+                     viewPort2*/);
+        
+        vector<vector<int> > planeCandidates(svsInfo.size());
+        vector<double> planeCandidatesAreaEst(svsInfo.size(), 0.0);
+        for(int sv = 0; sv < svsInfo.size(); ++sv){
+            int set = sets.findSet(sv);
+//            svLabels[sv] = set;
+            planeCandidates[set].push_back(sv);
+            planeCandidatesAreaEst[set] += svsInfo[sv].getAreaEst();
+        }
+        
+        
         int curObjInstId = 0;
-		for(int pl = 0; pl < planeCandidates.size(); ++pl){
-//            PlaneSeg curPlaneInfo;
-            std::vector<PlaneSeg> svs;
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr points(new pcl::PointCloud<pcl::PointXYZRGB>());
-			for(int sv = 0; sv < planeCandidates[pl].size(); ++sv){
-                int curSvIdx = planeCandidates[pl][sv];
-                // label 0 for non planar
-                svLabels[curSvIdx] = curObjInstId + 1;
-//                curPlaneInfo.addPointsAndNormals(svsInfo[curSvIdx].getPoints(),
-//                                                svsInfo[curSvIdx].getNormals());
-                svs.push_back(svsInfo[curSvIdx]);
-                points->insert(points->end(),
-                               svsInfo[curSvIdx].getPoints()->begin(),
-                               svsInfo[curSvIdx].getPoints()->end());
-				for(int p = 0; p < svsInfo[curSvIdx].getPoints()->size(); ++p){
-					pcl::PointXYZRGB pcPt = svsInfo[curSvIdx].getPoints()->at(p);
-					pcl::PointXYZRGBL pt;
-					pt.rgb = pcPt.rgb;
-					pt.x = pcPt.x;
-					pt.y = pcPt.y;
-					pt.z = pcPt.z;
-					pt.label = svLabels[curSvIdx];
-					pcLab->push_back(pt);
-				}
-			}
-            objInstances.emplace_back(curObjInstId++,
-                                      ObjInstance::ObjType::Plane,
-                                      points,
-                                      svs);
-            {
-                if(objInstances.back().getConvexHullArea() < areaThresh){
-                    // remove last element
-                    objInstances.erase(objInstances.end() - 1);
+        for(int pl = 0; pl < planeSegs.size(); ++pl){
+            if(planeCandidates[pl].size() > 0){
+                if(planeCandidatesAreaEst[pl] > areaThresh){
+                    if(planeSegs[pl].getSegCurv() < curvThresh){
+                        int lab = pl;
+                        
+                        std::vector<PlaneSeg> svs;
+                        pcl::PointCloud<pcl::PointXYZRGB>::Ptr points(new pcl::PointCloud<pcl::PointXYZRGB>());
+                        
+                        for(int s = 0; s < planeCandidates[pl].size(); ++s){
+                            svs.push_back(svsInfo[planeCandidates[pl][s]]);
+                            svLabels[planeCandidates[pl][s]] = pl;
+                        }
+                        
+                        *points = *(planeSegs[pl].getPoints());
+                        for(int p = 0; p < points->size(); ++p){
+                            pcl::PointXYZRGB pcPt = points->at(p);
+                            pcl::PointXYZRGBL pt;
+                            pt.rgb = pcPt.rgb;
+                            pt.x = pcPt.x;
+                            pt.y = pcPt.y;
+                            pt.z = pcPt.z;
+                            pt.label = svLabels[pl];
+                            pcLab->push_back(pt);
+                        }
+    
+                        objInstances.emplace_back(curObjInstId++,
+                                                  ObjInstance::ObjType::Plane,
+                                                  points,
+                                                  svs);
+                        {
+                            if(objInstances.back().getConvexHullArea() < areaThresh){
+                                // remove last element
+                                objInstances.erase(objInstances.end() - 1);
+                            }
+                        }
+                    }
                 }
             }
-		}
+        }
 	}
 
 
@@ -320,8 +292,8 @@ void PlaneSegmentation::segment(const cv::FileStorage& fs,
 			pcColPlanes->push_back(pt);
 		}
         for(int sv = 0; sv < svLabels.size(); ++sv) {
-            // label 0 for non plane elements
-            if (svLabels[sv] != 0) {
+            // label -1 for non plane elements
+            if (svLabels[sv] >= 0) {
                 pcl::PointNormal curPtNormal = svsInfo[sv].getPointNormal();
                 pcNormalsSv->push_back(curPtNormal);
             }
@@ -336,14 +308,14 @@ void PlaneSegmentation::segment(const cv::FileStorage& fs,
 //		cout << "pc->size() = " << pc->size() << endl;
 //		cout << "pcLab->size() = " << pcLab->size() << endl;
 //
-//		viewer->resetStoppedFlag();
-//		viewer->initCameraParameters();
-//		viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-//		viewer->spinOnce (100);
-//		while (!viewer->wasStopped()){
-//			viewer->spinOnce (100);
-//			std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//		}
+		viewer->resetStoppedFlag();
+		viewer->initCameraParameters();
+		viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+		viewer->spinOnce (100);
+		while (!viewer->wasStopped()){
+			viewer->spinOnce (100);
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		}
 	}
 
 //	if(pcCol != nullptr){
@@ -363,8 +335,17 @@ void PlaneSegmentation::segment(const cv::FileStorage& fs,
     }
 }
 
-void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs, UnionFind &sets, double curvThresh, double normalThresh, double stepThresh)
+void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs,
+                                      UnionFind &sets,
+                                      double curvThresh,
+                                      double normalThresh,
+                                      double stepThresh,
+                                      pcl::visualization::PCLVisualizer::Ptr viewer,
+                                      int viewPort1,
+                                      int viewPort2)
 {
+    double shadingLevel = 16.0/256;
+    
     vector<bool> visited(segs.size(), false);
     map<pair<int, int>, int> edgeVer;
 //    vector<pair<int, int>> edges;
@@ -382,12 +363,24 @@ void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs, UnionFind &se
                 if(edgeVer.count(make_pair(u, v)) == 0){
                     edgeVer[make_pair(u, v)] = 1;
                     
-                    double score = compEdgeScore(segs[curSeg], segs[nh], normalThresh, stepThresh);
+                    double score = compEdgeScore(segs[curSeg],
+                                                 segs[nh],
+                                                 curvThresh,
+                                                 normalThresh,
+                                                 stepThresh);
+                    
+//                    if(u == 86 && v == 89){
+//                        cout << "segs[curSeg].getSegCurv() = " << segs[curSeg].getSegCurv() << endl;
+//                        cout << "segs[nh].getSegCurv() = " << segs[nh].getSegCurv() << endl;
+//                        cout << "score = " << score << endl;
+//                    }
                     SegEdge curEdge(u, v, 1, score);
-                    // -score, so we sort in descending order
+                    
                     bestEdges.push(curEdge);
                 }
             }
+            
+            visited[curSeg] = true;
         }
     }
     
@@ -396,15 +389,104 @@ void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs, UnionFind &se
         const SegEdge &curEdge = bestEdges.top();
         bestEdges.pop();
     
-//        int u = 
-//        int newestVer = edgeVer.find(make_pair(u, v));
+        int u = sets.findSet(curEdge.u);
+        int v = sets.findSet(curEdge.v);
+        
+        pair<int, int> ep = make_pair(min(u, v), max(u, v));
+        int newestVer = edgeVer[ep];
+
+        if(viewer){
+            drawSegments(viewer,
+                         "cloud_lab",
+                         viewPort1,
+                         segs,
+                         sets);
+    
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                     shadingLevel,
+                                                     "cloud_lab",
+                                                     viewPort1);
+            
+            viewer->removePointCloud("cloud_1", viewPort1);
+            viewer->addPointCloud(segs[u].getPoints(), "cloud_1", viewPort1);
+            viewer->removePointCloud("cloud_2", viewPort1);
+            viewer->addPointCloud(segs[v].getPoints(), "cloud_2", viewPort1);
+            
+        }
+//        cout << "edge (" << u << ", " << v << ")" << endl;
+//        cout << "curEdge.w = " << curEdge.w << endl;
 //
-//        // if the newest version
-//        if(curEdgeVerIt->ver != curEdge.ver) {
-//            if (checkIfCoplanar(segs[curEdge.u], segs[curEdge.v], curvThresh, normalThresh, stepThresh)) {
-//                toMerge.push_back(make_pair(u, v));
-//            }
-//        }
+//        cout << "newestVer = " << newestVer << endl;
+//        cout << "curEdge.ver = " << curEdge.ver << endl;
+        
+        // if the newest version
+        if(u != v && newestVer == curEdge.ver) {
+            if (checkIfCoplanar(segs[u], segs[v], curvThresh, normalThresh, stepThresh)) {
+                
+                // update versions
+                map<pair<int, int>, int> prevEdgeVer = edgeVer;
+                int highestVer = 0;
+                vector<pair<int, int>> nhEdges;
+
+                for (int n = 0; n < segs[u].getAdjSegs().size(); ++n) {
+                    int nh = sets.findSet(segs[u].getAdjSegs()[n]);
+
+                    nhEdges.emplace_back(min(u, nh), max(u, nh));
+                }
+                for (int n = 0; n < segs[v].getAdjSegs().size(); ++n) {
+                    int nh = sets.findSet(segs[v].getAdjSegs()[n]);
+
+                    nhEdges.emplace_back(min(v, nh), max(v, nh));
+                }
+
+                for(int ep = 0; ep < nhEdges.size(); ++ep){
+                    highestVer = max(highestVer, edgeVer[nhEdges[ep]]);
+                }
+//                for(int ep = 0; ep < nhEdges.size(); ++ep){
+//                    edgeVer[nhEdges[ep]] = highestVer + 1;
+//                }
+                
+                // unite sets
+                int m = sets.unionSets(u, v);
+                segs[m] = segs[u].merge(segs[v], sets);
+    
+                // add new edges to heap
+                for (int n = 0; n < segs[m].getAdjSegs().size(); ++n) {
+                    int nh = sets.findSet(segs[m].getAdjSegs()[n]);
+                    
+                    pair<int, int> ep = make_pair(min(m, nh), max(m, nh));
+                    // still the same version -> adding edge
+                    bool addEdge = false;
+                    if(edgeVer.count(ep) == 0){
+                        addEdge = true;
+                    }
+                    else if(prevEdgeVer[ep] >= edgeVer[ep]){
+                        addEdge = true;
+                    }
+                    
+                    if(addEdge){
+                        double score = compEdgeScore(segs[m],
+                                                     segs[nh],
+                                                     curvThresh,
+                                                     normalThresh,
+                                                     stepThresh);
+                        int ver = highestVer + 1;
+                        bestEdges.push(SegEdge(ep.first, ep.second, ver, score));
+                        
+                        edgeVer[ep] = ver;
+                    }
+                }
+            }
+        }
+        
+        if(viewer){
+            viewer->resetStoppedFlag();
+            viewer->spinOnce (100);
+            while (!viewer->wasStopped()){
+                viewer->spinOnce (100);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        }
     }
     
     
@@ -417,6 +499,8 @@ bool PlaneSegmentation::checkIfCoplanar(const PlaneSeg &seg1,
                                         double stepThresh)
 {
     bool coplanar = false;
+//    cout << "seg1.getSegCurv() = " << seg1.getSegCurv() << endl;
+//    cout << "seg2.getSegCurv() = " << seg2.getSegCurv() << endl;
     // if planar enough
     if((seg1.getSegCurv() < curvThresh && seg2.getSegCurv() < 2*curvThresh) ||
        (seg1.getSegCurv() < 2*curvThresh && seg2.getSegCurv() < curvThresh))
@@ -425,9 +509,12 @@ bool PlaneSegmentation::checkIfCoplanar(const PlaneSeg &seg1,
                                    seg1.getSegCentroid();
         float step1 = std::fabs(centrVec.dot(seg2.getSegNormal()));
         float step2 = std::fabs((-centrVec).dot(seg1.getSegNormal()));
+//        cout << "step1 = " << step1 << endl;
+//        cout << "step2 = " << step2 << endl;
         // if there is no step between segments
         if(step1 < stepThresh && step2 < stepThresh){
             float normalScore = seg1.getSegNormal().dot(seg2.getSegNormal());
+//            cout << "normalScore = " << normalScore << endl;
             
             if(normalScore > normalThresh) {
                 coplanar = true;
@@ -439,20 +526,59 @@ bool PlaneSegmentation::checkIfCoplanar(const PlaneSeg &seg1,
 }
 
 double
-PlaneSegmentation::compEdgeScore(const PlaneSeg &seg1, const PlaneSeg &seg2, double normalThresh, double stepThresh) {
+PlaneSegmentation::compEdgeScore(const PlaneSeg &seg1,
+                                const PlaneSeg &seg2,
+                                double curvThresh,
+                                double normalThresh,
+                                double stepThresh) {
     double score = 0.0;
+    
+    double curvScore = std::min(1.0, std::exp(-(std::max(seg1.getSegCurv(), seg2.getSegCurv()) - curvThresh)/curvThresh));
     
     Eigen::Vector3f centrVec = seg2.getSegCentroid() -
                                seg1.getSegCentroid();
     double step1 = std::fabs(centrVec.dot(seg2.getSegNormal()));
     double step2 = std::fabs((-centrVec).dot(seg1.getSegNormal()));
-    double stepScore = std::max(1.0, std::exp(-(max(step1, step2) - stepThresh)/stepThresh));
+    double stepScore = std::min(1.0, std::exp(-(std::max(step1, step2) - stepThresh)/stepThresh));
     
     double normalScore = seg1.getSegNormal().dot(seg2.getSegNormal());
     
-    score = normalScore * stepScore;
+    score = normalScore * stepScore * curvScore;
     
     return score;
+}
+
+void PlaneSegmentation::drawSegments(pcl::visualization::PCLVisualizer::Ptr viewer,
+                                     std::string name,
+                                     int vp,
+                                     std::vector<PlaneSeg> segs,
+                                     UnionFind &sets)
+{
+    viewer->removePointCloud(name, vp);
+    
+    pcl::PointCloud<pcl::PointXYZL>::Ptr pcLab(new pcl::PointCloud<pcl::PointXYZL>());
+    
+    int nextLab = 0;
+    for(int s = 0; s < segs.size(); ++s){
+        int set = sets.findSet(s);
+        
+        if(s == set) {
+            int curLab = nextLab++;
+            pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points = segs[s].getPoints();
+            
+            for (int p = 0; p < points->size(); ++p) {
+                pcl::PointXYZRGB pcPt = points->at(p);
+                pcl::PointXYZL pt;
+                pt.x = pcPt.x;
+                pt.y = pcPt.y;
+                pt.z = pcPt.z;
+                pt.label = curLab;
+                pcLab->push_back(pt);
+            }
+        }
+    }
+    
+    viewer->addPointCloud(pcLab, name, vp);
 }
 
 float PlaneSegmentation::compSvToPlaneDist(pcl::PointNormal sv,
@@ -563,6 +689,11 @@ void PlaneSegmentation::compSupervoxelsAreaEst(const std::map<uint32_t, pcl::Sup
 //	cout << "svAreaEst = " << svAreaEst << endl;
 }
 
+
+
+bool operator<(const SegEdge &l, const SegEdge &r){
+    return l.w < r.w;
+}
 
 
 

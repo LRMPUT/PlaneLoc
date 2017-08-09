@@ -31,6 +31,8 @@
 #include <pcl/impl/point_types.hpp>
 #include <pcl/common/common_headers.h>
 
+#include "UnionFind.h"
+
 class PlaneSeg {
 public:
     PlaneSeg()
@@ -177,7 +179,7 @@ public:
     
     void calcSegProp();
     
-    PlaneSeg merge(const PlaneSeg &planeSeg);
+    PlaneSeg merge(const PlaneSeg &planeSeg, UnionFind &sets);
 
 private:
     int id;

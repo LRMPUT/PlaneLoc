@@ -23,7 +23,7 @@
 
 segmentation:
 
-  curvThresh: 0.02
+  curvThresh: 0.05
   
 #  areaMult: 50
 #
@@ -37,11 +37,11 @@ segmentation:
 #
 #  smoothCost: 0.002
 
-  stepThresh: 0.05
+  stepThresh: 0.08
 
   areaThresh: 0.1000
 
-  normalThresh: 0.95
+  normalThresh: 0.92
 
 fileGrabber:
 
@@ -173,7 +173,7 @@ planeSlam:
 
   drawVis: 0
 
-  visualizeSegmentation: 0
+  visualizeSegmentation: 1
 
   visualizeMatching: 0
 
