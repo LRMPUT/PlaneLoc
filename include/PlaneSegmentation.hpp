@@ -49,10 +49,43 @@ public:
 						pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
 						int viewPort1 = -1,
 						int viewPort2 = -1);
+    
+    static void segment(const cv::FileStorage& fs,
+                        cv::Mat rgb,
+                        cv::Mat depth,
+                        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
+                        std::vector<ObjInstance>& objInstances,
+                        pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                        int viewPort1 = -1,
+                        int viewPort2 = -1);
 
 private:
  
-
+    static void makeSupervoxels(const cv::FileStorage &fs,
+                                   pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,
+                                   bool segmentMap,
+                                   std::vector<PlaneSeg> &svs);
+    
+    static void makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, cv::Mat depth, std::vector<PlaneSeg> &svs);
+	
+	static void makeObjInstances(const std::vector<PlaneSeg> &svs,
+								 const std::vector<PlaneSeg> &segs,
+								 UnionFind &sets,
+								 std::vector<int> &svLabels,
+								 pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
+								 std::vector<ObjInstance>& objInstances,
+								 float curvThresh,
+								 double normalThresh,
+								 double stepThresh,
+								 float areaThresh,
+								 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+								 int viewPort1 = -1,
+								 int viewPort2 = -1);
+	
+	static cv::Mat segmentRgb(cv::Mat rgb,
+							  float sigma,
+							  float k,
+							  int minSegment);
  
 	static inline float distToPlane(const pcl::PointNormal& plane,
 								const pcl::PointNormal& pt)
@@ -69,6 +102,15 @@ private:
 							  double curvThresh,
 							  double normalThresh,
 							  double stepThresh,
+                              pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                              int viewPort1 = -1,
+                              int viewPort2 = -1);
+    
+    static void mergeSegmentsFF(std::vector<PlaneSeg> &segs,
+                              UnionFind &sets,
+                              double curvThresh,
+                              double normalThresh,
+                              double stepThresh,
                               pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                               int viewPort1 = -1,
                               int viewPort2 = -1);
@@ -90,6 +132,14 @@ private:
                                  int vp,
                                  std::vector<PlaneSeg> segs,
                                  UnionFind &sets);
+	
+	static void visualizeSegmentation(const std::vector<PlaneSeg> &svs,
+									  const std::vector<PlaneSeg> &segs,
+									  std::vector<int> &svLabels,
+									  pcl::visualization::PCLVisualizer::Ptr viewer,
+									  int viewPort1,
+									  int viewPort2);
+									  
 
 	static float compSvToPlaneDist(pcl::PointNormal svNorm,
 									pcl::PointNormal planeNorm);
@@ -112,8 +162,10 @@ struct SegEdge{
     SegEdge() {}
     
     SegEdge(int u, int v, int ver, double w) : u(u), v(v), ver(ver), w(w) {}
-    
-    SegEdge(int u, int v) : u(u), v(v) {}
+	
+	SegEdge(int u, int v, double w) : u(u), v(v), w(w) {}
+	
+	SegEdge(int u, int v) : u(u), v(v) {}
 };
 
 bool operator<(const SegEdge &l, const SegEdge &r);

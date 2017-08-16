@@ -260,21 +260,37 @@ void PlaneSlam::run(){
 			vector<ObjInstance> curObjInstances;
 
 			if(!loadRes && !visualizeSegmentation){
-				PlaneSegmentation::segment(settings,
-									pointCloudNormals,
-									pointCloudLab,
-									curObjInstances,
-									false);
+//				PlaneSegmentation::segment(settings,
+//									pointCloudNormals,
+//									pointCloudLab,
+//									curObjInstances,
+//									false);
+                
+                PlaneSegmentation::segment(settings,
+                                           rgb,
+                                           depth,
+                                           pointCloudLab,
+                                           curObjInstances);
+                
 			}
             else if(visualizeSegmentation){
+//                PlaneSegmentation::segment(settings,
+//                                      pointCloudNormals,
+//                                      pointCloudLab,
+//                                      curObjInstances,
+//                                      false,
+//                                      viewer,
+//                                      v1,
+//                                      v2);
+                
                 PlaneSegmentation::segment(settings,
-                                      pointCloudNormals,
-                                      pointCloudLab,
-                                      curObjInstances,
-                                      false,
-                                      viewer,
-                                      v1,
-                                      v2);
+                                           rgb,
+                                           depth,
+                                           pointCloudLab,
+                                           curObjInstances,
+                                           viewer,
+                                           v1,
+                                           v2);
             }
 
             vector<LineSeg> lineSegs;

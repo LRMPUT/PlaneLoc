@@ -83,10 +83,10 @@ Map::Map(const cv::FileStorage& settings)
                                   pointCloudNormal,
                                   pointCloudLab,
                                   allObjInstances.back(),
-                                  true,
+                                  true/*,
                                   viewer,
                                   v1,
-                                  v2);
+                                  v2*/);
 
 //            objInstances.insert(objInstances.end(), curObjInstances.begin(), curObjInstances.end());
 

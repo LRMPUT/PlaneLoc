@@ -23,7 +23,7 @@
 
 segmentation:
 
-  curvThresh: 0.05
+  curvThresh: 0.03
   
 #  areaMult: 50
 #
@@ -37,11 +37,11 @@ segmentation:
 #
 #  smoothCost: 0.002
 
-  stepThresh: 0.08
+  stepThresh: 0.05
 
   areaThresh: 0.1000
 
-  normalThresh: 0.92
+  normalThresh: 0.95
 
 fileGrabber:
 
