@@ -163,16 +163,36 @@ void PlaneSegmentation::segment(const cv::FileStorage &fs,
     
     UnionFind sets(svsInfo.size());
     
+//    if(viewer) {
+//        drawSegments(viewer,
+//                     "cloud_svs",
+//                     viewPort1,
+//                     svsInfo,
+//                     sets);
+//
+//        viewer->resetStoppedFlag();
+//        viewer->initCameraParameters();
+//        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+//        viewer->spinOnce(100);
+//        while (!viewer->wasStopped()) {
+//            viewer->spinOnce(50);
+//            cv::waitKey(50);
+//            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//        }
+//
+//        viewer->removePointCloud("cloud_svs", viewPort1);
+//    }
+    
     vector<PlaneSeg> planeSegs = svsInfo;
     
     mergeSegmentsFF(planeSegs,
                     sets,
                     curvThresh,
                     normalThresh,
-                    stepThresh,
+                    stepThresh/*,
                     viewer,
                     viewPort1,
-                    viewPort2);
+                    viewPort2*/);
     
     vector<int> svLabels(svsInfo.size(), -1);
     makeObjInstances(svsInfo,
@@ -342,7 +362,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
     cv::Mat camMat;
     fs["planeSlam"]["cameraMatrix"] >> camMat;
     
-    cv::Mat rgbSegments = segmentRgb(rgb, 0.8, 40, 100);
+    cv::Mat rgbSegments = segmentRgb(rgb, 0.8, 20, 200);
     
     int nrows = rgbSegments.rows;
     int ncols = rgbSegments.cols;
@@ -369,8 +389,10 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
                 {
                     int nhId = rgbSegments.at<int>(nhr, nhc);
                     
-                    pair<int, int> e = make_pair(std::min(id, nhId), std::max(id, nhId));
-                    edges.insert(e);
+                    if(nhId != id) {
+                        pair<int, int> e = make_pair(std::min(id, nhId), std::max(id, nhId));
+                        edges.insert(e);
+                    }
                 }
             }
         }
@@ -418,8 +440,44 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
         for (int c = 0; c < ncols; ++c) {
             int id = rgbSegments.at<int>(r, c);
             
-            svs[id].addPointAndNormal(pointCloud->at(c, r), normals->at(c, r));
+            const pcl::PointXYZRGB &curPt = pointCloud->at(c, r);
+            const pcl::Normal &curNorm = normals->at(c, r);
+            
+            if(!isnan(curPt.x) && !isnan(curPt.y) && !isnan(curPt.z) &&
+               abs(curPt.z) >= 1e-3 &&
+               !isnan(curNorm.normal_x) && !isnan(curNorm.normal_y) && !isnan(curNorm.normal_z))
+            {
+                svs[id].addPointAndNormal(pointCloud->at(c, r), normals->at(c, r));
+            }
         }
+    }
+    
+    {
+        map<int, int> oldIdxToNewIdx;
+        std::vector<PlaneSeg> newSvs;
+        int svsCnt = 0;
+        for(int sv = 0; sv < svs.size(); ++sv){
+            svs[sv].calcSegProp();
+            
+            if(!isnan(svs[sv].getSegCurv())){
+                int newIdx = svsCnt++;
+                
+                newSvs.push_back(svs[sv]);
+                newSvs.back().setId(newIdx);
+                oldIdxToNewIdx[sv] = newIdx;
+            }
+        }
+        svs.swap(newSvs);
+    
+        set<pair<int, int>> newEdges;
+        for(const pair<int, int> &cure : edges){
+            if(oldIdxToNewIdx.count(cure.first) > 0 &&
+               oldIdxToNewIdx.count(cure.second) > 0)
+            {
+               newEdges.insert(make_pair(oldIdxToNewIdx[cure.first], oldIdxToNewIdx[cure.second]));
+            }
+        }
+        edges.swap(newEdges);
     }
     
     for(const pair<int, int> &cure : edges){
@@ -428,9 +486,9 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
         svs[u].addAdjSeg(v);
         svs[v].addAdjSeg(u);
     }
-    for(int sv = 0; sv < svs.size(); ++sv){
-        svs[sv].calcSegProp();
-    }
+//    for(int sv = 0; sv < svs.size(); ++sv){
+//        svs[sv].calcSegProp();
+//    }
     
     cv::Mat segCol = Misc::colorIds(rgbSegments);
     
@@ -767,8 +825,10 @@ void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs,
                 
                 // unite sets
                 int m = sets.unionSets(u, v);
+                cout << "Merging segments" << endl;
                 segs[m] = segs[u].merge(segs[v], sets);
-    
+                cout << "end merging segments" << endl;
+                
                 // add new edges to heap
                 for (int n = 0; n < segs[m].getAdjSegs().size(); ++n) {
                     int nh = sets.findSet(segs[m].getAdjSegs()[n]);
