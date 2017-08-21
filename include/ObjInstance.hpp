@@ -37,6 +37,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 
 #include "PlaneSeg.hpp"
+#include "LineSeg.hpp"
 
 // only planes in a current version
 class ObjInstance{
@@ -101,7 +102,11 @@ public:
 		area = chullArea;
 		return convexHull;
 	}
-
+    
+    inline const std::vector<LineSeg> &getLineSegs() const {
+        return lineSegs;
+    }
+    
     static std::vector<ObjInstance> mergeObjInstances(const std::vector<std::vector<ObjInstance>>& objInstances,
                                                       pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                                       int viewPort1 = -1,
@@ -111,6 +116,10 @@ public:
                              pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                              int viewPort1 = -1,
                              int viewPort2 = -1);
+    
+    inline void addLineSeg(const LineSeg &newLineSeg){
+        lineSegs.push_back(newLineSeg);
+    }
 
 private:
 	int id;
@@ -135,6 +144,8 @@ private:
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr convexHull;
 
 	pcl::Vertices convexHullPolygon;
+	
+	std::vector<LineSeg> lineSegs;
 };
 
 

@@ -603,6 +603,165 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 }
 
 
+
+bool Matching::checkLineToLineAng(const std::vector<LineSeg> &lineSegs1,
+                                  const std::vector<LineSeg> &lineSegs2,
+                                  double lineToLineAngThresh)
+{
+    bool isConsistent = true;
+    for(int lf = 0; lf < lineSegs1.size(); ++lf){
+        for(int ls = lf + 1; ls < lineSegs2.size(); ++ls){
+            Eigen::Vector3d nf1 = (lineSegs1[lf].getP2() - lineSegs1[lf].getP1()).normalize();
+            Eigen::Vector3d ns1 = (lineSegs1[ls].getP2() - lineSegs1[ls].getP1()).normalize();
+            Eigen::Vector3d nf2 = (lineSegs2[lf].getP2() - lineSegs2[lf].getP1()).normalize();
+            Eigen::Vector3d ns2 = (lineSegs2[ls].getP2() - lineSegs2[ls].getP1()).normalize();
+            
+            double ang1 = acos(nf1.dot(ns1));
+            ang1 = min(ang1, pi - ang1);
+            double ang2 = acos(nf2.dot(ns2));
+            ang2 = min(ang2, pi - ang2);
+            double angDiff = fabs(ang1 - ang2);
+            
+            if(angDiff > lineToLineAngThresh){
+                isConsistent = false;
+                break;
+            }
+        }
+    }
+    return isConsistent;
+}
+
+
+vector<Matching::PotMatch> Matching::findPotMatches(const std::vector<ObjInstance> &frameObjInstances,
+                                                    const std::vector<ObjInstance> &mapObjInstances,
+                                                    double planeAppThresh,
+                                                    double lineAppThresh,
+                                                    double lineToLineAngThresh,
+                                                    pcl::visualization::PCLVisualizer::Ptr viewer,
+                                                    int viewPort1,
+                                                    int viewPort2)
+{
+    vector<PotMatch> potMatches;
+    
+    vector<cv::Mat> frameObjFeats;
+    compObjFeatures(frameObjInstances, frameObjFeats);
+    vector<cv::Mat> mapObjFeats;
+    compObjFeatures(mapObjInstances, mapObjFeats);
+    
+    for(int of = 0; of < frameObjInstances.size(); ++of){
+        for(int om = 0; om < mapObjInstances.size(); ++om){
+            cv::Mat histDiff = cv::abs(frameObjFeats[of] - mapObjFeats[om]);
+            double histDist = cv::sum(histDiff)[0];
+//            double histDist = cv::compareHist(frameObjFeats[of], mapObjFeats[om], cv::HISTCMP_CHISQR);
+            if(histDist < planeAppThresh){
+                
+                const vector<LineSeg> &frameLineSegs = frameObjInstances[of].getLineSegs();
+                const vector<LineSeg> &mapLineSegs = mapObjInstances[om].getLineSegs();
+                vector<pair<int, int> > potLineMatches;
+                for(int lf = 0; lf < frameLineSegs.size(); ++lf){
+                    for(int lm = 0; lm < mapLineSegs.size(); ++lm){
+                        potLineMatches.emplace_back(lm, lf);
+                    }
+                }
+                
+                int numComb = (1 << potLineMatches.size());
+    
+                // TODO Add line appearance difference computation
+                vector<double> linesAppDiffs(0.0, potLineMatches.size());
+                
+                for(int c = 0; c < numComb; ++c){
+                    bool addFlag = true;
+                    vector<int> linesMap;
+                    vector<int> linesFrame;
+                    vector<double> curLinesAppDiffs;
+                    
+                    for(int l = 0; l < potLineMatches.size(); ++l){
+                        if(c & (1 << l)){
+                            
+                            if(linesAppDiffs[l] > lineAppThresh){
+                                addFlag = false;
+                                break;
+                            }
+                            else{
+                                for(int prevl = 0; prevl < linesMap.size(); ++prevl){
+                                    if(!checkLineToLineAng(vector<LineSeg>{mapLineSegs[linesMap[prevl]],
+                                                                           mapLineSegs[potLineMatches[l].first]},
+                                                           vector<LineSeg>{frameLineSegs[linesFrame[prevl]],
+                                                                           frameLineSegs[potLineMatches[l].second]},
+                                                           lineToLineAngThresh))
+                                    {
+                                        addFlag = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            linesMap.push_back(potLineMatches[l].first);
+                            linesFrame.push_back(potLineMatches[l].second);
+                            curLinesAppDiffs.push_back(linesAppDiffs[l]);
+                        }
+                    }
+                    if(addFlag){
+                        potMatches.emplace_back(om,
+                                                linesMap,
+                                                of,
+                                                linesFrame,
+                                                histDist,
+                                                curLinesAppDiffs);
+                    }
+                }
+                
+            }
+
+//			cout << "dist (" << of << ", " << om << ") = " << histDist << endl;
+//			if(viewer){
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														1.0,
+//														string("plane1_") + to_string(of),
+//														viewPort1);
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														1.0,
+//														string("plane2_") + to_string(om),
+//														viewPort2);
+//
+//				// time for watching
+//				viewer->resetStoppedFlag();
+//
+////				viewer->initCameraParameters();
+////				viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+//				while (!viewer->wasStopped()){
+//					viewer->spinOnce (100);
+//					std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//				}
+//
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														shadingLevel,
+//														string("plane1_") + to_string(of),
+//														viewPort1);
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														shadingLevel,
+//														string("plane2_") + to_string(om),
+//														viewPort2);
+//			}
+        }
+    }
+    
+    return potMatches;
+}
+
+vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMatch> potMatches,
+                                                         const std::vector<ObjInstance> &objInstances1,
+                                                         const std::vector<ObjInstance> &objInstances2,
+                                                         double planeDistThresh,
+                                                         double planeToPlaneAngThresh,
+                                                         double planeToLineAngThresh,
+                                                         pcl::visualization::PCLVisualizer::Ptr viewer,
+                                                         int viewPort1,
+                                                         int viewPort2)
+{
+    return vector<vector<Matching::PotMatch>>();
+}
+
 void Matching::compObjFeatures(const std::vector<ObjInstance>& objInstances,
 							std::vector<cv::Mat>& objFeats)
 {
@@ -1917,6 +2076,8 @@ void Matching::makeCclockwise(std::vector<Eigen::Vector2d>& chull,
 		tmp.swap(chull);
 	}
 }
+
+
 
 
 

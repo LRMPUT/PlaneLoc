@@ -87,6 +87,44 @@ public:
 
 private:
 
+	struct PotMatch{
+        PotMatch() {}
+        
+        PotMatch(int plane1,
+                 const std::vector<int> &lineSegs1,
+                 int plane2,
+                 const std::vector<int> &lineSegs2)
+                : plane1(plane1),
+                  lineSegs1(lineSegs1),
+                  plane2(plane2),
+                  lineSegs2(lineSegs2) {}
+        
+        PotMatch(int plane1,
+                 const std::vector<int> &lineSegs1,
+                 int plane2,
+                 const std::vector<int> &lineSegs2,
+                 double planeAppDiff,
+                 const std::vector<double> &lineSegAppDiffs)
+                : plane1(plane1),
+                  lineSegs1(lineSegs1),
+                  plane2(plane2),
+                  lineSegs2(lineSegs2),
+                  planeAppDiff(planeAppDiff),
+                  lineSegAppDiffs(lineSegAppDiffs) {}
+        
+        int plane1;
+        
+        std::vector<int> lineSegs1;
+        
+        int plane2;
+        
+        std::vector<int> lineSegs2;
+        
+        double planeAppDiff;
+        
+        std::vector<double> lineSegAppDiffs;
+    };
+	
     struct ValidTransform{
         ValidTransform()
         {}
@@ -126,7 +164,30 @@ private:
 
 		double weight;
 	};
+    
+    static bool checkLineToLineAng(const std::vector<LineSeg> &lineSegs1,
+                                   const std::vector<LineSeg> &lineSegs2,
+                                   double lineToLineAngThresh);
 
+    static std::vector<PotMatch> findPotMatches(const std::vector<ObjInstance>& objInstances1,
+                                                const std::vector<ObjInstance>& objInstances2,
+                                                double planeAppThresh,
+                                                double lineAppThresh,
+                                                double lineToLineAngThresh,
+                                                pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                                int viewPort1 = -1,
+                                                int viewPort2 = -1);
+    
+    static std::vector<std::vector<PotMatch> > findPotSets(std::vector<PotMatch> potMatches,
+                                                           const std::vector<ObjInstance>& objInstances1,
+                                                           const std::vector<ObjInstance>& objInstances2,
+                                                           double planeDistThresh,
+                                                           double planeToPlaneAngThresh,
+                                                           double planeToLineAngThresh,
+                                                           pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                                           int viewPort1 = -1,
+                                                           int viewPort2 = -1);
+    
 	static void compObjFeatures(const std::vector<ObjInstance>& objInstances,
 								std::vector<cv::Mat>& objFeats);
 
