@@ -52,9 +52,13 @@ public:
                                      int viewPort1 = -1,
                                      int viewPort2 = -1);
 
-    static double planeDiffLogMap(const ObjInstance& obj1,
-                                  const ObjInstance& obj2,
-                                  const Vector7d& transform);
+    static double planeEqDiffLogMap(const ObjInstance &obj1,
+                                    const ObjInstance &obj2,
+                                    const Vector7d &transform);
+    
+    static double lineSegEqDiff(const LineSeg &lineSeg1,
+                                const LineSeg &lineSeg2,
+                                const Vector7d &transform);
 
     static double checkConvexHullIntersection(const ObjInstance& obj1,
                                               const ObjInstance& obj2,
@@ -63,6 +67,11 @@ public:
                                               pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                               int viewPort1 = -1,
                                               int viewPort2 = -1);
+    
+    static double checkLineSegIntersection(const LineSeg &lineSeg1,
+                                           const LineSeg &lineSeg2,
+                                           const Vector7d &transform,
+                                           double &intLen);
 
     static Vector7d bestTransformPointsDirsDists(const std::vector<Eigen::Vector3d>& points1,
                                                  const std::vector<Eigen::Vector3d>& points2,
@@ -84,6 +93,17 @@ public:
                                                  double sinValsThresh,
                                                  bool &fullConstrRot,
                                                  bool &fullConstrTrans);
+    
+    static void convertToPointsDirsDists(const std::vector<Eigen::Vector3d> &points,
+                                        const std::vector<Eigen::Vector4d> &planes,
+                                        const std::vector<Vector6d> &lines,
+                                        std::vector<Eigen::Vector3d> &retPoints,
+                                        std::vector<Eigen::Vector3d> &retVirtPoints,
+                                        std::vector<Eigen::Vector3d> &retDirs,
+                                        std::vector<double> &retDists,
+                                        std::vector<Eigen::Vector3d> &retDistDirs,
+                                        std::vector<Eigen::Vector3d> &retDistPts,
+                                        std::vector<Eigen::Vector3d> &retDistPtsDirs);
 
 private:
 
@@ -165,10 +185,25 @@ private:
 		double weight;
 	};
     
+    static double compAngleDiffBetweenNormals(Eigen::Vector3d nf1,
+                                              Eigen::Vector3d ns1,
+                                              Eigen::Vector3d nf2,
+                                              Eigen::Vector3d ns2);
+    
     static bool checkLineToLineAng(const std::vector<LineSeg> &lineSegs1,
                                    const std::vector<LineSeg> &lineSegs2,
                                    double lineToLineAngThresh);
-
+                                   
+    static bool checkPlaneToPlaneAng(const std::vector<Eigen::Vector4d> &planes1,
+                                     const std::vector<Eigen::Vector4d> &planes2,
+                                     double planeToPlaneAngThresh);
+    
+    static bool checkPlaneToLineAng(const std::vector<Eigen::Vector4d> &planes1,
+                                     const std::vector<LineSeg> &lineSegs1,
+                                     const std::vector<Eigen::Vector4d> &planes2,
+                                     const std::vector<LineSeg> &lineSegs2,
+                                     double planeToLineAngThresh);
+    
     static std::vector<PotMatch> findPotMatches(const std::vector<ObjInstance>& objInstances1,
                                                 const std::vector<ObjInstance>& objInstances2,
                                                 double planeAppThresh,
@@ -182,6 +217,7 @@ private:
                                                            const std::vector<ObjInstance>& objInstances1,
                                                            const std::vector<ObjInstance>& objInstances2,
                                                            double planeDistThresh,
+                                                           double lineToLineAngThresh,
                                                            double planeToPlaneAngThresh,
                                                            double planeToLineAngThresh,
                                                            pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
@@ -229,6 +265,19 @@ private:
 								pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
 								int viewPort1 = -1,
 								int viewPort2 = -1);
+    
+    static double scoreTransformByProjection(const Vector7d& transform,
+                                             const std::vector<PotMatch> curSet,
+                                             const std::vector<ObjInstance>& objInstances1,
+                                             const std::vector<ObjInstance>& objInstances2,
+                                             std::vector<double> &intAreaPlanes,
+                                             std::vector<double> &intLenLines,
+                                             double planeEqDiffThresh,
+                                             double intAreaThresh,
+                                             double intLenThresh,
+                                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                             int viewPort1 = -1,
+                                             int viewPort2 = -1);
 
 	static double evalPoint(Vector7d pt,
 						const std::vector<ProbDistKernel>& dist);

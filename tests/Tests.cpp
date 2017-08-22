@@ -14,23 +14,6 @@
 
 using namespace std;
 
-Eigen::Vector3d closestPointOnLine(const Eigen::Vector3d &pt,
-                                   const Eigen::Vector3d &p,
-                                   const Eigen::Vector3d &n)
-{
-    static constexpr double eps = 1e-6;
-    double nnorm = n.norm();
-    if(nnorm > eps) {
-        double t = (pt - p).dot(n) / (nnorm * nnorm);
-//        cout << "pt = " << pt.transpose() << endl;
-//        cout << "(" << p.transpose() << ") + " << t << " * (" << n.transpose() << ") = (" << (p + t * n).transpose() << ")" << endl;
-        return p + t * n;
-    }
-    else{
-        return Eigen::Vector3d::Zero();
-    }
-}
-
 void transformObjs(const std::vector<Eigen::Vector3d> &points,
                    const std::vector<Eigen::Vector4d> &planes,
                    const std::vector<Vector6d> &lines,
@@ -64,7 +47,7 @@ void transformObjs(const std::vector<Eigen::Vector3d> &points,
         Eigen::Vector3d nTrans = rotMat * n + rotNoise * Eigen::Vector3d::Random();
         nTrans.normalize();
         // move point to be closest to the origin
-        pTrans = closestPointOnLine(Eigen::Vector3d::Zero(), pTrans, nTrans);
+        pTrans = Misc::closestPointOnLine(Eigen::Vector3d::Zero(), pTrans, nTrans);
         Vector6d lTrans;
         lTrans.head<3>() = pTrans;
         lTrans.tail<3>() = nTrans;
@@ -72,54 +55,6 @@ void transformObjs(const std::vector<Eigen::Vector3d> &points,
     }
 }
 
-void addPointsDirsDists(const std::vector<Eigen::Vector3d> &points,
-                        const std::vector<Eigen::Vector4d> &planes,
-                        const std::vector<Vector6d> &lines,
-                        std::vector<Eigen::Vector3d> &retPoints,
-                        std::vector<Eigen::Vector3d> &retVirtPoints,
-                        std::vector<Eigen::Vector3d> &retDirs,
-                        std::vector<double> &retDists,
-                        std::vector<Eigen::Vector3d> &retDistDirs,
-                        std::vector<Eigen::Vector3d> &retDistPts,
-                        std::vector<Eigen::Vector3d> &retDistPtsDirs)
-{
-    for(int p = 0; p < points.size(); ++p){
-        retPoints.push_back(points[p]);
-        for(int l = 0; l < lines.size(); ++l){
-            Eigen::Vector3d virtPoint = closestPointOnLine(points[p],
-                                                           lines[l].head<3>(),
-                                                           lines[l].tail<3>());
-            retVirtPoints.push_back(virtPoint);
-        }
-    }
-    for(int pl = 0; pl < planes.size(); ++pl){
-        Eigen::Vector3d n = planes[pl].head<3>();
-        double d = -planes[pl][3];
-        retDirs.push_back(n);
-        retDists.push_back(d);
-        retDistDirs.push_back(n);
-    }
-    for(int l = 0; l < lines.size(); ++l){
-        Eigen::Vector3d p = lines[l].head<3>();
-        Eigen::Vector3d n = lines[l].tail<3>();
-        retDirs.push_back(n);
-        Eigen::FullPivLU<Eigen::MatrixXd> lu(n.transpose());
-        Eigen::MatrixXd nullSpace = lu.kernel();
-        Eigen::Vector3d dir1 = nullSpace.block<3, 1>(0, 0).normalized();
-        Eigen::Vector3d dir2 = nullSpace.block<3, 1>(0, 1).normalized();
-
-//        cout << "n = " << n.transpose() << endl;
-//        cout << "dir1 = " << dir1.transpose() << endl;
-//        cout << "n * dir1 = " << n.dot(dir1) << endl;
-//        cout << "dir2 = " << dir2.transpose() << endl;
-//        cout << "n * dir2 = " << n.dot(dir2) << endl;
-        // distances in two directions orthogonal to n
-        retDistPts.push_back(p);
-        retDistPtsDirs.push_back(dir1);
-        retDistPts.push_back(p);
-        retDistPtsDirs.push_back(dir2);
-    }
-}
 
 void testFullConstr(const std::vector<Eigen::Vector3d> &points,
                     const std::vector<Eigen::Vector3d> &virtPoints,
@@ -247,16 +182,16 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
     std::vector<Eigen::Vector3d> retDistDirs;
     std::vector<Eigen::Vector3d> retDistPts;
     std::vector<Eigen::Vector3d> retDistPtsDirs;
-    addPointsDirsDists(points,
-                       planes,
-                       lines,
-                       retPoints,
-                       retVirtPoints,
-                       retDirs,
-                       retDists,
-                       retDistDirs,
-                       retDistPts,
-                       retDistPtsDirs);
+    Matching::convertToPointsDirsDists(points,
+                                       planes,
+                                       lines,
+                                       retPoints,
+                                       retVirtPoints,
+                                       retDirs,
+                                       retDists,
+                                       retDistDirs,
+                                       retDistPts,
+                                       retDistPtsDirs);
 
     bool fullConstrRot = true;
     bool fullConstrTrans = true;
@@ -292,7 +227,7 @@ Vector7d testTransform(const std::vector<Eigen::Vector3d> &points,
     std::vector<Eigen::Vector3d> retTransDistDirs;
     std::vector<Eigen::Vector3d> retTransDistPts;
     std::vector<Eigen::Vector3d> retTransDistPtsDirs;
-    addPointsDirsDists(transPoints,
+    Matching::convertToPointsDirsDists(transPoints,
                        transPlanes,
                        transLines,
                        retTransPoints,
@@ -427,7 +362,7 @@ TEST_CASE("best transformations are correct", "[transformations]"){
         Eigen::Vector3d p = Eigen::Vector3d::Random();
         p *= distScale;
         // move point to be closest to the origin
-        p = closestPointOnLine(Eigen::Vector3d::Zero(),
+        p = Misc::closestPointOnLine(Eigen::Vector3d::Zero(),
                                                     p,
                                                     n);
 

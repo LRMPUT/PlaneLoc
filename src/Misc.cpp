@@ -322,3 +322,20 @@ cv::Mat Misc::colorIds(cv::Mat ids) {
     }
     return colIm;
 }
+
+Eigen::Vector3d Misc::closestPointOnLine(const Eigen::Vector3d &pt,
+                                         const Eigen::Vector3d &p,
+                                         const Eigen::Vector3d &n)
+{
+	static constexpr double eps = 1e-6;
+	double nnorm = n.norm();
+	if(nnorm > eps) {
+		double t = (pt - p).dot(n) / (nnorm * nnorm);
+//        cout << "pt = " << pt.transpose() << endl;
+//        cout << "(" << p.transpose() << ") + " << t << " * (" << n.transpose() << ") = (" << (p + t * n).transpose() << ")" << endl;
+		return p + t * n;
+	}
+	else{
+		return Eigen::Vector3d::Zero();
+	}
+}

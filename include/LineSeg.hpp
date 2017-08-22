@@ -10,6 +10,8 @@
 //#include <opencv2/opencv.hpp>
 #include <Eigen/Eigen>
 
+#include "Types.hpp"
+
 class LineSeg {
 public:
     LineSeg(int iframeId,
@@ -31,6 +33,14 @@ public:
     void setP1(const Eigen::Vector3d &p1);
 
     void setP2(const Eigen::Vector3d &p2);
+    
+    Vector6d toPointNormalEq() const;
+    
+    Vector7d toSE3Point() const;
+    
+    LineSeg transformed(const Vector7d &transform) const;
+    
+    double eqDist(const LineSeg &ls);
 
 private:
     std::vector<int> frameIds;

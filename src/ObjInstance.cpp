@@ -237,7 +237,7 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                                  viewPort2);
                     }
 
-                    double diff = Matching::planeDiffLogMap(curObj, compObj, transform);
+                    double diff = Matching::planeEqDiffLogMap(curObj, compObj, transform);
 //                    cout << "diff = " << diff << endl;
                     // if plane equation is similar
                     if(diff < 0.01){

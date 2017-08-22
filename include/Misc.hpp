@@ -94,6 +94,10 @@ public:
                              Eigen::Vector4d rot2);
 
     static cv::Mat colorIds(cv::Mat ids);
+	
+	static Eigen::Vector3d closestPointOnLine(const Eigen::Vector3d &pt,
+									   const Eigen::Vector3d &p,
+									   const Eigen::Vector3d &n);
 };
 
 static constexpr uint8_t colors[][3] = {
