@@ -98,6 +98,25 @@ public:
 	static Eigen::Vector3d closestPointOnLine(const Eigen::Vector3d &pt,
 									   const Eigen::Vector3d &p,
 									   const Eigen::Vector3d &n);
+    
+    template<typename _Matrix_Type_>
+    static _Matrix_Type_ pseudoInverse(const _Matrix_Type_ &a, double epsilon = std::numeric_limits<double>::epsilon())
+    {
+        Eigen::JacobiSVD< _Matrix_Type_ > svd(a ,Eigen::ComputeThinU | Eigen::ComputeThinV);
+        double tolerance = epsilon * std::max(a.cols(), a.rows()) * svd.singularValues().array().abs()(0);
+//        return svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
+        
+        typename Eigen::JacobiSVD< _Matrix_Type_ >::SingularValuesType singularValues_inv = svd.singularValues();
+        for ( long i = 0; i < singularValues_inv.cols(); ++i) {
+            if ( fabs(svd.singularValues()(i)) > tolerance ) {
+                singularValues_inv(i) = 1.0 / svd.singularValues()(i);
+            }
+            else{
+                singularValues_inv(i)=0;
+            }
+        }
+        return (svd.matrixV() * singularValues_inv.asDiagonal());
+    }
 };
 
 static constexpr uint8_t colors[][3] = {

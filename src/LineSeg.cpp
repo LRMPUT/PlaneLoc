@@ -96,13 +96,41 @@ LineSeg LineSeg::transformed(const Vector7d &transform) const {
     return ret;
 }
 
-double LineSeg::eqDist(const LineSeg &ls) {
+double LineSeg::eqDist(const LineSeg &other) {
     double dist = 0.0;
     
-    Vector7d curSE3 = toSE3Point();
-    Vector7d lsSE3 = ls.toSE3Point();
+    g2o::SE3Quat curSE3Quat = g2o::SE3Quat(toSE3Point());
+    g2o::SE3Quat otherSE3Quat = g2o::SE3Quat(other.toSE3Point());
+    g2o::SE3Quat diffSE3Quat = curSE3Quat.inverse() * otherSE3Quat;
     
+    Eigen::Matrix<double, 9, 9> infRotMat;
+    infRotMat << 	0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
     
+    Eigen::Matrix<double, 7, 7> infLine;
+    infLine << 	1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    
+    Eigen::Matrix<double, 4, 9> dq_dR;
+    dq_dR << 0,         0,         0,         0,         0,    -0.2500,         0,   0.2500,         0,
+            0,         0,   0.2500,         0,         0,         0,    -0.2500,         0,         0,
+            0,    -0.2500,         0,   0.2500,         0,         0,         0,         0,         0,
+            0.1250,         0,         0,         0,    0.1250,         0,         0,         0,    0.1250;
+    
+    Eigen::Matrix<double, 9, 4> dq_dR_pinv = Misc::pseudoInverse(dq_dR);
+    infLine.block<4, 4>(3, 3) = dq_dR_pinv.transpose() * infRotMat * dq_dR_pinv;
     
     return dist;
 }
