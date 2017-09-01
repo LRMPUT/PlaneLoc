@@ -260,13 +260,13 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                                       frameObjInstances,
                                                       intAreas,
                                                       intAreaThresh,
-                                                      planeEqDiffThresh,
+                                                      planeEqDiffThresh/*,
 													  viewer,
 													  viewPort1,
-													  viewPort2);
-//            if(score > 0.0) {
-//                cout << "score = " << score << endl;
-//            }
+													  viewPort2*/);
+            if(score > 0.0) {
+                cout << "score = " << score << endl;
+            }
 			if(score > scoreThresh){
 //				double score = scoreTransformByProjection(curTransform,
 //														triplets[t],
@@ -485,7 +485,14 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr curFramePc = frameObjInstances[of].getPoints();
                 framePc->insert(framePc->end(), curFramePc->begin(), curFramePc->end());
             }
-
+			
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPcRed(new pcl::PointCloud<pcl::PointXYZRGB>());
+			pcl::copyPointCloud(*mapPc, *mapPcRed);
+			for(int pt = 0; pt < mapPcRed->size(); ++pt){
+				mapPcRed->at(pt).r = mapPcRed->at(pt).r * 0.5 + 255 * 0.5;
+				mapPcRed->at(pt).g = mapPcRed->at(pt).g * 0.5 + 0 * 0.5;
+				mapPcRed->at(pt).b = mapPcRed->at(pt).b * 0.5 + 0 * 0.5;
+			}
 //            pcl::KdTreeFLANN<pcl::PointXYZRGB> kdTree;
 //            kdTree.setInputCloud(mapPc);
 			pcl::octree::OctreePointCloudSearch<pcl::PointXYZRGB> octree(0.005);
@@ -559,9 +566,12 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                     viewer->removeAllShapes(viewPort1);
                     viewer->removeAllPointClouds(viewPort2);
                     viewer->removeAllShapes(viewPort2);
-
-                    viewer->addPointCloud(framePcTrans, "cloud_out", viewPort1);
-                    viewer->addPointCloud(mapPc, "cloud_map", viewPort1);
+					
+					viewer->addPointCloud(mapPcRed, "cloud_map", viewPort1);
+//					viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+//															 1.0, 0.0, 0.0,
+//															 "cloud_map",
+//															 viewPort1);
 
                     viewer->resetStoppedFlag();
                     viewer->initCameraParameters();
@@ -571,6 +581,31 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                         viewer->spinOnce(100);
                         std::this_thread::sleep_for(std::chrono::milliseconds(50));
                     }
+	
+					viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+															 0.5,
+															 "cloud_map",
+															 viewPort1);
+	
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr framePcTransGreen(new pcl::PointCloud<pcl::PointXYZRGB>());
+					pcl::copyPointCloud(*framePcTrans, *framePcTransGreen);
+					for(int pt = 0; pt < framePcTransGreen->size(); ++pt){
+						framePcTransGreen->at(pt).r = framePcTransGreen->at(pt).r * 0.5 + 0 * 0.5;
+						framePcTransGreen->at(pt).g = framePcTransGreen->at(pt).g * 0.5 + 255 * 0.5;
+						framePcTransGreen->at(pt).b = framePcTransGreen->at(pt).b * 0.5 + 0 * 0.5;
+					}
+					viewer->addPointCloud(framePcTransGreen, "cloud_out", viewPort1);
+//					viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+//															 0.0, 1.0, 0.0,
+//															 "cloud_out",
+//															 viewPort1);
+	
+					viewer->resetStoppedFlag();
+					viewer->spinOnce(100);
+					while (!viewer->wasStopped()) {
+						viewer->spinOnce(100);
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
+					}
                 }
             }
 
@@ -877,9 +912,9 @@ double Matching::scoreTransformByProjection(const Vector7d& transform,
 //			cout << "iou = " << iou << endl;
 //			cout << "interScore = " << interScore << endl;
 //			intAreaTrans += areaInter;
-//            if(curIntArea > 0.0){
-//                cout << "curIntArea = " << curIntArea << endl;
-//            }
+            if(curIntArea > 0.0){
+                cout << "curIntArea = " << curIntArea << endl;
+            }
 //			cout << "intAreaThresh = " << intAreaThresh << endl;
 			if(curIntArea < intAreaThresh){
 				curValid = false;

@@ -171,17 +171,17 @@ planeSlam:
     - 0.0
     - 1.0
 
-  drawVis: 0
+  drawVis: 1
 
   visualizeSegmentation: 0
 
-  visualizeMatching: 0
+  visualizeMatching: 1
 
   stopEveryFrame: 0
 
   stopWrongFrame: 0
 
-  saveRes: 1
+  saveRes: 0
 
   loadRes: 0
 

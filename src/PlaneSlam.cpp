@@ -36,6 +36,7 @@
 #include <pcl/features/normal_3d.h>
 
 #include <g2o/types/slam3d/se3quat.h>
+#include <pcl/common/transforms.h>
 
 #include "PlaneSlam.hpp"
 #include "Misc.hpp"
@@ -97,12 +98,14 @@ void PlaneSlam::run(){
 
 	pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
 
+    viewer->setSize(1280, 720);
 	int v1 = 0;
 	int v2 = 0;
 	viewer->createViewPort(0.0, 0.0, 0.5, 1.0, v1);
 	viewer->createViewPort(0.5, 0.0, 1.0, 1.0, v2);
 //	viewer->addCoordinateSystem();
-
+//    viewer->createViewPort(0.0, 0.0, 1.0, 1.0, v1);
+    
 	int corrCnt = 0;
 	int incorrCnt = 0;
 	int unkCnt = 0;
@@ -167,6 +170,35 @@ void PlaneSlam::run(){
 		inputResFile.open("../output/res.in");
 	}
 	ofstream logFile("../output/log.out");
+    
+    if(drawVis) {
+        viewer->removeAllPointClouds(v1);
+        viewer->removeAllShapes(v1);
+//        viewer->removeAllPointClouds(v2);
+//        viewer->removeAllShapes(v2);
+    
+        pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr mapPc = map.getOriginalPointCloud();
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPcGray(new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::copyPointCloud(*mapPc, *mapPcGray);
+        for (int p = 0; p < mapPcGray->size(); ++p) {
+            int gray = mapPcGray->at(p).r * 0.21 +
+                       mapPcGray->at(p).g * 0.72 +
+                       mapPcGray->at(p).b * 0.07;
+            gray = min(gray, 255);
+            mapPcGray->at(p).r = gray;
+            mapPcGray->at(p).g = gray;
+            mapPcGray->at(p).b = gray;
+        }
+        viewer->addPointCloud(mapPcGray, "map_cloud", v1);
+    
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                 0.1,
+                                                 "map_cloud",
+                                                 v1);
+        
+        viewer->initCameraParameters();
+    }
+    
 	int curFrameIdx;
 	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, pointCloudRead)) >= 0){
 		cout << "curFrameIdx = " << curFrameIdx << endl;
@@ -178,8 +210,8 @@ void PlaneSlam::run(){
 		poseSE3Quat = gtOffsetSE3Quat.inverse() * poseSE3Quat;
 		pose = poseSE3Quat.toVector();
 
-		viewer->removeAllPointClouds();
-		viewer->removeAllShapes();
+//		viewer->removeAllPointClouds();
+//		viewer->removeAllShapes();
 
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud;
@@ -225,9 +257,9 @@ void PlaneSlam::run(){
 				}
 			}
 		}
-        if(drawVis) {
-		    viewer->addPointCloud(pointCloud, "cloud", v1);
-        }
+//        if(drawVis) {
+//		    viewer->addPointCloud(pointCloud, "cloud", v1);
+//        }
 
 
 		if(!pointCloud->empty()){
@@ -442,25 +474,134 @@ void PlaneSlam::run(){
 				}
 
 			}
+            
+            
+            if(drawVis){
+                
+                Eigen::Matrix4d gtMat = poseSE3Quat.to_homogeneous_matrix();
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudTrans(new pcl::PointCloud<pcl::PointXYZRGB>());
+                pcl::transformPointCloud(*pointCloud, *pointCloudTrans, gtMat);
+                
+                viewer->addPointCloud(pointCloudTrans, "cloud_cur_pose", v1);
 
-
-            if(drawVis) {
-                viewer->resetStoppedFlag();
-                viewer->initCameraParameters();
-                viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
-                viewer->spinOnce(100);
-                while (stopFlag && !viewer->wasStopped()) {
-                    viewer->spinOnce(100);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//        pcl::PointCloud<pcl::PointXYZ>::Ptr trajLine(new pcl::PointCloud<pcl::PointXYZ>());
+                for(int f = visGtPoses.size() - 1; f < visGtPoses.size(); ++f){
+                    if(f > 0) {
+                        pcl::PointXYZ prevPose(visGtPoses[f - 1][0],
+                                               visGtPoses[f - 1][1],
+                                               visGtPoses[f - 1][2]);
+                        pcl::PointXYZ curPose(visGtPoses[f][0],
+                                              visGtPoses[f][1],
+                                              visGtPoses[f][2]);
+//            trajLine->push_back(curPose);
+                        viewer->addLine(prevPose,
+                                        curPose,
+                                        1.0,
+                                        0.0,
+                                        0.0,
+                                        string("line_traj_") + to_string(f),
+                                        v1);
+                        viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
+                                                            4,
+                                                            string("line_traj_") + to_string(f),
+                                                            v1);
+                        viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+                                                            pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
+                                                            string("line_traj_") + to_string(f),
+                                                            v1);
+                    }
                 }
-                viewer->close();
+//        viewer->addPolygon<pcl::PointXYZ>(trajLine, 0.0, 1.0, 0.0, "traj_poly", v1);
+                
+                pcl::PointCloud<pcl::PointXYZ>::Ptr corrPoses(new pcl::PointCloud<pcl::PointXYZ>());
+                pcl::PointCloud<pcl::PointXYZ>::Ptr incorrPoses(new pcl::PointCloud<pcl::PointXYZ>());
+                for(int f = visGtPoses.size() - 1; f < visRecCodes.size(); ++f){
+                    if(visRecCodes[f] == 1 || visRecCodes[f] == 0){
+                        pcl::PointXYZ curPose(visGtPoses[f][0],
+                                              visGtPoses[f][1],
+                                              visGtPoses[f][2]);
+                        pcl::PointXYZ curRecPose(visRecPoses[f][0],
+                                                 visRecPoses[f][1],
+                                                 visRecPoses[f][2]);
+                        if(visRecCodes[f] == 1) {
+                            corrPoses->push_back(curRecPose);
+                        }
+                        else/* if(visRecCodes[f] == 0) */ {
+                            incorrPoses->push_back(curRecPose);
+                        }
+                        
+                        viewer->addLine(curPose, curRecPose, 0.0, 1.0, 0.0, string("line_pose_") + to_string(f), v1);
+                        viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
+                                                            4,
+                                                            string("line_pose_") + to_string(f),
+                                                            v1);
+                        viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+                                                            pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
+                                                            string("line_pose_") + to_string(f),
+                                                            v1);
+                    }
+                }
+                viewer->addPointCloud(corrPoses, string("corr_poses_cloud_") + to_string(visGtPoses.size() - 1), v1);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                         5,
+                                                         string("corr_poses_cloud_") + to_string(visGtPoses.size() - 1),
+                                                         v1);
+//        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+//                                                 pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
+//                                                 "corr_poses_cloud",
+//                                                 v1);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                         0.0, 0.0, 1.0,
+                                                         string("corr_poses_cloud_") + to_string(visGtPoses.size() - 1),
+                                                         v1);
+                
+                viewer->addPointCloud(incorrPoses, string("incorr_poses_cloud_") + to_string(visGtPoses.size() - 1), v1);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                         5,
+                                                         string("incorr_poses_cloud_") + to_string(visGtPoses.size() - 1),
+                                                         v1);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                         1.0, 0.0, 1.0,
+                                                         string("incorr_poses_cloud_") + to_string(visGtPoses.size() - 1),
+                                                         v1);
+                
+                Eigen::Vector3d camShift;
+                camShift << 0.0, -3.0, -4.0;
+                camShift = poseSE3Quat.rotation().toRotationMatrix() * camShift;
+                
+                viewer->resetStoppedFlag();
+                viewer->setCameraPosition(pose[0] + camShift[0], pose[1] + camShift[1], pose[2] + camShift[2],
+                                          pose[0], pose[1], pose[2],
+                                          0.0, 1.0, 0.0);
+                viewer->spinOnce(100);
+//                while (!viewer->wasStopped()) {
+//                    viewer->spinOnce(100);
+//                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//                }
+                char screenshotFilename[40];
+                sprintf(screenshotFilename, "../output/rec/viz%04ld.png", visGtPoses.size() - 1);
+                viewer->saveScreenshot(screenshotFilename);
+//            viewer->close();
+                viewer->removePointCloud("cloud_cur_pose", v1);
+                
             }
+//            if(drawVis) {
+//                viewer->resetStoppedFlag();
+//                viewer->initCameraParameters();
+//                viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
+//                viewer->spinOnce(100);
+//                while (stopFlag && !viewer->wasStopped()) {
+//                    viewer->spinOnce(100);
+//                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//                }
+//                viewer->close();
+//            }
 			prevObjInstances.swap(curObjInstances);
 		}
-
-		++frameCnt;
-		prevPose = pose;
-
+        
+        ++frameCnt;
+        prevPose = pose;
+		
 		cout << "end processing frame" << endl;
 	}
 
@@ -471,110 +612,7 @@ void PlaneSlam::run(){
         cout << "meanDist = " << meanDist / meanCnt << endl;
     }
 
-    if(drawVis){
-        viewer->removeAllPointClouds(v1);
-        viewer->removeAllShapes(v1);
-        viewer->removeAllPointClouds(v2);
-        viewer->removeAllShapes(v2);
-
-        pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr mapPc = map.getOriginalPointCloud();
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPcGray(new pcl::PointCloud<pcl::PointXYZRGB>());
-        pcl::copyPointCloud(*mapPc, *mapPcGray);
-        for(int p = 0; p < mapPcGray->size(); ++p){
-            int gray = mapPcGray->at(p).r * 0.21 +
-                        mapPcGray->at(p).g * 0.72 +
-                        mapPcGray->at(p).b * 0.07;
-            gray = min(gray, 255);
-            mapPcGray->at(p).r = gray;
-            mapPcGray->at(p).g = gray;
-            mapPcGray->at(p).b = gray;
-        }
-        viewer->addPointCloud(mapPcGray, "map_cloud", v1);
-
-//        pcl::PointCloud<pcl::PointXYZ>::Ptr trajLine(new pcl::PointCloud<pcl::PointXYZ>());
-        for(int f = 1; f < visGtPoses.size(); ++f){
-            pcl::PointXYZ prevPose(visGtPoses[f-1][0],
-                                  visGtPoses[f-1][1],
-                                  visGtPoses[f-1][2]);
-            pcl::PointXYZ curPose(visGtPoses[f][0],
-                                  visGtPoses[f][1],
-                                  visGtPoses[f][2]);
-//            trajLine->push_back(curPose);
-            viewer->addLine(prevPose, curPose, 1.0, 0.0, 0.0, string("line_traj_") + to_string(f), v1);
-            viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
-                                                4,
-                                                string("line_traj_") + to_string(f),
-                                                v1);
-            viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
-                                                pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
-                                                string("line_traj_") + to_string(f),
-                                                v1);
-        }
-//        viewer->addPolygon<pcl::PointXYZ>(trajLine, 0.0, 1.0, 0.0, "traj_poly", v1);
-
-        pcl::PointCloud<pcl::PointXYZ>::Ptr corrPoses(new pcl::PointCloud<pcl::PointXYZ>());
-        pcl::PointCloud<pcl::PointXYZ>::Ptr incorrPoses(new pcl::PointCloud<pcl::PointXYZ>());
-        for(int f = 0; f < visRecCodes.size(); ++f){
-            if(visRecCodes[f] == 1 || visRecCodes[f] == 0){
-                pcl::PointXYZ curPose(visGtPoses[f][0],
-                                      visGtPoses[f][1],
-                                      visGtPoses[f][2]);
-                pcl::PointXYZ curRecPose(visRecPoses[f][0],
-                                      visRecPoses[f][1],
-                                      visRecPoses[f][2]);
-                if(visRecCodes[f] == 1) {
-                    corrPoses->push_back(curRecPose);
-                }
-                else/* if(visRecCodes[f] == 0) */ {
-                    incorrPoses->push_back(curRecPose);
-                }
-
-                viewer->addLine(curPose, curRecPose, 0.0, 1.0, 0.0, string("line_pose_") + to_string(f), v1);
-                viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
-                                                    4,
-                                                    string("line_pose_") + to_string(f),
-                                                    v1);
-                viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
-                                                    pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
-                                                    string("line_pose_") + to_string(f),
-                                                    v1);
-            }
-        }
-        viewer->addPointCloud(corrPoses, "corr_poses_cloud", v1);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
-                                                 5,
-                                                 "corr_poses_cloud",
-                                                 v1);
-//        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
-//                                                 pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
-//                                                 "corr_poses_cloud",
-//                                                 v1);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                 0.0, 0.0, 1.0,
-                                                 "corr_poses_cloud",
-                                                 v1);
-
-        viewer->addPointCloud(incorrPoses, "incorr_poses_cloud", v1);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
-                                                 5,
-                                                 "incorr_poses_cloud",
-                                                 v1);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                 1.0, 0.0, 1.0,
-                                                 "incorr_poses_cloud",
-                                                 v1);
-
-        viewer->resetStoppedFlag();
-        viewer->initCameraParameters();
-        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
-        viewer->spinOnce(100);
-        while (!viewer->wasStopped()) {
-            viewer->spinOnce(100);
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        viewer->close();
-
-    }
+    
 
 	viewer->close();
 }
