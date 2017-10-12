@@ -19,6 +19,7 @@ sudo apt-get install libboost-system-dev libboost-filesystem-dev libeigen3-dev
 ```
 2. Build PCL from sources and install it:
 ```commandline
+sudo apt-get install libvtk6-dev libflann-dev libxi-dev libxmu-dev libgtest-dev libproj-dev
 wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.0.tar.gz
 tar xvfj pcl-pcl-1.8.0.tar.gz && cd pcl-pcl-1.8.0
 mkdir build && cd build
@@ -57,5 +58,5 @@ make -j$(nproc)
 2. Launch demo:
 
 ```commandline
-./demoPlaneSlam -s ../res/settings.xml
+./demoPlaneSlam -s ../res/settings.yml
 ```

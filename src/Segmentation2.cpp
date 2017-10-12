@@ -336,14 +336,14 @@ void Segmentation2::segment(const cv::FileStorage& fs,
 //		cout << "pc->size() = " << pc->size() << endl;
 //		cout << "pcLab->size() = " << pcLab->size() << endl;
 //
-//		viewer->resetStoppedFlag();
-//		viewer->initCameraParameters();
-//		viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-//		viewer->spinOnce (100);
-//		while (!viewer->wasStopped()){
-//			viewer->spinOnce (100);
-//			std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//		}
+		viewer->resetStoppedFlag();
+		viewer->initCameraParameters();
+		viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+		viewer->spinOnce (100);
+		while (!viewer->wasStopped()){
+			viewer->spinOnce (100);
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		}
 	}
 
 //	if(pcCol != nullptr){

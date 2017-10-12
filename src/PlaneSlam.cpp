@@ -48,7 +48,7 @@ using namespace cv;
 
 PlaneSlam::PlaneSlam(const cv::FileStorage& isettings) :
 	settings(isettings),
-	fileGrabber(isettings),
+	fileGrabber(isettings["fileGrabber"]),
 	map(isettings)
 //	viewer("3D Viewer")
 {

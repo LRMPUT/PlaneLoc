@@ -264,9 +264,9 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 													  viewer,
 													  viewPort1,
 													  viewPort2*/);
-            if(score > 0.0) {
-                cout << "score = " << score << endl;
-            }
+//            if(score > 0.0) {
+//                cout << "score = " << score << endl;
+//            }
 			if(score > scoreThresh){
 //				double score = scoreTransformByProjection(curTransform,
 //														triplets[t],
@@ -912,9 +912,9 @@ double Matching::scoreTransformByProjection(const Vector7d& transform,
 //			cout << "iou = " << iou << endl;
 //			cout << "interScore = " << interScore << endl;
 //			intAreaTrans += areaInter;
-            if(curIntArea > 0.0){
-                cout << "curIntArea = " << curIntArea << endl;
-            }
+//            if(curIntArea > 0.0){
+//                cout << "curIntArea = " << curIntArea << endl;
+//            }
 //			cout << "intAreaThresh = " << intAreaThresh << endl;
 			if(curIntArea < intAreaThresh){
 				curValid = false;

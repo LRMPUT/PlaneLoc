@@ -34,12 +34,12 @@
 using namespace std;
 using namespace cv;
 
-FileGrabber::FileGrabber(const cv::FileStorage& settings) :
+FileGrabber::FileGrabber(const cv::FileNode& settings) :
 	nextFrameIdx(-1),
-	depthScale((float)settings["fileGrabber"]["depthScale"]),
-	imageFrame((int)settings["fileGrabber"]["imageFrame"])
+	depthScale((float)settings["depthScale"]),
+	imageFrame((int)settings["imageFrame"])
 {
-	boost::filesystem::path datasetDirPath(settings["fileGrabber"]["datasetDirPath"]);
+	boost::filesystem::path datasetDirPath(settings["datasetDirPath"]);
 	{
 		cout << "reading rgb images paths" << endl;
 		boost::filesystem::path rgbDirPath = datasetDirPath / boost::filesystem::path("rgb");
@@ -83,7 +83,7 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 			}
 		}
 	}
-	if((int)settings["fileGrabber"]["readObjLabeling"]){
+	if((int)settings["readObjLabeling"]){
 		cout << "reading instances images paths" << endl;
 		boost::filesystem::path instancesDirPath = datasetDirPath / boost::filesystem::path("instances");
 		if(!boost::filesystem::is_directory(instancesDirPath)){
@@ -97,7 +97,7 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 //			cout << instancesPaths[i] << endl;
 //		}
 	}
-	if((int)settings["fileGrabber"]["readObjLabeling"]){
+	if((int)settings["readObjLabeling"]){
 		cout << "reading labels images paths" << endl;
 		boost::filesystem::path labelsDirPath = datasetDirPath / boost::filesystem::path("labels");
 		if(!boost::filesystem::is_directory(labelsDirPath)){
@@ -111,7 +111,7 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 //			cout << labelsPaths[i] << endl;
 //		}
 	}
-	if((int)settings["fileGrabber"]["readObjLabeling"]){
+	if((int)settings["readObjLabeling"]){
 		cout << "reading classses" << endl;
 		boost::filesystem::path classesFilePath = datasetDirPath / boost::filesystem::path("classes.txt");
 		if(!boost::filesystem::exists(classesFilePath)){
@@ -130,7 +130,7 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 			}
 		}
 	}
-	if((int)settings["fileGrabber"]["readAccel"]){
+	if((int)settings["readAccel"]){
 		cout << "reading accelerometer data" << endl;
 		boost::filesystem::path accelFilePath = datasetDirPath / boost::filesystem::path("accelData.txt");
 		if(!boost::filesystem::exists(accelFilePath)){
@@ -150,7 +150,7 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 			}
 		}
 	}
-	if((int)settings["fileGrabber"]["readPose"]){
+	if((int)settings["readPose"]){
 		cout << "reading pose data" << endl;
 		boost::filesystem::path poseFilePath = datasetDirPath / boost::filesystem::path("groundtruth.txt");
 		if(!boost::filesystem::exists(poseFilePath)){
@@ -231,6 +231,23 @@ int FileGrabber::getFrame(cv::Mat& rgb,
 	return curFrameIdx;
 }
 
+int FileGrabber::getFrame(cv::Mat &rgb,
+                          cv::Mat &depth,
+                          vector<FileGrabber::FrameObjInstance> &objInstances,
+                          std::vector<double> &accelData,
+                          Vector7d &pose,
+                          boost::filesystem::path &rgbFilePath)
+{
+    if(nextFrameIdx >= 0){
+        rgbFilePath = rgbPaths[nextFrameIdx];
+    }
+    return getFrame(rgb,
+                    depth,
+                    objInstances,
+                    accelData,
+                    pose);
+}
+
 int FileGrabber::getFrame(cv::Mat& rgb,
 					cv::Mat& depth,
 					std::vector<FrameObjInstance>& objInstances,
@@ -253,3 +270,5 @@ int FileGrabber::getFrame(cv::Mat& rgb,
 					accelData,
 					pose);
 }
+
+

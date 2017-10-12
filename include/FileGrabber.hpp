@@ -49,13 +49,20 @@ public:
 		cv::Mat mask;
 	};
 
-	FileGrabber(const cv::FileStorage& settings);
+	FileGrabber(const cv::FileNode& settings);
 
 	int getFrame(cv::Mat& rgb,
 					cv::Mat& depth,
 					std::vector<FrameObjInstance>& objInstances,
 					std::vector<double>& accelData,
 					Vector7d& pose);
+					
+	int getFrame(cv::Mat& rgb,
+					cv::Mat& depth,
+					std::vector<FrameObjInstance>& objInstances,
+					std::vector<double>& accelData,
+					Vector7d& pose,
+					boost::filesystem::path &rgbFilePath);
 
 	int getFrame(cv::Mat& rgb,
 					cv::Mat& depth,
