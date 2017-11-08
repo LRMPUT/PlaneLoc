@@ -104,10 +104,10 @@ public:
                                         std::vector<Eigen::Vector3d> &retDistDirs,
                                         std::vector<Eigen::Vector3d> &retDistPts,
                                         std::vector<Eigen::Vector3d> &retDistPtsDirs);
-
+    
 private:
-
-	struct PotMatch{
+    
+    struct PotMatch{
         PotMatch() {}
         
         PotMatch(int plane1,
@@ -144,27 +144,27 @@ private:
         
         std::vector<double> lineSegAppDiffs;
     };
-	
+    
     struct ValidTransform{
         ValidTransform()
         {}
 
         ValidTransform(const Vector7d& itransform,
-                       double iscore,
-                       const std::vector<std::pair<int, int>>& itriplet,
-                       const std::vector<double>& iintAreas,
-                       const std::vector<double>& iappDiffs)
+                       const std::vector<Matching::PotMatch> &imatchSet,
+                       const std::vector<double>& iintAreaPlanes,
+                       const std::vector<std::vector<double>>& iintLenLines)
                 : transform(itransform),
-                  score(iscore),
-                  triplet(itriplet),
-                  intAreas(iintAreas),
-                  appDiffs(iappDiffs)
+                  matchSet(imatchSet),
+                  intAreaPlanes(iintAreaPlanes),
+                  intLenLines(iintLenLines),
+                  score(0.0)
+                  
         {}
         Vector7d transform;
         double score;
-        std::vector<std::pair<int, int>> triplet;
-        std::vector<double> intAreas;
-        std::vector<double> appDiffs;
+        std::vector<Matching::PotMatch> matchSet;
+        std::vector<double> intAreaPlanes;
+        std::vector<std::vector<double> > intLenLines;
     };
 
 	class ProbDistKernel{
@@ -266,22 +266,23 @@ private:
 								int viewPort1 = -1,
 								int viewPort2 = -1);
     
-    static double scoreTransformByProjection(const Vector7d& transform,
+    static double scoreTransformByProjection(const Vector7d &transform,
                                              const std::vector<PotMatch> curSet,
-                                             const std::vector<ObjInstance>& objInstances1,
-                                             const std::vector<ObjInstance>& objInstances2,
+                                             const std::vector<ObjInstance> &objInstances1,
+                                             const std::vector<ObjInstance> &objInstances2,
                                              std::vector<double> &intAreaPlanes,
-                                             std::vector<double> &intLenLines,
+                                             std::vector<std::vector<double> > &intLenLines,
                                              double planeEqDiffThresh,
+                                             double lineEqDiffThresh,
                                              double intAreaThresh,
                                              double intLenThresh,
-                                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                                             int viewPort1 = -1,
-                                             int viewPort2 = -1);
+                                             pcl::visualization::PCLVisualizer::Ptr viewer,
+                                             int viewPort1,
+                                             int viewPort2);
 
 	static double evalPoint(Vector7d pt,
 						const std::vector<ProbDistKernel>& dist);
-
+    
 	static void intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull1,
 									const pcl::Vertices& poly1,
 									const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull2,
@@ -306,13 +307,13 @@ private:
 		Unknown
 	};
 
-	static SegIntType intersectLineSegments(const Eigen::Vector2d& begPt1,
-										const Eigen::Vector2d& endPt1,
-										const Eigen::Vector2d& begPt2,
-										const Eigen::Vector2d& endPt2,
-										Eigen::Vector2d& intPt1,
-										Eigen::Vector2d& intPt2,
-										double eps = 1e-6);
+	static SegIntType intersectLineSegments2d(const Eigen::Vector2d &begPt1,
+                                              const Eigen::Vector2d &endPt1,
+                                              const Eigen::Vector2d &begPt2,
+                                              const Eigen::Vector2d &endPt2,
+                                              Eigen::Vector2d &intPt1,
+                                              Eigen::Vector2d &intPt2,
+                                              double eps = 1e-6);
 
 	static SegIntType intersectParallelLineSegments(const Eigen::Vector2d& begPt1,
 										const Eigen::Vector2d& endPt1,

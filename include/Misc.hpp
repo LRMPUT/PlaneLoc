@@ -99,14 +99,14 @@ public:
 									   const Eigen::Vector3d &p,
 									   const Eigen::Vector3d &n);
     
-    template<typename _Matrix_Type_>
-    static _Matrix_Type_ pseudoInverse(const _Matrix_Type_ &a, double epsilon = std::numeric_limits<double>::epsilon())
+    template<typename MatrixTypeOut, typename MatrixTypeIn>
+    static MatrixTypeOut pseudoInverse(const MatrixTypeIn &a, double epsilon = std::numeric_limits<double>::epsilon())
     {
-        Eigen::JacobiSVD< _Matrix_Type_ > svd(a ,Eigen::ComputeThinU | Eigen::ComputeThinV);
+        Eigen::JacobiSVD< MatrixTypeIn > svd(a ,Eigen::ComputeThinU | Eigen::ComputeThinV);
         double tolerance = epsilon * std::max(a.cols(), a.rows()) * svd.singularValues().array().abs()(0);
 //        return svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
         
-        typename Eigen::JacobiSVD< _Matrix_Type_ >::SingularValuesType singularValues_inv = svd.singularValues();
+        typename Eigen::JacobiSVD< MatrixTypeIn >::SingularValuesType singularValues_inv = svd.singularValues();
         for ( long i = 0; i < singularValues_inv.cols(); ++i) {
             if ( fabs(svd.singularValues()(i)) > tolerance ) {
                 singularValues_inv(i) = 1.0 / svd.singularValues()(i);
