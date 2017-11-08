@@ -40,6 +40,31 @@ public:
 
 
 private:
+    
+    enum class RecCode{
+        Corr,
+        Incorr,
+        Unk
+    };
+    
+	void evaluateMatching(const cv::FileStorage &fs,
+                          const std::vector<ObjInstance> &objInstances1,
+                          const std::vector<ObjInstance> &objInstances2,
+                          std::ifstream &inputResFile,
+                          std::ofstream &outputResFile,
+                          const Vector7d &gtTransform,
+                          double scoreThresh,
+                          double scoreDiffThresh,
+                          double fitThresh,
+                          double poseDiffThresh,
+                          Vector7d &predTransform,
+                          RecCode &recCode,
+                          double &linDist,
+                          double &angDist,
+                          pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                          int viewPort1 = -1,
+                          int viewPort2 = -1);
+	
 	FileGrabber fileGrabber;
 	Map map;
 

@@ -13,14 +13,14 @@
 class LineDet {
 public:
     static void detectLineSegments(const cv::FileStorage &settings,
-                                      cv::Mat rgb,
-                                      cv::Mat depth,
-                                      const std::vector<ObjInstance> &planes,
-                                      cv::Mat cameraMatrix,
-                                      std::vector<LineSeg> &lineSegs,
-                                      pcl::visualization::PCLVisualizer::Ptr viewer,
-                                      int viewPort1,
-                                      int viewPort2);
+                                   cv::Mat rgb,
+                                   cv::Mat depth,
+                                   std::vector<ObjInstance> &planes,
+                                   cv::Mat cameraMatrix,
+                                   std::vector<LineSeg> &lineSegs,
+                                   pcl::visualization::PCLVisualizer::Ptr viewer,
+                                   int viewPort1,
+                                   int viewPort2);
 private:
 
 };

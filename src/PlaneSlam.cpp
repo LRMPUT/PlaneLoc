@@ -60,28 +60,6 @@ PlaneSlam::PlaneSlam(const cv::FileStorage& isettings) :
 
 void PlaneSlam::run(){
 
-//	Mat cameraParams(3, 3, CV_32FC1, Scalar(0));
-//	cameraParams.at<float>(2, 2) = 1.0;
-
-	// NYUv2
-//	cameraParams.at<float>(0, 0) = 5.1885790117450188e+02;
-//	cameraParams.at<float>(1, 1) = 5.1946961112127485e+02;
-//	cameraParams.at<float>(0, 2) = 3.2558244941119034e+02;
-//	cameraParams.at<float>(1, 2) = 2.5373616633400465e+02;
-
-	// ICL NUIM
-//	cameraParams.at<float>(0, 0) = 481.20;
-//	cameraParams.at<float>(1, 1) = -480.00;
-//	cameraParams.at<float>(0, 2) = 319.50;
-//	cameraParams.at<float>(1, 2) = 239.50;
-
-	// TUM freiburg1 room
-//	cameraParams.at<float>(0, 0) = 517.3;
-//	cameraParams.at<float>(1, 1) = 516.5;
-//	cameraParams.at<float>(0, 2) = 318.6;
-//	cameraParams.at<float>(1, 2) = 255.3;
-
-
     Mat cameraParams;
     settings["planeSlam"]["cameraMatrix"] >> cameraParams;
     cout << "cameraParams = " << cameraParams << endl;
@@ -149,6 +127,8 @@ void PlaneSlam::run(){
 	bool loadRes = bool((int)settings["planeSlam"]["loadRes"]);
 	bool saveVis = bool((int)settings["planeSlam"]["saveVis"]);
 	bool framesFromPly = bool((int)settings["planeSlam"]["framesFromPly"]);
+    bool incrementalMatching = bool((int)settings["planeSlam"]["incrementalMatching"]);
+    bool globalMatching = bool((int)settings["planeSlam"]["globalMatching"]);
 
     double poseDiffThresh = (double)settings["planeSlam"]["poseDiffThresh"];
 
@@ -158,21 +138,33 @@ void PlaneSlam::run(){
 
     vector<Vector7d> visGtPoses;
     vector<Vector7d> visRecPoses;
-    vector<int> visRecCodes;
+    vector<RecCode> visRecCodes;
 
-	ofstream outputResFile;
+	ofstream outputResGlobFile;
+    ofstream outputResIncrFile;
 	if(saveRes){
-		outputResFile.open("../output/res.out");
+        if(globalMatching) {
+            outputResGlobFile.open("../output/res_glob.out");
+        }
+        if(incrementalMatching){
+            outputResIncrFile.open("../output/res_incr.out");
+        }
 	}
-	ofstream visFile;
-	if(saveVis){
-		visFile.open("../output/vis");
-	}
-	ifstream inputResFile;
+//	ofstream visFile;
+//	if(saveVis){
+//		visFile.open("../output/vis");
+//	}
+	ifstream inputResGlobFile;
+    ifstream inputResIncrFile;
 	if(loadRes){
-		inputResFile.open("../output/res.in");
+        if(globalMatching) {
+            inputResGlobFile.open("../output/res_glob.in");
+        }
+        if(incrementalMatching){
+            inputResIncrFile.open("../output/res_incr.in");
+        }
 	}
-	ofstream logFile("../output/log.out");
+//	ofstream logFile("../output/log.out");
 	int curFrameIdx;
     cout << "Starting the loop" << endl;
 	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, pointCloudRead)) >= 0){
@@ -312,206 +304,114 @@ void PlaneSlam::run(){
 			bool stopFlag = stopEveryFrame;
 
 
-
-			{
-				vector<Vector7d> planesTrans;
-				vector<double> planesTransScores;
-                vector<double> planesTransFits;
-				Matching::MatchType matchType = Matching::MatchType::Unknown;
-
-				if(loadRes){
-					Vector7d curPose;
-					for(int c = 0; c < 7; ++c){
-						inputResFile >> curPose(c);
-					}
-					int matchTypeId;
-					inputResFile >> matchTypeId;
-					if(matchTypeId == 0){
-						matchType = Matching::MatchType::Ok;
-						cout << "matchType = Matching::MatchType::Ok;" << endl;
-						int numTrans;
-						inputResFile >> numTrans;
-						for(int t = 0; t < numTrans; ++t){
-							Vector7d curTrans;
-							double curScore;
-                            double curFit;
-							double curDiff;
-							for(int c = 0; c < 7; ++c){
-								inputResFile >> curTrans(c);
-							}
-							inputResFile >> curScore >> curFit >> curDiff;
-							planesTrans.push_back(curTrans);
-							planesTransScores.push_back(curScore);
-                            planesTransFits.push_back(curFit);
-							// diff is recalculated later
-						}
-					}
-					else if(matchTypeId == -1){
-						matchType = Matching::MatchType::Unknown;
-						cout << "matchType = Matching::MatchType::Unknown;" << endl;
-					}
-					cout << "results read" << endl;
-				}
-				else{
-                    if(!visualizeMatching) {
-                        matchType = Matching::matchFrameToMap(settings,
-                                                              curObjInstances,
-                                                              mapObjInstances,
-                                                              planesTrans,
-                                                              planesTransScores,
-                                                              planesTransFits);
-                    }
-                    else{
-                        matchType = Matching::matchFrameToMap(settings,
-                                                              curObjInstances,
-                                                              mapObjInstances,
-                                                              planesTrans,
-                                                              planesTransScores,
-                                                              planesTransFits,
-                                                              viewer,
-                                                              v1,
-                                                              v2);
-                    }
-				}
-
-
-				bool isUnamb = true;
-				if( matchType == Matching::MatchType::Ok){
-					if(planesTransScores.front() < scoreThresh){
-						isUnamb = false;
-					}
-					if(planesTransScores.size() > 1){
-						if(fabs(planesTransScores[0] - planesTransScores[1]) < scoreDiffThresh){
-							isUnamb = false;
-						}
-					}
-                    if(planesTransFits.front() > fitThresh){
-                        isUnamb = false;
-                    }
-				}
-				if(planesTrans.size() > 0){
-//					stopFlag = true;
-				}
-				cout << "planesTrans.size() = " << planesTrans.size() << endl;
-				vector<double> planesTransDiff;
-                vector<double> planesTransDiffEucl;
-                vector<double> planesTransDiffAng;
-				for(int t = 0; t < planesTrans.size(); ++t){
-					g2o::SE3Quat planesTransSE3Quat(planesTrans[t]);
-
-	//				cout << "frame diff SE3Quat = " << (planesTransSE3Quat.inverse() * poseSE3Quat).toVector().transpose() << endl;
-					cout << "planesTrans[" << t << "] = " << planesTrans[t].transpose() << endl;
-					cout << "planesTransScores[" << t << "] = " << planesTransScores[t] << endl;
-                    cout << "planesTransFits[" << t << "] = " << planesTransFits[t] << endl;
-					if(std::isnan(planesTransScores[t])){
-						planesTransScores[t] = 0.0;
-					}
-			//			cout << "pose = " << pose.transpose() << endl;
-			//			cout << "planesTrans = " << planesTrans.transpose() << endl;
-
-	//				{
-	//					viewer->removeCoordinateSystem("trans coord", v2);
-	//					Eigen::Affine3f trans = Eigen::Affine3f::Identity();
-	//					trans.matrix() = planesTransSE3Quat.inverse().to_homogeneous_matrix().cast<float>();
-	//					//		trans.fromPositionOrientationScale(, rot, 1.0);
-	//					viewer->addCoordinateSystem(1.0, trans, "trans coord", v2);
-	//				}
-
-                    g2o::SE3Quat diffSE3Quat = planesTransSE3Quat.inverse() * poseSE3Quat;
-//                    g2o::SE3Quat diffInvSE3Quat = poseSE3Quat * planesTransSE3Quat.inverse();
-					Vector6d diffLog = diffSE3Quat.log();
-//                    cout << "diffLog = " << diffSE3Quat.log().transpose() << endl;
-//                    cout << "diffInvLog = " << diffInvSE3Quat.log().transpose() << endl;
-					double diff = diffLog.transpose() * diffLog;
-                    double diffEucl = diffSE3Quat.toVector().head<3>().norm();
-                    Eigen::Vector3d diffLogAng = Misc::logMap(diffSE3Quat.rotation());
-                    double diffAng = diffLogAng.transpose() * diffLogAng;
-//                    Eigen::Vector3d diffAngEuler = diffInvSE3Quat.rotation().toRotationMatrix().eulerAngles(1, 0, 2);
-//                    cout << "diffAngEuler = " << diffAngEuler.transpose() << endl;
-//                    double diffAng = std::min(diffAngEuler[0], pi - diffAngEuler[0]);
-					planesTransDiff.push_back(diff);
-                    planesTransDiffEucl.push_back(diffEucl);
-                    cout << "planesTransDiffEucl[" << t << "] = " << planesTransDiffEucl[t] << endl;
-                    planesTransDiffAng.push_back(diffAng);
-                    cout << "planesTransDiffAng[" << t << "] = " << planesTransDiffAng[t] << endl;
-					cout << "planesTransDiff[" << t << "] = " << planesTransDiff[t] << endl;
-				}
-
-				if( matchType == Matching::MatchType::Ok && isUnamb){
-					if(planesTransDiff.front() > poseDiffThresh){
-                        if(stopWrongFrame) {
-                            stopFlag = true;
-                        }
-
-						logFile << curFrameIdx << endl;
-						logFile << pose.transpose() << endl;
-						logFile << 0 << endl;
-						logFile << planesTrans.size() << endl;
-						for(int t = 0; t < planesTrans.size(); ++t){
-							logFile << planesTrans[t].transpose() <<
-								" " << planesTransScores[t] <<
-                                " " << planesTransFits[t] <<
-								" " << planesTransDiff[t] << endl;
-						}
-                        logFile << endl << endl;
-
-						if(saveVis){
-							visFile << 0 << " ";
-						}
-						++incorrCnt;
-
-                        visRecCodes.push_back(0);
-                        visRecPoses.push_back(planesTrans.front());
-					}
-					else{
-						if(saveVis){
-							visFile << 1 << " ";
-						}
-						++corrCnt;
-
-                        visRecCodes.push_back(1);
-                        visRecPoses.push_back(planesTrans.front());
-					}
-
-                    meanDist += planesTransDiffEucl.front();
-                    meanAngDist += planesTransDiffAng.front();
-                    ++meanCnt;
-				}
-				else{
-					if(saveVis){
-						visFile << -1 << " ";
-					}
-					++unkCnt;
-
-                    visRecCodes.push_back(-1);
-                    visRecPoses.push_back(Vector7d());
-				}
-
+            if(globalMatching){
+                RecCode curRecCode;
+                g2o::SE3Quat gtTransSE3Quat = g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
+                Vector7d predTrans;
+                double linDist, angDist;
+    
+                pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
+                int curViewPort1 = -1;
+                int curViewPort2 = -1;
+                if(visualizeMatching){
+                    curViewer = viewer;
+                    curViewPort1 = v1;
+                    curViewPort2 = v2;
+                }
+    
+                evaluateMatching(settings,
+                                 curObjInstances,
+                                 mapObjInstances,
+                                 inputResIncrFile,
+                                 outputResIncrFile,
+                                 pose,
+                                 scoreThresh,
+                                 scoreDiffThresh,
+                                 fitThresh,
+                                 poseDiffThresh,
+                                 predTrans,
+                                 curRecCode,
+                                 linDist,
+                                 angDist,
+                                 curViewer,
+                                 curViewPort1,
+                                 curViewPort2);
+                
+                visRecCodes.push_back(curRecCode);
                 visGtPoses.push_back(pose);
-				if(saveVis){
-					visFile << pose.transpose() << endl;
-				}
-
-				if(saveRes){
-					// saving results file
-					outputResFile << pose.transpose() << endl;
-					if( matchType == Matching::MatchType::Ok){
-						outputResFile << 0 << endl;
-						outputResFile << planesTrans.size() << endl;
-						for(int t = 0; t < planesTrans.size(); ++t){
-							outputResFile << planesTrans[t].transpose() <<
-								" " << planesTransScores[t] <<
-                                " " << planesTransFits[t] <<
-								" " << planesTransDiff[t] << endl;
-						}
-					}
-					else if(matchType == Matching::MatchType::Unknown){
-						outputResFile << -1 << endl;
-					}
-                    outputResFile << endl << endl;
-				}
-
-			}
+                visRecPoses.push_back(predTrans);
+                
+                if(curRecCode == RecCode::Corr) {
+                    ++corrCnt;
+                }
+                else if(curRecCode == RecCode::Incorr) {
+                    ++incorrCnt;
+                }
+                else {
+                    ++unkCnt;
+                }
+                
+                if(curRecCode != RecCode::Unk) {
+                    meanDist += linDist;
+                    meanAngDist += angDist;
+                    ++meanCnt;
+                }
+            }
+            
+            if(incrementalMatching && !prevObjInstances.empty()){
+                RecCode curRecCode;
+                g2o::SE3Quat gtTransSE3Quat = g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
+                Vector7d predTrans;
+                double linDist, angDist;
+    
+                pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
+                int curViewPort1 = -1;
+                int curViewPort2 = -1;
+                if(visualizeMatching){
+                    curViewer = viewer;
+                    curViewPort1 = v1;
+                    curViewPort2 = v2;
+                }
+                
+                evaluateMatching(settings,
+                                 curObjInstances,
+                                 prevObjInstances,
+                                 inputResIncrFile,
+                                 outputResIncrFile,
+                                 gtTransSE3Quat.toVector(),
+                                 scoreThresh,
+                                 scoreDiffThresh,
+                                 fitThresh,
+                                 poseDiffThresh,
+                                 predTrans,
+                                 curRecCode,
+                                 linDist,
+                                 angDist,
+                                 curViewer,
+                                 curViewPort1,
+                                 curViewPort2);
+    
+                visRecCodes.push_back(curRecCode);
+                visGtPoses.push_back(pose);
+                visRecPoses.push_back(predTrans);
+    
+                if(curRecCode == RecCode::Corr) {
+                    ++corrCnt;
+                }
+                else if(curRecCode == RecCode::Incorr) {
+                    ++incorrCnt;
+                }
+                else {
+                    ++unkCnt;
+                }
+    
+                if(curRecCode != RecCode::Unk) {
+                    meanDist += linDist;
+                    meanAngDist += angDist;
+                    ++meanCnt;
+                }
+            }
+            
 
 
             if(drawVis) {
@@ -525,6 +425,7 @@ void PlaneSlam::run(){
                 }
                 viewer->close();
             }
+            
 			prevObjInstances.swap(curObjInstances);
 		}
 
@@ -586,17 +487,17 @@ void PlaneSlam::run(){
         pcl::PointCloud<pcl::PointXYZ>::Ptr corrPoses(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::PointCloud<pcl::PointXYZ>::Ptr incorrPoses(new pcl::PointCloud<pcl::PointXYZ>());
         for(int f = 0; f < visRecCodes.size(); ++f){
-            if(visRecCodes[f] == 1 || visRecCodes[f] == 0){
+            if(visRecCodes[f] == RecCode::Corr || visRecCodes[f] == RecCode::Incorr){
                 pcl::PointXYZ curPose(visGtPoses[f][0],
                                       visGtPoses[f][1],
                                       visGtPoses[f][2]);
                 pcl::PointXYZ curRecPose(visRecPoses[f][0],
                                       visRecPoses[f][1],
                                       visRecPoses[f][2]);
-                if(visRecCodes[f] == 1) {
+                if(visRecCodes[f] == RecCode::Corr) {
                     corrPoses->push_back(curRecPose);
                 }
-                else/* if(visRecCodes[f] == 0) */ {
+                else/* if(visRecCodes[f] == RecCode::Incorr) */ {
                     incorrPoses->push_back(curRecPose);
                 }
 
@@ -648,5 +549,172 @@ void PlaneSlam::run(){
     }
 
 	viewer->close();
+}
+
+void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
+                                 const std::vector<ObjInstance> &objInstances1,
+                                 const std::vector<ObjInstance> &objInstances2,
+                                 std::ifstream &inputResFile,
+                                 std::ofstream &outputResFile,
+                                 const Vector7d &gtTransform,
+                                 double scoreThresh,
+                                 double scoreDiffThresh,
+                                 double fitThresh,
+                                 double poseDiffThresh,
+                                 Vector7d &predTransform,
+                                 RecCode &recCode,
+                                 double &linDist,
+                                 double &angDist,
+                                 pcl::visualization::PCLVisualizer::Ptr viewer,
+                                 int viewPort1,
+                                 int viewPort2)
+{
+    
+    vector<Vector7d> planesTrans;
+    vector<double> planesTransScores;
+    vector<double> planesTransFits;
+    Matching::MatchType matchType = Matching::MatchType::Unknown;
+    
+    if(inputResFile.is_open()){
+        Vector7d curPose;
+        for(int c = 0; c < 7; ++c){
+            inputResFile >> curPose(c);
+        }
+        int matchTypeId;
+        inputResFile >> matchTypeId;
+        if(matchTypeId == 0){
+            matchType = Matching::MatchType::Ok;
+            cout << "matchType = Matching::MatchType::Ok;" << endl;
+            int numTrans;
+            inputResFile >> numTrans;
+            for(int t = 0; t < numTrans; ++t){
+                Vector7d curTrans;
+                double curScore;
+                double curFit;
+                double curDiff;
+                for(int c = 0; c < 7; ++c){
+                    inputResFile >> curTrans(c);
+                }
+                inputResFile >> curScore >> curFit >> curDiff;
+                planesTrans.push_back(curTrans);
+                planesTransScores.push_back(curScore);
+                planesTransFits.push_back(curFit);
+                // diff is recalculated later
+            }
+        }
+        else if(matchTypeId == -1){
+            matchType = Matching::MatchType::Unknown;
+            cout << "matchType = Matching::MatchType::Unknown;" << endl;
+        }
+        cout << "results read" << endl;
+    }
+    else {
+        matchType = Matching::matchFrameToMap(settings,
+                                              objInstances1,
+                                              objInstances2,
+                                              planesTrans,
+                                              planesTransScores,
+                                              planesTransFits,
+                                              viewer,
+                                              viewPort1,
+                                              viewPort2);
+    }
+    
+    g2o::SE3Quat gtTransformSE3Quat(gtTransform);
+    bool isUnamb = true;
+    if( matchType == Matching::MatchType::Ok){
+        if(planesTransScores.front() < scoreThresh){
+            isUnamb = false;
+        }
+        if(planesTransScores.size() > 1){
+            if(fabs(planesTransScores[0] - planesTransScores[1]) < scoreDiffThresh){
+                isUnamb = false;
+            }
+        }
+        if(planesTransFits.front() > fitThresh){
+            isUnamb = false;
+        }
+    }
+    if(planesTrans.size() > 0){
+//					stopFlag = true;
+    }
+    cout << "planesTrans.size() = " << planesTrans.size() << endl;
+    vector<double> planesTransDiff;
+    vector<double> planesTransDiffEucl;
+    vector<double> planesTransDiffAng;
+    for(int t = 0; t < planesTrans.size(); ++t){
+        g2o::SE3Quat planesTransSE3Quat(planesTrans[t]);
+        
+        //				cout << "frame diff SE3Quat = " << (planesTransSE3Quat.inverse() * poseSE3Quat).toVector().transpose() << endl;
+        cout << "planesTrans[" << t << "] = " << planesTrans[t].transpose() << endl;
+        cout << "planesTransScores[" << t << "] = " << planesTransScores[t] << endl;
+        cout << "planesTransFits[" << t << "] = " << planesTransFits[t] << endl;
+        if(std::isnan(planesTransScores[t])){
+            planesTransScores[t] = 0.0;
+        }
+        //			cout << "pose = " << pose.transpose() << endl;
+        //			cout << "planesTrans = " << planesTrans.transpose() << endl;
+        
+        //				{
+        //					viewer->removeCoordinateSystem("trans coord", v2);
+        //					Eigen::Affine3f trans = Eigen::Affine3f::Identity();
+        //					trans.matrix() = planesTransSE3Quat.inverse().to_homogeneous_matrix().cast<float>();
+        //					//		trans.fromPositionOrientationScale(, rot, 1.0);
+        //					viewer->addCoordinateSystem(1.0, trans, "trans coord", v2);
+        //				}
+        
+        g2o::SE3Quat diffSE3Quat = planesTransSE3Quat.inverse() * gtTransformSE3Quat;
+//                    g2o::SE3Quat diffInvSE3Quat = poseSE3Quat * planesTransSE3Quat.inverse();
+        Vector6d diffLog = diffSE3Quat.log();
+//                    cout << "diffLog = " << diffSE3Quat.log().transpose() << endl;
+//                    cout << "diffInvLog = " << diffInvSE3Quat.log().transpose() << endl;
+        double diff = diffLog.transpose() * diffLog;
+        double diffEucl = diffSE3Quat.toVector().head<3>().norm();
+        Eigen::Vector3d diffLogAng = Misc::logMap(diffSE3Quat.rotation());
+        double diffAng = diffLogAng.transpose() * diffLogAng;
+//                    Eigen::Vector3d diffAngEuler = diffInvSE3Quat.rotation().toRotationMatrix().eulerAngles(1, 0, 2);
+//                    cout << "diffAngEuler = " << diffAngEuler.transpose() << endl;
+//                    double diffAng = std::min(diffAngEuler[0], pi - diffAngEuler[0]);
+        planesTransDiff.push_back(diff);
+        planesTransDiffEucl.push_back(diffEucl);
+        cout << "planesTransDiffEucl[" << t << "] = " << planesTransDiffEucl[t] << endl;
+        planesTransDiffAng.push_back(diffAng);
+        cout << "planesTransDiffAng[" << t << "] = " << planesTransDiffAng[t] << endl;
+        cout << "planesTransDiff[" << t << "] = " << planesTransDiff[t] << endl;
+    }
+    
+    if( matchType == Matching::MatchType::Ok && isUnamb){
+        if(planesTransDiff.front() > poseDiffThresh){
+            recCode = RecCode::Incorr;
+        }
+        else{
+            recCode = RecCode::Corr;
+        }
+        
+        linDist += planesTransDiffEucl.front();
+        angDist += planesTransDiffAng.front();
+    }
+    else{
+        recCode = RecCode::Unk;
+    }
+    
+    if(outputResFile.is_open()){
+        // saving results file
+        outputResFile << gtTransform.transpose() << endl;
+        if( matchType == Matching::MatchType::Ok){
+            outputResFile << 0 << endl;
+            outputResFile << planesTrans.size() << endl;
+            for(int t = 0; t < planesTrans.size(); ++t){
+                outputResFile << planesTrans[t].transpose() <<
+                                  " " << planesTransScores[t] <<
+                                  " " << planesTransFits[t] <<
+                                  " " << planesTransDiff[t] << endl;
+            }
+        }
+        else if(matchType == Matching::MatchType::Unknown){
+            outputResFile << -1 << endl;
+        }
+        outputResFile << endl << endl;
+    }
 }
 

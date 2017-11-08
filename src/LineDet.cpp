@@ -12,14 +12,14 @@
 using namespace std;
 
 void LineDet::detectLineSegments(const cv::FileStorage &settings,
-                                cv::Mat rgb,
-                                cv::Mat depth,
-                                const std::vector<ObjInstance> &planes,
-                                cv::Mat cameraMatrix,
-                                std::vector<LineSeg> &lineSegs,
-                                pcl::visualization::PCLVisualizer::Ptr viewer,
-                                int viewPort1,
-                                int viewPort2)
+                                 cv::Mat rgb,
+                                 cv::Mat depth,
+                                 vector<ObjInstance> &planes,
+                                 cv::Mat cameraMatrix,
+                                 std::vector<LineSeg> &lineSegs,
+                                 pcl::visualization::PCLVisualizer::Ptr viewer,
+                                 int viewPort1,
+                                 int viewPort2)
 {
     static constexpr double minImgLineLen = 50;
     static constexpr double lineNhSize = 15;
@@ -115,8 +115,8 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
             viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
         }
 
-        std::default_random_engine gen;
-        std::uniform_real_distribution<double> distr(0.0, lineNhSize);
+//        std::default_random_engine gen;
+//        std::uniform_real_distribution<double> distr(0.0, lineNhSize);
         for(int l = 0; l < lineSegs.size(); ++l){
             cout << "line " << l << endl;
             
@@ -181,10 +181,12 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                     bestPlaneRVotes = it->second;
                 }
             }
+            // TODO Add to line segment to plane instance
             if(bestPlaneL >= 0){
                 const ObjInstance& curPl = planes[bestPlaneL];
                 Eigen::Vector3d p1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
                 Eigen::Vector3d p2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
+                
                 cout << "projected on left plane" << endl;
                 cout << "p1 = " << p1.transpose() << endl;
                 cout << "p2 = " << p2.transpose() << endl;
@@ -214,6 +216,7 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                 const ObjInstance& curPl = planes[bestPlaneR];
                 Eigen::Vector3d p1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
                 Eigen::Vector3d p2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
+                
                 cout << "projected on right plane" << endl;
                 cout << "p1 = " << p1.transpose() << endl;
                 cout << "p2 = " << p2.transpose() << endl;
@@ -238,6 +241,12 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
 //                                                        string("line_r_") + to_string(l),
 //                                                        viewPort1);
                 }
+            }
+            
+            if(true){
+                ObjInstance& curPl = planes[bestPlaneR];
+                
+                curPl.addLineSeg(LineSeg(0, pi1, pi2, p1, p2));
             }
 
             if(viewer){
