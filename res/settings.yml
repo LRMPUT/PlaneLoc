@@ -121,11 +121,11 @@ map:
   
 #  mapFile: "../res/NYUv2_living_rooms_part1/living_room_0003_proc/cloud_merged.ply"
 
-  mapFiles:
+#  mapFiles:
 #    - "../res/NYUv2_living_rooms_part1/living_room_0003_proc/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test1/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test2/cloud_merged.ply"
-    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
+#    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
   

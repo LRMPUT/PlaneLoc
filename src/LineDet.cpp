@@ -70,19 +70,19 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                     }
                 }
             }
-//            if(viewer){
-//                cout << "pl " << pl << endl;
-//                viewer->addPointCloud(planes[pl].getPoints(), string("plane_") + to_string(pl), viewPort1);
-//
-//                viewer->resetStoppedFlag();
-//
-//                while (!viewer->wasStopped()){
-//                    viewer->spinOnce (50);
-//                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//                }
-//
-//                viewer->removePointCloud(string("plane_") + to_string(pl), viewPort1);
-//            }
+            if(viewer){
+                cout << "pl " << pl << endl;
+                viewer->addPointCloud(planes[pl].getPoints(), string("plane_") + to_string(pl), viewPort1);
+
+                viewer->resetStoppedFlag();
+
+                while (!viewer->wasStopped()){
+                    viewer->spinOnce (50);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                }
+
+                viewer->removePointCloud(string("plane_") + to_string(pl), viewPort1);
+            }
         }
 
         cv::Mat planesMasksImg;
@@ -169,24 +169,79 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
             int bestPlaneLVotes = 0;
             int bestPlaneR = -1;
             int bestPlaneRVotes = 0;
+            cout << "planesVotesLeft:" << endl;
             for(auto it = planeVotesLeft.begin(); it != planeVotesLeft.end(); ++it){
+                cout << it->first << ": " << it->second << endl;
                 if(it->second > bestPlaneLVotes){
                     bestPlaneL = it->first;
                     bestPlaneLVotes = it->second;
                 }
             }
+            cout << "planesVotesRight:" << endl;
             for(auto it = planeVotesRight.begin(); it != planeVotesRight.end(); ++it){
+                cout << it->first << ": " << it->second << endl;
                 if(it->second > bestPlaneRVotes){
                     bestPlaneR = it->first;
                     bestPlaneRVotes = it->second;
                 }
             }
-            // TODO Add to line segment to plane instance
-            if(bestPlaneL >= 0){
+            // Add line segment to plane instance(s)
+            Eigen::Vector3d planeLp1(0, 0, 0);
+            Eigen::Vector3d planeLp2(0, 0, 0);
+            cout << "bestPlaneL = " << bestPlaneL << endl;
+            if(bestPlaneL >= 0) {
+                const ObjInstance &curPl = planes[bestPlaneL];
+                Eigen::Vector3d planeLp1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
+                Eigen::Vector3d planeLp2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
+                cout << "planeLp1 = " << planeLp1.transpose() << endl;
+                cout << "planeLp2 = " << planeLp2.transpose() << endl;
+            }
+            Eigen::Vector3d planeRp1(0, 0, 0);
+            Eigen::Vector3d planeRp2(0, 0, 0);
+            cout << "bestPlaneL = " << bestPlaneL << endl;
+            if(bestPlaneR >= 0) {
+                const ObjInstance &curPl = planes[bestPlaneR];
+                Eigen::Vector3d planeRp1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
+                Eigen::Vector3d planeRp2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
+                cout << "planeRp1 = " << planeRp1.transpose() << endl;
+                cout << "planeRp2 = " << planeRp2.transpose() << endl;
+            }
+            int projPlaneL = -1;
+            int projPlaneR = -1;
+            // if left side and right side planes are different and both are present
+            if(bestPlaneL != bestPlaneR && bestPlaneL >= 0 && bestPlaneR >= 0){
+                static constexpr double pointDistThresh = 0.01;
+                // if equal then it is a corner - adding line to both planes
+                if(abs(planeLp1.norm() - planeRp1.norm()) < pointDistThresh &&
+                   abs(planeLp2.norm() - planeRp2.norm()) < pointDistThresh)
+                {
+                    projPlaneL = bestPlaneL;
+                    projPlaneR = bestPlaneR;
+                }
+                
+            }
+            // if only left plane is present
+            else if(bestPlaneL != bestPlaneR && bestPlaneL >= 0){
+                projPlaneL = bestPlaneL;
+            }
+            else if(bestPlaneL != bestPlaneR && bestPlaneR >= 0){
+                projPlaneR = bestPlaneR;
+            }
+            
+            if(projPlaneL >= 0){
+                ObjInstance& curPl = planes[projPlaneL];
+                curPl.addLineSeg(LineSeg(0, pi1, pi2, planeLp1, planeLp2));
+            }
+            if(projPlaneR >= 0){
+                ObjInstance& curPl = planes[projPlaneR];
+                curPl.addLineSeg(LineSeg(0, pi1, pi2, planeRp1, planeRp2));
+            }
+            
+            if(projPlaneL >= 0){
                 const ObjInstance& curPl = planes[bestPlaneL];
                 Eigen::Vector3d p1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
                 Eigen::Vector3d p2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
-                
+
                 cout << "projected on left plane" << endl;
                 cout << "p1 = " << p1.transpose() << endl;
                 cout << "p2 = " << p2.transpose() << endl;
@@ -212,11 +267,11 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
 //                                                        viewPort1);
                 }
             }
-            if(bestPlaneR >= 0){
+            if(projPlaneR >= 0){
                 const ObjInstance& curPl = planes[bestPlaneR];
                 Eigen::Vector3d p1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
                 Eigen::Vector3d p2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
-                
+
                 cout << "projected on right plane" << endl;
                 cout << "p1 = " << p1.transpose() << endl;
                 cout << "p2 = " << p2.transpose() << endl;
@@ -243,11 +298,6 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                 }
             }
             
-            if(true){
-                ObjInstance& curPl = planes[bestPlaneR];
-                
-                curPl.addLineSeg(LineSeg(0, pi1, pi2, p1, p2));
-            }
 
             if(viewer){
                 viewer->resetStoppedFlag();

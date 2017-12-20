@@ -373,7 +373,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
                       {0, 1}};
     
     int maxId = 0;
-    set<pair<int, int> > edges;
+    map<pair<int, int>, int> edges;
     for(int r = 0; r < nrows; ++r){
         for(int c = 0; c < ncols; ++c){
             int id = rgbSegments.at<int>(r, c);
@@ -391,7 +391,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
                     
                     if(nhId != id) {
                         pair<int, int> e = make_pair(std::min(id, nhId), std::max(id, nhId));
-                        edges.insert(e);
+                        edges[e] += 1;
                     }
                 }
             }
@@ -469,22 +469,26 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
         }
         svs.swap(newSvs);
     
-        set<pair<int, int>> newEdges;
-        for(const pair<int, int> &cure : edges){
-            if(oldIdxToNewIdx.count(cure.first) > 0 &&
-               oldIdxToNewIdx.count(cure.second) > 0)
+        map<pair<int, int>, int> newEdges;
+        for(const pair<pair<int, int>, int> &cure : edges){
+            if(oldIdxToNewIdx.count(cure.first.first) > 0 &&
+               oldIdxToNewIdx.count(cure.first.second) > 0)
             {
-               newEdges.insert(make_pair(oldIdxToNewIdx[cure.first], oldIdxToNewIdx[cure.second]));
+               newEdges.insert(make_pair(make_pair(oldIdxToNewIdx[cure.first.first], oldIdxToNewIdx[cure.first.second]), cure.second));
             }
         }
         edges.swap(newEdges);
     }
     
-    for(const pair<int, int> &cure : edges){
-        int u = cure.first;
-        int v = cure.second;
-        svs[u].addAdjSeg(v);
-        svs[v].addAdjSeg(u);
+    for(const pair<pair<int, int>, int> &cure : edges){
+        // if edge is strong enouht than add it to svs
+        static constexpr int edgeStrengthThresh = 20;
+        if(cure.second > edgeStrengthThresh) {
+            int u = cure.first.first;
+            int v = cure.first.second;
+            svs[u].addAdjSeg(v);
+            svs[v].addAdjSeg(u);
+        }
     }
 //    for(int sv = 0; sv < svs.size(); ++sv){
 //        svs[sv].calcSegProp();
