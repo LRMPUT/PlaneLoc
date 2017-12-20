@@ -28,6 +28,7 @@
 #include <pcl/filters/project_inliers.h>
 #include <pcl/surface/convex_hull.h>
 #include <pcl/common/transforms.h>
+#include <pcl/common/pca.h>
 
 #include "ObjInstance.hpp"
 #include "Misc.hpp"
@@ -48,16 +49,41 @@ ObjInstance::ObjInstance(int iid,
 	  svs(isvs),
 	  convexHull(new pcl::PointCloud<pcl::PointXYZRGB>())
 {
-	Eigen::Vector4f tmpParamRep;
-	pcl::computePointNormal(*points, tmpParamRep, curv);
+    pcl::PCA<pcl::PointXYZRGB> pca;
+    pca.setInputCloud(points);
+    
+    Eigen::Matrix3f evecs = pca.getEigenVectors();
+    Eigen::Vector3f evals = pca.getEigenValues();
+    Eigen::Vector4f pcaMean = pca.getMean();
+    
+    Eigen::Vector3f ev0 = evecs.block<3, 1>(0, 0);
+    Eigen::Vector3f ev1 = evecs.block<3, 1>(0, 1);
+    Eigen::Vector3f ev2 = evecs.block<3, 1>(0, 2);
+    
+    // shorter side of the plane is the second largest eigenvalue
+    shorterComp = sqrt(evals(1));
+    
+    // the eigenvector for the smallest eigenvalue is the normal vector
+    paramRep.head<3>() = ev2.cast<double>();
+    // distance is the dot product of normal and point lying on the plane
+    paramRep(3) = ev2.dot(pcaMean.head<3>());
+    
+    princComp = vector<Eigen::Vector3d>{ev0.cast<double>(), ev1.cast<double>(), ev2.cast<double>()};
+    princCompLens = vector<double>{evals(0), evals(1), evals(2)};
+    
+    curv = evals(2) / (evals(0) + evals(1) + evals(2));
+    
+//	Eigen::Vector4f tmpParamRep;
+//	pcl::computePointNormal(*points, tmpParamRep, curv);
+    
     bool corrOrient = true;
     int corrCnt = 0;
     int incorrCnt = 0;
     for(int sv = 0; sv < svs.size(); ++sv){
         pcl::PointNormal svPtNormal;
-        Eigen::Vector3f svNormal = svs[sv].getSegNormal();
+        Eigen::Vector3d svNormal = svs[sv].getSegNormal().cast<double>();
         // if cross product between normal vectors is negative then it is wrongly oriented
-        if(svNormal.dot(tmpParamRep.head<3>()) < 0){
+        if(svNormal.dot(paramRep.head<3>()) < 0){
             ++incorrCnt;
         }
         else{
@@ -78,27 +104,30 @@ ObjInstance::ObjInstance(int iid,
     }
     // flip the normal
     if(!corrOrient){
-        tmpParamRep = -tmpParamRep;
+        paramRep = -paramRep;
     }
-	paramRep = tmpParamRep.cast<double>();
+    // normal including distance
+    normal = paramRep;
+    
+    // normalize paramRep
 	Misc::normalizeAndUnify(paramRep);
 
-	Eigen::Vector3f planeNorm = tmpParamRep.head<3>();
-	double planeNormNorm = planeNorm.norm();
-	planeNorm /= planeNormNorm;
-	double d = tmpParamRep(3)/planeNormNorm;
-
-    normal.head<3>() = planeNorm.cast<double>();
-    normal[3] = d;
+//	Eigen::Vector3f planeNorm = tmpParamRep.head<3>();
+//	double planeNormNorm = planeNorm.norm();
+//	planeNorm /= planeNormNorm;
+//	double d = tmpParamRep(3)/planeNormNorm;
+//
+//    normal.head<3>() = planeNorm.cast<double>();
+//    normal[3] = d;
 //    cout << "normal = " << normal.transpose() << endl;
 //    cout << "paramRep = " << paramRep.transpose() << endl;
 
 	pcl::ModelCoefficients::Ptr mdlCoeff (new pcl::ModelCoefficients);
 	mdlCoeff->values.resize(4);
-	mdlCoeff->values[0] = planeNorm(0);
-	mdlCoeff->values[1] = planeNorm(1);
-	mdlCoeff->values[2] = planeNorm(2);
-	mdlCoeff->values[3] = d;
+	mdlCoeff->values[0] = normal(0);
+	mdlCoeff->values[1] = normal(1);
+	mdlCoeff->values[2] = normal(2);
+	mdlCoeff->values[3] = normal(3);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsProj(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::ProjectInliers<pcl::PointXYZRGB> proj;
 	proj.setModelType(pcl::SACMODEL_PLANE);

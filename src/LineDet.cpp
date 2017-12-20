@@ -70,19 +70,19 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                     }
                 }
             }
-            if(viewer){
-                cout << "pl " << pl << endl;
-                viewer->addPointCloud(planes[pl].getPoints(), string("plane_") + to_string(pl), viewPort1);
-
-                viewer->resetStoppedFlag();
-
-                while (!viewer->wasStopped()){
-                    viewer->spinOnce (50);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                }
-
-                viewer->removePointCloud(string("plane_") + to_string(pl), viewPort1);
-            }
+//            if(viewer){
+//                cout << "pl " << pl << endl;
+//                viewer->addPointCloud(planes[pl].getPoints(), string("plane_") + to_string(pl), viewPort1);
+//
+//                viewer->resetStoppedFlag();
+//
+//                while (!viewer->wasStopped()){
+//                    viewer->spinOnce (50);
+//                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//                }
+//
+//                viewer->removePointCloud(string("plane_") + to_string(pl), viewPort1);
+//            }
         }
 
         cv::Mat planesMasksImg;
@@ -186,25 +186,40 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                 }
             }
             // Add line segment to plane instance(s)
+            static constexpr double shorterCompThresh = 0.2;
             Eigen::Vector3d planeLp1(0, 0, 0);
             Eigen::Vector3d planeLp2(0, 0, 0);
             cout << "bestPlaneL = " << bestPlaneL << endl;
             if(bestPlaneL >= 0) {
                 const ObjInstance &curPl = planes[bestPlaneL];
-                Eigen::Vector3d planeLp1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
-                Eigen::Vector3d planeLp2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
-                cout << "planeLp1 = " << planeLp1.transpose() << endl;
-                cout << "planeLp2 = " << planeLp2.transpose() << endl;
+                cout << "shorter comp = " << curPl.getShorterComp() << endl;
+                if(curPl.getShorterComp() > shorterCompThresh) {
+                    Eigen::Vector3d planeLp1 = Misc::projectPointOnPlane(pi1,
+                                                                         curPl.getNormal(),
+                                                                         cameraMatrix);
+                    Eigen::Vector3d planeLp2 = Misc::projectPointOnPlane(pi2,
+                                                                         curPl.getNormal(),
+                                                                         cameraMatrix);
+                    cout << "planeLp1 = " << planeLp1.transpose() << endl;
+                    cout << "planeLp2 = " << planeLp2.transpose() << endl;
+                }
             }
             Eigen::Vector3d planeRp1(0, 0, 0);
             Eigen::Vector3d planeRp2(0, 0, 0);
-            cout << "bestPlaneL = " << bestPlaneL << endl;
+            cout << "bestPlaneR = " << bestPlaneR << endl;
             if(bestPlaneR >= 0) {
                 const ObjInstance &curPl = planes[bestPlaneR];
-                Eigen::Vector3d planeRp1 = Misc::projectPointOnPlane(pi1, curPl.getNormal(), cameraMatrix);
-                Eigen::Vector3d planeRp2 = Misc::projectPointOnPlane(pi2, curPl.getNormal(), cameraMatrix);
-                cout << "planeRp1 = " << planeRp1.transpose() << endl;
-                cout << "planeRp2 = " << planeRp2.transpose() << endl;
+                cout << "shorter comp = " << curPl.getShorterComp() << endl;
+                if(curPl.getShorterComp() > shorterCompThresh) {
+                    Eigen::Vector3d planeRp1 = Misc::projectPointOnPlane(pi1,
+                                                                         curPl.getNormal(),
+                                                                         cameraMatrix);
+                    Eigen::Vector3d planeRp2 = Misc::projectPointOnPlane(pi2,
+                                                                         curPl.getNormal(),
+                                                                         cameraMatrix);
+                    cout << "planeRp1 = " << planeRp1.transpose() << endl;
+                    cout << "planeRp2 = " << planeRp2.transpose() << endl;
+                }
             }
             int projPlaneL = -1;
             int projPlaneR = -1;

@@ -82,6 +82,14 @@ public:
     inline Eigen::Vector4d getNormal() const {
         return normal;
     }
+    
+    inline const std::vector<Eigen::Vector3d> getPrincComp() const {
+        return princComp;
+    }
+    
+    inline double getShorterComp() const {
+        return shorterComp;
+    }
 
 	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull() const {
 		return convexHull;
@@ -137,7 +145,13 @@ private:
      */
 	Eigen::Vector4d normal;
 
-	float curv;
+	std::vector<Eigen::Vector3d> princComp;
+    
+    std::vector<double> princCompLens;
+    
+    double shorterComp;
+    
+    float curv;
 
 	double chullArea;
 
