@@ -61,12 +61,12 @@ ObjInstance::ObjInstance(int iid,
     Eigen::Vector3f ev2 = evecs.block<3, 1>(0, 2);
     
     // shorter side of the plane is the second largest eigenvalue
-    shorterComp = sqrt(evals(1));
+    shorterComp = sqrt(evals(1)/points->size());
     
     // the eigenvector for the smallest eigenvalue is the normal vector
     paramRep.head<3>() = ev2.cast<double>();
     // distance is the dot product of normal and point lying on the plane
-    paramRep(3) = ev2.dot(pcaMean.head<3>());
+    paramRep(3) = -ev2.dot(pcaMean.head<3>());
     
     princComp = vector<Eigen::Vector3d>{ev0.cast<double>(), ev1.cast<double>(), ev2.cast<double>()};
     princCompLens = vector<double>{evals(0), evals(1), evals(2)};

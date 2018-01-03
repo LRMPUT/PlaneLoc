@@ -125,7 +125,11 @@ public:
     const Eigen::Vector3f &getSegCentroid() const {
         return segCentroid;
     }
-
+    
+    const Eigen::Matrix3f &getSegCovar() const {
+        return segCovar;
+    }
+    
     const std::vector<int> &getAdjSegs() const {
         return adjSegs;
     }
@@ -177,7 +181,7 @@ public:
         adjSegs.insert(adjSegs.end(), newAdjSegs.begin(), newAdjSegs.end());
     }
     
-    void calcSegProp();
+    void calcSegProp(bool filter = false);
     
     PlaneSeg merge(const PlaneSeg &planeSeg, UnionFind &sets);
 
@@ -192,6 +196,7 @@ private:
     double segNormalIntDiff;
     Eigen::Vector4f segPlaneParams;
     Eigen::Vector3f segCentroid;
+    Eigen::Matrix3f segCovar;
     float segCurv;
     bool normAlignConsistent;
     float areaEst;

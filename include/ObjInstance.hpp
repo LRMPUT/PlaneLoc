@@ -87,10 +87,18 @@ public:
         return princComp;
     }
     
+    inline const std::vector<double> &getPrincCompLens() const {
+        return princCompLens;
+    }
+    
     inline double getShorterComp() const {
         return shorterComp;
     }
-
+	
+	inline float getCurv() const {
+		return curv;
+	}
+	
 	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull() const {
 		return convexHull;
 	}

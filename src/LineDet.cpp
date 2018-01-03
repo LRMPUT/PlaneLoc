@@ -186,13 +186,17 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
                 }
             }
             // Add line segment to plane instance(s)
-            static constexpr double shorterCompThresh = 0.2;
+            // 0.4 m assuming uniform distribution with variance (b - a)^2/12
+            static constexpr double shorterCompThresh = 0.4/sqrt(12);
             Eigen::Vector3d planeLp1(0, 0, 0);
             Eigen::Vector3d planeLp2(0, 0, 0);
             cout << "bestPlaneL = " << bestPlaneL << endl;
             if(bestPlaneL >= 0) {
                 const ObjInstance &curPl = planes[bestPlaneL];
                 cout << "shorter comp = " << curPl.getShorterComp() << endl;
+                cout << "curv = " << curPl.getCurv() << endl;
+//                cout << "evals = " << curPl.getPrincCompLens() << endl;
+//                cout << "npts = " << curPl.getPoints()->size() << endl;
                 if(curPl.getShorterComp() > shorterCompThresh) {
                     Eigen::Vector3d planeLp1 = Misc::projectPointOnPlane(pi1,
                                                                          curPl.getNormal(),
@@ -210,6 +214,7 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
             if(bestPlaneR >= 0) {
                 const ObjInstance &curPl = planes[bestPlaneR];
                 cout << "shorter comp = " << curPl.getShorterComp() << endl;
+                cout << "curv = " << curPl.getCurv() << endl;
                 if(curPl.getShorterComp() > shorterCompThresh) {
                     Eigen::Vector3d planeRp1 = Misc::projectPointOnPlane(pi1,
                                                                          curPl.getNormal(),

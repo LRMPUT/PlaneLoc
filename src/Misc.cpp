@@ -313,7 +313,7 @@ cv::Mat Misc::colorIds(cv::Mat ids) {
         for(int c = 0; c < ids.cols; ++c){
             int id = ids.at<int>(r, c);
             if(id >= 0){
-                int colIdx = (id % sizeof(colors)/sizeof(uint8_t)/3);
+                int colIdx = (id % (sizeof(colors)/sizeof(uint8_t)/3));
                 colIm.at<Vec3b>(r, c) = cv::Vec3b(colors[colIdx][2],
                                                   colors[colIdx][1],
                                                   colors[colIdx][0]);
@@ -322,6 +322,45 @@ cv::Mat Misc::colorIds(cv::Mat ids) {
     }
     return colIm;
 }
+
+cv::Mat Misc::colorIdsWithLabels(cv::Mat ids) {
+    cv::Mat colIm(ids.size(), CV_8UC3, Scalar(0, 0, 0));
+    map<int, tuple<float, float, int>> centroids;
+    for(int r = 0; r < ids.rows; ++r){
+        for(int c = 0; c < ids.cols; ++c){
+            int id = ids.at<int>(r, c);
+            if(id >= 0){
+                int cntId = centroids.count(id);
+                auto &ct = centroids[id];
+                if(cntId == 0){
+                    ct = make_tuple(0.0f, 0.0f, 0);
+                }
+                get<0>(ct) += r;
+                get<1>(ct) += c;
+                get<2>(ct) += 1;
+                
+                int colIdx = (id % (sizeof(colors)/sizeof(uint8_t)/3));
+                colIm.at<Vec3b>(r, c) = cv::Vec3b(colors[colIdx][2],
+                                                  colors[colIdx][1],
+                                                  colors[colIdx][0]);
+            }
+        }
+    }
+    for(auto &c : centroids){
+        int id = c.first;
+        auto &ct = c.second;
+        float y = get<0>(ct) / get<2>(ct);
+        float x = get<1>(ct) / get<2>(ct);
+        cv::putText(colIm,
+                    to_string(id),
+                    cv::Point(x, y),
+                    cv::FONT_HERSHEY_PLAIN,
+                    0.5,
+                    cv::Scalar(255, 255, 255));
+    }
+    return colIm;
+}
+
 
 Eigen::Vector3d Misc::closestPointOnLine(const Eigen::Vector3d &pt,
                                          const Eigen::Vector3d &p,
@@ -339,3 +378,4 @@ Eigen::Vector3d Misc::closestPointOnLine(const Eigen::Vector3d &pt,
 		return Eigen::Vector3d::Zero();
 	}
 }
+

@@ -457,7 +457,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
         std::vector<PlaneSeg> newSvs;
         int svsCnt = 0;
         for(int sv = 0; sv < svs.size(); ++sv){
-            svs[sv].calcSegProp();
+            svs[sv].calcSegProp(true);
             
             if(!isnan(svs[sv].getSegCurv())){
                 int newIdx = svsCnt++;
@@ -481,7 +481,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
     }
     
     for(const pair<pair<int, int>, int> &cure : edges){
-        // if edge is strong enouht than add it to svs
+        // if edge is strong enough than add it to svs
         static constexpr int edgeStrengthThresh = 20;
         if(cure.second > edgeStrengthThresh) {
             int u = cure.first.first;
@@ -494,7 +494,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
 //        svs[sv].calcSegProp();
 //    }
     
-    cv::Mat segCol = Misc::colorIds(rgbSegments);
+    cv::Mat segCol = Misc::colorIdsWithLabels(rgbSegments);
     
     cv::imshow("original", rgb);
     cv::imshow("rgb segments", segCol);
@@ -921,6 +921,18 @@ void PlaneSegmentation::mergeSegmentsFF(std::vector<PlaneSeg> &segs,
                                 float normalScore = segs[curIdx].getSegNormal().dot(segs[nhIdx].getSegNormal());
                                 
                                 if(normalScore > normalThresh) {
+                                    Eigen::Vector3f centrDir = centrVec.normalized();
+                                    // variance of points scatter in a direction
+                                    // of the line that connects centroids
+                                    float varCentrDir1 = centrDir.transpose() * segs[curIdx].getSegCovar()
+                                                         * centrDir;
+                                    float varCentrDir2 = centrDir.transpose() * segs[nhIdx].getSegCovar()
+                                                         * centrDir;
+                                    cout << "(" << curIdx << ", " << nhIdx << ")" << endl;
+                                    cout << "stddevCentrDir1 = " << sqrt(varCentrDir1) << endl;
+                                    cout << "stddevCentrDir2 = " << sqrt(varCentrDir2) << endl;
+                                    cout << "centrVec.norm() = " << centrVec.norm() << endl;
+                                    
                                     nodeQ.push(nhIdx);
                                     isVisited[nhIdx] = true;
                                 }

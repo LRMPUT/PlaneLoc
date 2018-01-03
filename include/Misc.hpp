@@ -95,6 +95,8 @@ public:
 
     static cv::Mat colorIds(cv::Mat ids);
 	
+	static cv::Mat colorIdsWithLabels(cv::Mat ids);
+	
 	static Eigen::Vector3d closestPointOnLine(const Eigen::Vector3d &pt,
 									   const Eigen::Vector3d &p,
 									   const Eigen::Vector3d &n);
