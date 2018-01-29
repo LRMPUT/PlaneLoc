@@ -123,6 +123,8 @@ public:
         return lineSegs;
     }
     
+    void transform(Vector7d transform);
+    
     static std::vector<ObjInstance> mergeObjInstances(const std::vector<std::vector<ObjInstance>>& objInstances,
                                                       pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                                       int viewPort1 = -1,

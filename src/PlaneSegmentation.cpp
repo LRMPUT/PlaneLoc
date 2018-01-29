@@ -928,10 +928,10 @@ void PlaneSegmentation::mergeSegmentsFF(std::vector<PlaneSeg> &segs,
                                                          * centrDir;
                                     float varCentrDir2 = centrDir.transpose() * segs[nhIdx].getSegCovar()
                                                          * centrDir;
-                                    cout << "(" << curIdx << ", " << nhIdx << ")" << endl;
-                                    cout << "stddevCentrDir1 = " << sqrt(varCentrDir1) << endl;
-                                    cout << "stddevCentrDir2 = " << sqrt(varCentrDir2) << endl;
-                                    cout << "centrVec.norm() = " << centrVec.norm() << endl;
+//                                    cout << "(" << curIdx << ", " << nhIdx << ")" << endl;
+//                                    cout << "stddevCentrDir1 = " << sqrt(varCentrDir1) << endl;
+//                                    cout << "stddevCentrDir2 = " << sqrt(varCentrDir2) << endl;
+//                                    cout << "centrVec.norm() = " << centrVec.norm() << endl;
                                     
                                     nodeQ.push(nhIdx);
                                     isVisited[nhIdx] = true;

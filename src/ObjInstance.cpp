@@ -27,6 +27,7 @@
 //#include <pcl/sample_consensus/model_types.h>
 #include <pcl/filters/project_inliers.h>
 #include <pcl/surface/convex_hull.h>
+#include <pcl/surface/concave_hull.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/pca.h>
 
@@ -106,7 +107,7 @@ ObjInstance::ObjInstance(int iid,
     if(!corrOrient){
         paramRep = -paramRep;
     }
-    // normal including distance
+    // normal including distance from origin
     normal = paramRep;
     
     // normalize paramRep
@@ -135,17 +136,27 @@ ObjInstance::ObjInstance(int iid,
 	proj.setModelCoefficients(mdlCoeff);
 	proj.filter(*pointsProj);
 
-	pcl::ConvexHull<pcl::PointXYZRGB> chull;
-	chull.setComputeAreaVolume(true);
+	pcl::ConcaveHull<pcl::PointXYZRGB> chull;
+    chull.setAlpha(0.5);
+    chull.setDimension(2);
+//	chull.setComputeAreaVolume(true);
 	vector<pcl::Vertices> polygon;
 	chull.setInputCloud(pointsProj);
 	chull.reconstruct(*convexHull, polygon);
 	if(polygon.size() != 1){
-		throw PLANE_EXCEPTION("Error - 3D convex hull");
+//		throw PLANE_EXCEPTION("Error - 3D convex hull");
 	}
 	convexHullPolygon = polygon[0];
-	chullArea = chull.getTotalArea();
+    
+    pcl::PointCloud<pcl::PointXYZRGB> chullPoints;
+    for(int p = 0; p < convexHullPolygon.vertices.size(); ++p){
+        chullPoints.push_back(convexHull->at(convexHullPolygon.vertices[p]));
+    }
+	chullArea = pcl::calculatePolygonArea(chullPoints);
 
+    cout << "Number of polygons: " << polygon.size() << endl;
+    cout << "Polygon area: " << chullArea << endl;
+    
 //	Eigen::Vector3d centr(0,0,0);
 //	for(int p = 0; p < pointsProj->size(); ++p){
 //		Eigen::Vector3d curPt;
@@ -166,6 +177,55 @@ ObjInstance::ObjInstance(int iid,
 //	cout << "paramRep = " << paramRep.transpose() << endl;
 //	cout << "chullArea = " << chullArea << endl;
 //	cout << "approx size = " << pi*maxR*maxR << endl;
+}
+
+void ObjInstance::transform(Vector7d transform) {
+    g2o::SE3Quat transformSE3Quat(transform);
+    Eigen::Matrix4d transformMat = transformSE3Quat.to_homogeneous_matrix();
+    Eigen::Matrix3d R = transformMat.block<3, 3>(0, 0);
+    Eigen::Matrix4d Tinvt = transformMat.inverse();
+    Tinvt = Tinvt.transpose();
+    
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
+    pcl::transformPointCloud(*points, *points, transformMat);
+
+    // std::vector<PlaneSeg> svs;
+    for(PlaneSeg &pseg : svs){
+        pseg.transform(transform);
+    }
+
+    // Eigen::Vector4d paramRep;
+    paramRep = Tinvt * paramRep;
+    Misc::normalizeAndUnify(paramRep);
+    
+    // Eigen::Vector4d normal;
+    normal = Tinvt * normal;
+    
+    // std::vector<Eigen::Vector3d> princComp;
+    for(Eigen::Vector3d &pc : princComp){
+        pc = R * pc;
+    }
+    
+    // std::vector<double> princCompLens;
+    // no need to transform
+    
+    // double shorterComp;
+    // no need to transform
+    
+    // float curv;
+    // no need to transform
+    
+    // double chullArea;
+    // no need to transform
+    
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr convexHull;
+    pcl::transformPointCloud(*convexHull, *convexHull, transformMat);
+    
+    // pcl::Vertices convexHullPolygon;
+    // no need to transform
+    
+    // std::vector<LineSeg> lineSegs;
+    // TODO
 }
 
 std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::vector<ObjInstance>>& objInstances,
@@ -226,9 +286,28 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
 
             if(viewer){
                 viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                         1.0,
+                                                         0.5,
                                                          string("plane_ba_") + to_string(pl),
                                                          viewPort1);
+    
+                pcl::Vertices chullPolygon;
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPointCloud = curObj.getConvexHull(chullPolygon);
+                chullPolygon.vertices.push_back(chullPolygon.vertices.front());
+                viewer->addPolygonMesh<pcl::PointXYZRGB>(chullPointCloud,
+                                                       vector<pcl::Vertices>{chullPolygon},
+                                                       string("polygon_ba_") + to_string(pl),
+                                                       viewPort1);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                         0,
+                                                         1.0,
+                                                         0,
+                                                         string("polygon_ba_") + to_string(pl),
+                                                         viewPort1);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                         0.5,
+                                                         string("polygon_ba_") + to_string(pl),
+                                                         viewPort1);
+                cout << "polygon for plane (pl) " << pl << ", size = " << chullPolygon.vertices.size() << endl;
             }
             for(int cba = ba; cba < objInstances.size(); ++cba){
 
@@ -261,9 +340,48 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
 
                     if(viewer){
                         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                                 1.0,
+                                                                 0.5,
                                                                  string("plane_cba_") + to_string(cpl),
                                                                  viewPort2);
+    
+                        pcl::Vertices chullPolygon;
+                        pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPointCloud = compObj.getConvexHull(chullPolygon);
+                        chullPolygon.vertices.push_back(chullPolygon.vertices.front());
+                        
+                        viewer->addPolygonMesh<pcl::PointXYZRGB>(chullPointCloud,
+                                                               vector<pcl::Vertices>{chullPolygon},
+                                                               string("polygon_cba_") + to_string(cpl),
+                                                               viewPort2);
+                        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                                 0,
+                                                                 1.0,
+                                                                 0,
+                                                                 string("polygon_cba_") + to_string(cpl),
+                                                                 viewPort2);
+                        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                                 0.5,
+                                                                 string("polygon_cba_") + to_string(cpl),
+                                                                 viewPort2);
+                        cout << "polygon for plane (cpl) " << cpl << ", size = " << chullPolygon.vertices.size() << endl;
+    
+                        for(int p = 1; p < chullPolygon.vertices.size(); ++p){
+                            viewer->addLine(chullPointCloud->at(chullPolygon.vertices[p - 1]),
+                                            chullPointCloud->at(chullPolygon.vertices[p]),
+                                            1.0, 0.0, 0.0,
+                                            "cur_line",
+                                            viewPort2);
+                            cout << "point " << chullPointCloud->at(chullPolygon.vertices[p]) << endl;
+    
+                            viewer->resetStoppedFlag();
+                            while (!viewer->wasStopped()){
+                                viewer->spinOnce (100);
+                                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                            }
+                            
+                            viewer->removeShape("cur_line", viewPort2);
+                            
+//                            cout << "point " << chullPolygon.vertices[p] << endl;
+                        }
                     }
 
                     double diff = Matching::planeEqDiffLogMap(curObj, compObj, transform);
@@ -279,6 +397,7 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
 //                            cout << "intScore = " << intScore << endl;
                             // if intersection of convex hulls is big enough
                             if(intScore > 0.3){
+                                cout << "merging planes" << endl;
                                 // join the objects
                                 ufSets.unionSets(planeIds[ba][pl], planeIds[cba][cpl]);
                             }
@@ -286,20 +405,21 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                     }
 
                     if(viewer){
-//                        viewer->resetStoppedFlag();
-//
-////                        viewer->initCameraParameters();
-////                        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-//                        while (!viewer->wasStopped()){
-//                            viewer->spinOnce (100);
-//                            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//                        }
+                        viewer->resetStoppedFlag();
+
+//                        viewer->initCameraParameters();
+//                        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+                        while (!viewer->wasStopped()){
+                            viewer->spinOnce (100);
+                            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                        }
 
 
                         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
                                                                  shadingLevel,
                                                                  string("plane_cba_") + to_string(cpl),
                                                                  viewPort2);
+                        viewer->removePolygonMesh(string("polygon_cba_") + to_string(cpl), viewPort2);
                     }
                 }
             }
@@ -309,6 +429,7 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                          shadingLevel,
                                                          string("plane_ba_") + to_string(pl),
                                                          viewPort1);
+                viewer->removePolygonMesh(string("polygon_ba_") + to_string(pl), viewPort1);
             }
         }
     }
@@ -319,6 +440,10 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
             int setId = ufSets.findSet(planeIds[ba][pl]);
             sets.insert(make_pair(setId, make_pair(ba, pl)));
         }
+    }
+    if(viewer){
+        viewer->removeAllPointClouds();
+        viewer->removeAllShapes();
     }
 //    typedef multimap<int, pair<int, int> >::iterator mmIter;
     for(auto it = sets.begin(); it != sets.end(); ){
@@ -337,8 +462,13 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                             viewPort1,
                                             viewPort2));
         }
-
+        
         it = range.second;
+    
+        if(viewer) {
+            const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = retObjInstances.back().getPoints();
+            viewer->addPointCloud(curPl, string("plane_ret_") + to_string(it->first), viewPort1);
+        }
     }
 
     return retObjInstances;
@@ -425,3 +555,5 @@ ObjInstance ObjInstance::merge(const std::vector<const ObjInstance*>& objInstanc
                         newPoints,
                         newSvs);
 }
+
+

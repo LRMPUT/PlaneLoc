@@ -245,8 +245,7 @@ int FileGrabber::getFrame(cv::Mat& rgb,
 			pcl::io::loadPLYFile(string(cloudPaths[nextFrameIdx].c_str()), *pointCloud);
 		}
 	}
-
-	cout << "calling getFrame" << endl;
+	
 	return getFrame(rgb,
 					depth,
 					objInstances,

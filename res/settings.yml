@@ -171,17 +171,19 @@ planeSlam:
     - 0.0
     - 1.0
 
+  useLines: 0
+
   globalMatching: 0
 
   incrementalMatching: 1
 
-  drawVis: 0
+  drawVis: 1
 
   visualizeSegmentation: 1
 
   visualizeMatching: 1
 
-  stopEveryFrame: 0
+  stopEveryFrame: 1
 
   stopWrongFrame: 0
 

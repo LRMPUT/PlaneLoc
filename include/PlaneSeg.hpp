@@ -32,6 +32,7 @@
 #include <pcl/common/common_headers.h>
 
 #include "UnionFind.h"
+#include "Types.hpp"
 
 class PlaneSeg {
 public:
@@ -182,6 +183,8 @@ public:
     }
     
     void calcSegProp(bool filter = false);
+    
+    void transform(Vector7d transform);
     
     PlaneSeg merge(const PlaneSeg &planeSeg, UnionFind &sets);
 

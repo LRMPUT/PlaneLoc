@@ -32,6 +32,7 @@
 
 #include <Misc.hpp>
 #include <Exceptions.hpp>
+#include <g2o/types/slam3d/se3quat.h>
 #include "PlaneSeg.hpp"
 
 using namespace std;
@@ -131,6 +132,51 @@ void PlaneSeg::calcSegProp(bool filter){
     }
 }
 
+void PlaneSeg::transform(Vector7d transform) {
+    g2o::SE3Quat transformSE3Quat(transform);
+    Eigen::Matrix4d transformMat = transformSE3Quat.to_homogeneous_matrix();
+    Eigen::Matrix3f R = transformMat.block<3, 3>(0, 0).cast<float>();
+    Eigen::Vector3f t = transformMat.block<3, 1>(0, 3).cast<float>();
+    Eigen::Matrix4f Tinvt = transformMat.inverse().cast<float>();
+    Tinvt = Tinvt.transpose();
+    
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
+    pcl::transformPointCloud(*points, *points, transformMat);
+    
+    // pcl::PointCloud<pcl::Normal>::Ptr normals;
+    // no need to transform
+    
+    //  std::vector<int> origPlaneSegs;
+    // no need to transform
+    
+    // Eigen::Vector3f segNormal;
+    segNormal = R * segNormal;
+    
+    // double segNormalIntDiff;
+    // no need to transform
+    
+    // Eigen::Vector3f segCentroid;
+    segCentroid = R * segCentroid + t;
+    
+    // Eigen::Vector4f segPlaneParams;
+    segPlaneParams = Tinvt * segPlaneParams;
+    
+    // Eigen::Matrix3f segCovar;
+    segCovar = R * segCovar * R.transpose();
+    
+    // float segCurv;
+    // no need to transform
+    
+    // bool normAlignConsistent;
+    // no need to transform
+    
+    // float areaEst;
+    // no need to transform
+
+    // std::vector<int> adjSegs;
+    // no need to transform
+}
+
 PlaneSeg PlaneSeg::merge(const PlaneSeg &planeSeg, UnionFind &sets) {
     PlaneSeg merged;
     int mid = sets.findSet(id);
@@ -170,3 +216,4 @@ PlaneSeg PlaneSeg::merge(const PlaneSeg &planeSeg, UnionFind &sets) {
     
     return merged;
 }
+

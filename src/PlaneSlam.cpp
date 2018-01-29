@@ -111,10 +111,9 @@ void PlaneSlam::run(){
 	static constexpr int frameRate = 30;
 	int framesToSkip = 0;
 	int framesSkipped = 0;
-	while((fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose) >= 0) &&
-		  (++framesSkipped < framesToSkip))
+	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose) >= 0))
 	{
-
+        ++framesSkipped;
 	}
 
     cout << "reading global settings" << endl;
@@ -129,6 +128,7 @@ void PlaneSlam::run(){
 	bool framesFromPly = bool((int)settings["planeSlam"]["framesFromPly"]);
     bool incrementalMatching = bool((int)settings["planeSlam"]["incrementalMatching"]);
     bool globalMatching = bool((int)settings["planeSlam"]["globalMatching"]);
+    bool useLines = bool((int)settings["planeSlam"]["useLines"]);
 
     double poseDiffThresh = (double)settings["planeSlam"]["poseDiffThresh"];
 
@@ -164,6 +164,12 @@ void PlaneSlam::run(){
             inputResIncrFile.open("../output/res_incr.in");
         }
 	}
+    
+    // variables used for accumulation
+    vector<ObjInstance> accObjInstances;
+    Vector7d accStartFramePose;
+    int accFrames = 50;
+ 
 //	ofstream logFile("../output/log.out");
 	int curFrameIdx;
     cout << "Starting the loop" << endl;
@@ -179,7 +185,8 @@ void PlaneSlam::run(){
 
 		viewer->removeAllPointClouds();
 		viewer->removeAllShapes();
-
+        
+        bool localize = true;
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud;
         pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudNormals;
@@ -244,7 +251,18 @@ void PlaneSlam::run(){
 
 		}
         if(drawVis) {
-		    viewer->addPointCloud(pointCloud, "cloud", v1);
+//		    viewer->addPointCloud(pointCloud, "cloud", v1);
+    
+//            cout << endl << "whole cloud" << endl << endl;
+//            viewer->resetStoppedFlag();
+//            viewer->initCameraParameters();
+//            viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
+//            viewer->spinOnce(100);
+//            while (!viewer->wasStopped()) {
+//                viewer->spinOnce(100);
+//                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//            }
+//            viewer->close();
         }
 
 		if(!pointCloud->empty()){
@@ -287,7 +305,7 @@ void PlaneSlam::run(){
 
             vector<LineSeg> lineSegs;
             
-            {
+            if(useLines){
                 viewer->addPointCloud(pointCloud, "cloud_raw", v2);
                 
                 LineDet::detectLineSegments(settings,
@@ -300,11 +318,38 @@ void PlaneSlam::run(){
                                             v1,
                                             v2);
             }
-
+            
+            // if not the last frame for accumulation
+            if(curFrameIdx % accFrames != accFrames - 1){
+                localize = false;
+            }
+            
+            // if current frame starts accumulation
+            if(curFrameIdx % accFrames == 0) {
+                cout << endl << "starting new accumulation" << endl << endl;
+                
+                accObjInstances = curObjInstances;
+                accStartFramePose = pose;
+            }
+            else{
+                cout << endl << "merging curObjInstances" << endl << endl;
+                
+                g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(accStartFramePose).inverse() * g2o::SE3Quat(pose);
+                Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
+                for(ObjInstance &curObj : curObjInstances){
+                    accObjInstances.push_back(curObj);
+                    accObjInstances.back().transform(accPoseIncr);
+                }
+                
+                accObjInstances = ObjInstance::mergeObjInstances(vector<vector<ObjInstance>>{accObjInstances},
+                                                                 viewer,
+                                                                 v1,
+                                                                 v2);
+            }
+            
 			bool stopFlag = stopEveryFrame;
 
-
-            if(globalMatching){
+            if(globalMatching && localize){
                 RecCode curRecCode;
                 g2o::SE3Quat gtTransSE3Quat = g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
                 Vector7d predTrans;
@@ -358,7 +403,7 @@ void PlaneSlam::run(){
                 }
             }
             
-            if(incrementalMatching && !prevObjInstances.empty()){
+            if(incrementalMatching && !prevObjInstances.empty() && localize){
                 RecCode curRecCode;
                 g2o::SE3Quat gtTransSE3Quat = g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
                 Vector7d predTrans;
@@ -415,6 +460,8 @@ void PlaneSlam::run(){
 
 
             if(drawVis) {
+                cout << "drawing visualization" << endl;
+                
                 viewer->resetStoppedFlag();
                 viewer->initCameraParameters();
                 viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
