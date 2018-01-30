@@ -43,6 +43,9 @@ find_package(G2O REQUIRED)
 include_directories(${G2O_INCLUDE_DIR})
 link_directories(${G2O_LIBRARY_DIRS})
 
+#CGAL
+find_package(CGAL REQUIRED COMPONENTS)
+
 #-------------------------------------------------------
 
 set(PlaneSlam_SOURCES
@@ -74,7 +77,8 @@ target_link_libraries(unitTests
         ${PCL_LIBRARIES}
         ${OPENGM_LIBRARIES}
         ${G2O_TYPES_SLAM3D}
-        ${G2O_TYPES_SBA})
+        ${G2O_TYPES_SBA}
+        ${CGAL_LIBRARIES})
 
 #-------------------------------------------------------
 
@@ -101,6 +105,9 @@ if(BUILD_DEMO_PLANESLAM)
 					${demoPlaneSlam_SOURCES})
 	target_link_libraries(demoPlaneSlam
 						PlaneSlam
+                        ${CGAL_LIBRARIES}
+                        ${CGAL_3RD_PARTY_LIBRARIES}
+                        gmp
 						${OpenCV_LIBS}
 						${Boost_LIBRARIES}
 						${PCL_LIBRARIES}

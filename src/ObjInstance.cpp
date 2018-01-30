@@ -23,6 +23,8 @@
 
 #include <thread>
 #include <chrono>
+#include <vector>
+#include <list>
 
 //#include <pcl/sample_consensus/model_types.h>
 #include <pcl/filters/project_inliers.h>
@@ -37,6 +39,11 @@
 #include "Types.hpp"
 #include "Matching.hpp"
 #include "UnionFind.h"
+
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/algorithm.h>
+#include <CGAL/Delaunay_triangulation_2.h>
+#include <CGAL/Alpha_shape_2.h>
 
 using namespace std;
 
@@ -135,18 +142,148 @@ ObjInstance::ObjInstance(int iid,
 	proj.setInputCloud(points);
 	proj.setModelCoefficients(mdlCoeff);
 	proj.filter(*pointsProj);
-
-	pcl::ConcaveHull<pcl::PointXYZRGB> chull;
-    chull.setAlpha(0.5);
-    chull.setDimension(2);
-//	chull.setComputeAreaVolume(true);
-	vector<pcl::Vertices> polygon;
-	chull.setInputCloud(pointsProj);
-	chull.reconstruct(*convexHull, polygon);
-	if(polygon.size() != 1){
-//		throw PLANE_EXCEPTION("Error - 3D convex hull");
-	}
-	convexHullPolygon = polygon[0];
+    
+    {
+        typedef CGAL::Exact_predicates_inexact_constructions_kernel  K;
+        typedef K::FT                                                FT;
+        typedef K::Point_2                                           Point;
+        typedef K::Segment_2                                         Segment;
+        typedef CGAL::Alpha_shape_vertex_base_2<K>                   Vb;
+        typedef CGAL::Alpha_shape_face_base_2<K>                     Fb;
+        typedef CGAL::Triangulation_data_structure_2<Vb,Fb>          Tds;
+        typedef CGAL::Delaunay_triangulation_2<K,Tds>                Triangulation_2;
+        typedef CGAL::Alpha_shape_2<Triangulation_2>                 Alpha_shape_2;
+        typedef Alpha_shape_2::Alpha_shape_edges_iterator            Alpha_shape_edges_iterator;
+        typedef Alpha_shape_2::Alpha_shape_vertices_iterator         Alpha_shape_vertices_iterator;
+        
+        Eigen::Vector3d plNormal = normal.head<3>();
+        double plD = normal(3);
+    
+        // point on plane nearest to origin
+        Eigen::Vector3d origin = plNormal * (-plD);
+        Eigen::Vector3d xAxis, yAxis;
+        //if normal vector is not parallel to global x axis
+        if(plNormal.cross(Eigen::Vector3d(1.0, 0.0, 0.0)).norm() > 1e-2){
+            // plane x axis as a cross product - always perpendicular to normal vector
+            xAxis = plNormal.cross(Eigen::Vector3d(1.0, 0.0, 0.0));
+            xAxis.normalize();
+            yAxis = plNormal.cross(xAxis);
+        }
+        else{
+            xAxis = plNormal.cross(Eigen::Vector3d(0.0, 1.0, 0.0));
+            xAxis.normalize();
+            yAxis = plNormal.cross(xAxis);
+        }
+    
+//        if(viewer){
+//            Eigen::Affine3f trans = Eigen::Affine3f::Identity();
+//            trans.matrix().block<3, 1>(0, 3) = origin.cast<float>();
+//            trans.matrix().block<3, 1>(0, 0) = xAxis.cast<float>();
+//            trans.matrix().block<3, 1>(0, 1) = yAxis.cast<float>();
+//            trans.matrix().block<3, 1>(0, 2) = plNormal.cast<float>();
+//            //		trans.fromPositionOrientationScale(, rot, 1.0);
+//            viewer->addCoordinateSystem(0.5, trans, "plane coord", viewPort2);
+//
+//            viewer->initCameraParameters();
+//            viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+//        }
+//	cout << "chull1->size() = " << chull1->size() << endl;
+//	cout << "poly1.vertices = " << poly1.vertices << endl;
+//	cout << "chull2->size() = " << chull2->size() << endl;
+//	cout << "poly2.vertices = " << poly2.vertices << endl;
+        
+        list<Point> points;
+        for(int i = 0; i < pointsProj->size(); ++i){
+            Eigen::Vector3d chPt = pointsProj->at(i).getVector3fMap().cast<double>();
+            Point projPt((chPt - origin).dot(xAxis),
+                         (chPt - origin).dot(yAxis));
+            points.push_back(projPt);
+        }
+        
+        
+        
+    
+        Alpha_shape_2 A(points.begin(), points.end(),
+                        FT(1),
+                        Alpha_shape_2::GENERAL);
+        cout << "alpha = " << A.get_alpha() << endl;
+//        std::vector<Segment> segments;
+//        auto outIt = std::back_inserter(segments);
+//        Alpha_shape_edges_iterator it = A.alpha_shape_edges_begin(),
+//                                   end = A.alpha_shape_edges_end();
+//        for( ; it!=end; ++it, ++outIt) {
+//            *outIt = A.segment(*it);
+//        }
+        std::vector<Point> alphaPoints;
+        auto outIt = std::back_inserter(alphaPoints);
+        Alpha_shape_vertices_iterator it = A.alpha_shape_vertices_begin(),
+                end = A.alpha_shape_vertices_end();
+        for( ; it!=end; ++it, ++outIt) {
+            //TODO
+//            *outIt = it->;
+        }
+        for(int p = 0; p < alphaPoints.size(); ++p){
+            Point pt = alphaPoints[p];
+            
+            Eigen::Vector2d curPt(pt.x(), pt.y());
+            cout << "curPt = " << curPt.transpose() << endl;
+            
+            pcl::PointXYZRGB curPt3d;
+            Eigen::Vector3d curCoord = origin + curPt.x() * xAxis + curPt.y() * yAxis;
+            curPt3d.getVector3fMap() = curCoord.cast<float>();
+            curPt3d.r = 255;
+            curPt3d.g = 255;
+            curPt3d.b = 255;
+            convexHull->push_back(curPt3d);
+            convexHullPolygon.vertices.push_back(convexHull->size() - 1);
+        }
+        
+//        Eigen::Vector2d prevPtTgt(std::numeric_limits<double>::max(),
+//                                std::numeric_limits<double>::max());
+//        for(int s = 0; s < segments.size(); ++s){
+//            Point src = segments[s].source();
+//            Point tgt = segments[s].target();
+//
+//            Eigen::Vector2d curPtSrc(src.x(), src.y());
+//            Eigen::Vector2d curPtTgt(tgt.x(), tgt.y());
+//            cout << "curPtSrc = " << curPtSrc.transpose() << endl;
+//            cout << "curPtTgt = " << curPtTgt.transpose() << endl;
+//
+//            if(prevPtTgt != curPtSrc){
+//                pcl::PointXYZRGB curPtSrc3d;
+//                Eigen::Vector3d curCoordSrc = origin + curPtSrc.x() * xAxis + curPtSrc.y() * yAxis;
+//                curPtSrc3d.getVector3fMap() = curCoordSrc.cast<float>();
+//                curPtSrc3d.r = 255;
+//                curPtSrc3d.g = 255;
+//                curPtSrc3d.b = 255;
+//                convexHull->push_back(curPtSrc3d);
+//                convexHullPolygon.vertices.push_back(convexHull->size() - 1);
+//            }
+//            {
+//                pcl::PointXYZRGB curPtTgt3d;
+//                Eigen::Vector3d curCoordTgt = origin + curPtTgt.x() * xAxis + curPtTgt.y() * yAxis;
+//                curPtTgt3d.getVector3fMap() = curCoordTgt.cast<float>();
+//                curPtTgt3d.r = 255;
+//                curPtTgt3d.g = 255;
+//                curPtTgt3d.b = 255;
+//                convexHull->push_back(curPtTgt3d);
+//                convexHullPolygon.vertices.push_back(convexHull->size() - 1);
+//            }
+//
+//            prevPtTgt = curPtTgt;
+//        }
+    }
+//	pcl::ConcaveHull<pcl::PointXYZRGB> chull;
+//    chull.setAlpha(0.5);
+//    chull.setDimension(2);
+////	chull.setComputeAreaVolume(true);
+//	vector<pcl::Vertices> polygon;
+//	chull.setInputCloud(pointsProj);
+//	chull.reconstruct(*convexHull, polygon);
+//	if(polygon.size() != 1){
+////		throw PLANE_EXCEPTION("Error - 3D convex hull");
+//	}
+//	convexHullPolygon = polygon[0];
     
     pcl::PointCloud<pcl::PointXYZRGB> chullPoints;
     for(int p = 0; p < convexHullPolygon.vertices.size(); ++p){
@@ -154,7 +291,7 @@ ObjInstance::ObjInstance(int iid,
     }
 	chullArea = pcl::calculatePolygonArea(chullPoints);
 
-    cout << "Number of polygons: " << polygon.size() << endl;
+    cout << "Number of polygons: " << convexHullPolygon.vertices.size() << endl;
     cout << "Polygon area: " << chullArea << endl;
     
 //	Eigen::Vector3d centr(0,0,0);
@@ -293,6 +430,10 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                 pcl::Vertices chullPolygon;
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPointCloud = curObj.getConvexHull(chullPolygon);
                 chullPolygon.vertices.push_back(chullPolygon.vertices.front());
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
+                for(int p = 0; p < chullPolygon.vertices.size(); ++p){
+                    chullPoints->push_back(chullPointCloud->at(chullPolygon.vertices[p]));
+                }
                 viewer->addPolygonMesh<pcl::PointXYZRGB>(chullPointCloud,
                                                        vector<pcl::Vertices>{chullPolygon},
                                                        string("polygon_ba_") + to_string(pl),
@@ -307,6 +448,12 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                          0.5,
                                                          string("polygon_ba_") + to_string(pl),
                                                          viewPort1);
+                viewer->addPolygon<pcl::PointXYZRGB>(chullPoints,
+                                   1.0,
+                                   0.0,
+                                   0.0,
+                                   string("polyline_ba_") + to_string(pl),
+                                   viewPort1);
                 cout << "polygon for plane (pl) " << pl << ", size = " << chullPolygon.vertices.size() << endl;
             }
             for(int cba = ba; cba < objInstances.size(); ++cba){
@@ -347,6 +494,10 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                         pcl::Vertices chullPolygon;
                         pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPointCloud = compObj.getConvexHull(chullPolygon);
                         chullPolygon.vertices.push_back(chullPolygon.vertices.front());
+                        pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
+                        for(int p = 0; p < chullPolygon.vertices.size(); ++p){
+                            chullPoints->push_back(chullPointCloud->at(chullPolygon.vertices[p]));
+                        }
                         
                         viewer->addPolygonMesh<pcl::PointXYZRGB>(chullPointCloud,
                                                                vector<pcl::Vertices>{chullPolygon},
@@ -362,26 +513,32 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                                  0.5,
                                                                  string("polygon_cba_") + to_string(cpl),
                                                                  viewPort2);
+                        viewer->addPolygon<pcl::PointXYZRGB>(chullPoints,
+                                           1.0,
+                                           0.0,
+                                           0.0,
+                                           string("polyline_cba_") + to_string(cpl),
+                                           viewPort2);
                         cout << "polygon for plane (cpl) " << cpl << ", size = " << chullPolygon.vertices.size() << endl;
     
-                        for(int p = 1; p < chullPolygon.vertices.size(); ++p){
-                            viewer->addLine(chullPointCloud->at(chullPolygon.vertices[p - 1]),
-                                            chullPointCloud->at(chullPolygon.vertices[p]),
-                                            1.0, 0.0, 0.0,
-                                            "cur_line",
-                                            viewPort2);
-                            cout << "point " << chullPointCloud->at(chullPolygon.vertices[p]) << endl;
-    
-                            viewer->resetStoppedFlag();
-                            while (!viewer->wasStopped()){
-                                viewer->spinOnce (100);
-                                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                            }
-                            
-                            viewer->removeShape("cur_line", viewPort2);
-                            
-//                            cout << "point " << chullPolygon.vertices[p] << endl;
-                        }
+//                        for(int p = 1; p < chullPolygon.vertices.size(); ++p){
+//                            viewer->addLine(chullPointCloud->at(chullPolygon.vertices[p - 1]),
+//                                            chullPointCloud->at(chullPolygon.vertices[p]),
+//                                            1.0, 0.0, 0.0,
+//                                            "cur_line",
+//                                            viewPort2);
+//                            cout << "point " << chullPointCloud->at(chullPolygon.vertices[p]) << endl;
+//
+//                            viewer->resetStoppedFlag();
+//                            while (!viewer->wasStopped()){
+//                                viewer->spinOnce (100);
+//                                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//                            }
+//
+//                            viewer->removeShape("cur_line", viewPort2);
+//
+////                            cout << "point " << chullPolygon.vertices[p] << endl;
+//                        }
                     }
 
                     double diff = Matching::planeEqDiffLogMap(curObj, compObj, transform);
@@ -420,6 +577,7 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                                  string("plane_cba_") + to_string(cpl),
                                                                  viewPort2);
                         viewer->removePolygonMesh(string("polygon_cba_") + to_string(cpl), viewPort2);
+                        viewer->removeShape(string("polyline_cba_") + to_string(cpl), viewPort2);
                     }
                 }
             }
@@ -430,6 +588,7 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                          string("plane_ba_") + to_string(pl),
                                                          viewPort1);
                 viewer->removePolygonMesh(string("polygon_ba_") + to_string(pl), viewPort1);
+                viewer->removeShape(string("polyline_ba_") + to_string(pl), viewPort1);
             }
         }
     }
