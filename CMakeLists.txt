@@ -43,8 +43,18 @@ find_package(G2O REQUIRED)
 include_directories(${G2O_INCLUDE_DIR})
 link_directories(${G2O_LIBRARY_DIRS})
 
-#CGAL
-find_package(CGAL REQUIRED COMPONENTS)
+# CGAL and its components
+find_package( CGAL QUIET COMPONENTS  )
+
+if ( NOT CGAL_FOUND )
+
+	message(STATUS "This project requires the CGAL library, and will not be compiled.")
+	return()
+
+endif()
+
+# include helper file
+include( ${CGAL_USE_FILE} )
 
 #-------------------------------------------------------
 
@@ -107,7 +117,6 @@ if(BUILD_DEMO_PLANESLAM)
 						PlaneSlam
                         ${CGAL_LIBRARIES}
                         ${CGAL_3RD_PARTY_LIBRARIES}
-                        gmp
 						${OpenCV_LIBS}
 						${Boost_LIBRARIES}
 						${PCL_LIBRARIES}
