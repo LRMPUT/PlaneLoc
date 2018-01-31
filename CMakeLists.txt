@@ -61,15 +61,16 @@ include( ${CGAL_USE_FILE} )
 set(PlaneSlam_SOURCES
 	src/Matching.cpp
 	src/FileGrabber.cpp
-        src/PlaneSegmentation.cpp
+    src/PlaneSegmentation.cpp
 	src/ObjInstance.cpp
 	src/PlaneSlam.cpp
 	src/Map.cpp
 	src/Misc.cpp
 	src/UnionFind.cpp
-		src/PlaneSeg.cpp
+	src/PlaneSeg.cpp
 	src/LineDet.cpp
-	src/LineSeg.cpp)
+	src/LineSeg.cpp
+    src/ConcaveHull.cpp)
 	
 add_library(PlaneSlam
 			${PlaneSlam_SOURCES})
@@ -88,7 +89,8 @@ target_link_libraries(unitTests
         ${OPENGM_LIBRARIES}
         ${G2O_TYPES_SLAM3D}
         ${G2O_TYPES_SBA}
-        ${CGAL_LIBRARIES})
+        ${CGAL_LIBRARIES}
+        ${CGAL_3RD_PARTY_LIBRARIES})
 
 #-------------------------------------------------------
 
@@ -115,14 +117,14 @@ if(BUILD_DEMO_PLANESLAM)
 					${demoPlaneSlam_SOURCES})
 	target_link_libraries(demoPlaneSlam
 						PlaneSlam
-                        ${CGAL_LIBRARIES}
-                        ${CGAL_3RD_PARTY_LIBRARIES}
 						${OpenCV_LIBS}
 						${Boost_LIBRARIES}
 						${PCL_LIBRARIES}
 						${OPENGM_LIBRARIES}
 						${G2O_TYPES_SLAM3D}
-						${G2O_TYPES_SBA})
+						${G2O_TYPES_SBA}
+						${CGAL_LIBRARIES}
+						${CGAL_3RD_PARTY_LIBRARIES})
 					
 endif(BUILD_DEMO_PLANESLAM)
 			

@@ -38,6 +38,7 @@
 
 #include "PlaneSeg.hpp"
 #include "LineSeg.hpp"
+#include "ConcaveHull.hpp"
 
 // only planes in a current version
 class ObjInstance{
@@ -99,29 +100,29 @@ public:
 		return curv;
 	}
 	
-	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull() const {
-		return convexHull;
-	}
-
-	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull(pcl::Vertices& polygon) const {
-		polygon = convexHullPolygon;
-		return convexHull;
-	}
-
-	inline double getConvexHullArea(){
-		return chullArea;
-	}
-
-	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull(pcl::Vertices& polygon,
-																	double& area) const {
-		polygon = convexHullPolygon;
-		area = chullArea;
-		return convexHull;
-	}
+//	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull() const {
+//		return convexHull;
+//	}
+//
+//	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull(pcl::Vertices& polygon) const {
+//		polygon = convexHullPolygon;
+//		return convexHull;
+//	}
+//
+//	inline double getConvexHullArea(){
+//		return chullArea;
+//	}
+//
+//	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull(pcl::Vertices& polygon,
+//																	double& area) const {
+//		polygon = convexHullPolygon;
+//		area = chullArea;
+//		return convexHull;
+//	}
     
-    inline const std::vector<LineSeg> &getLineSegs() const {
-        return lineSegs;
-    }
+    inline const ConcaveHull &getHull() const {
+        return hull;
+	}
     
     void transform(Vector7d transform);
     
@@ -163,11 +164,13 @@ private:
     
     float curv;
 
-	double chullArea;
+//	double chullArea;
+//
+//	pcl::PointCloud<pcl::PointXYZRGB>::Ptr convexHull;
+//
+//	pcl::Vertices convexHullPolygon;
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr convexHull;
-
-	pcl::Vertices convexHullPolygon;
+    ConcaveHull hull;
 	
 	std::vector<LineSeg> lineSegs;
 };
