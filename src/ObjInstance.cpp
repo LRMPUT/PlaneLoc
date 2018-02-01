@@ -28,8 +28,7 @@
 
 //#include <pcl/sample_consensus/model_types.h>
 #include <pcl/filters/project_inliers.h>
-#include <pcl/surface/convex_hull.h>
-#include <pcl/surface/concave_hull.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/pca.h>
 
@@ -39,14 +38,6 @@
 #include "Types.hpp"
 #include "Matching.hpp"
 #include "UnionFind.h"
-
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/algorithm.h>
-#include <CGAL/Delaunay_triangulation_2.h>
-#include <CGAL/Alpha_shape_2.h>
-#include <CGAL/IO/io.h>
-#include <CGAL/Polygon_2.h>
-#include <CGAL/Polyline_simplification_2/simplify.h>
 
 using namespace std;
 
@@ -447,6 +438,11 @@ ObjInstance ObjInstance::merge(const std::vector<const ObjInstance*>& objInstanc
         proj.setInputCloud(objInstances[o]->getPoints());
         proj.setModelCoefficients(mdlCoeff);
         proj.filter(*pointsProj);
+    
+        pcl::VoxelGrid<pcl::PointXYZRGB> downsamp;
+        downsamp.setInputCloud(pointsProj);
+        downsamp.setLeafSize (0.01f, 0.01f, 0.01f);
+        downsamp.filter(*pointsProj);
 
         const vector<PlaneSeg>& svs = objInstances[o]->getSvs();
 

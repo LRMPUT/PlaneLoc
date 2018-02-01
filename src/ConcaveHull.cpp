@@ -9,6 +9,7 @@
 #include <pcl/ModelCoefficients.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/filters/project_inliers.h>
+#include <pcl/filters/voxel_grid.h>
 #include <g2o/types/slam3d/se3quat.h>
 #include <pcl/common/transforms.h>
 #include <pcl/visualization/pcl_visualizer.h>
@@ -36,6 +37,11 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
     proj.setInputCloud(points3d);
     proj.setModelCoefficients(mdlCoeff);
     proj.filter(*points3dProj);
+    
+    pcl::VoxelGrid<pcl::PointXYZRGB> downsamp;
+    downsamp.setInputCloud(points3dProj);
+    downsamp.setLeafSize (0.01f, 0.01f, 0.01f);
+    downsamp.filter(*points3dProj);
     
     plNormal = planeEq.head<3>();
     plD = planeEq(3);

@@ -39,6 +39,36 @@ using namespace std;
 
 void PlaneSeg::calcSegProp(bool filter){
     
+    if(filter && points->size() >= 3) {
+        //filter out outliers
+        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        // Create the segmentation object
+        pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+        // Optional
+//        seg.setOptimizeCoefficients (true);
+        // Mandatory
+        seg.setModelType(pcl::SACMODEL_PLANE);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setDistanceThreshold(0.025);
+        
+        seg.setInputCloud(points);
+        seg.segment(*inliers, *coefficients);
+        
+        if (inliers->indices.size() < 3) {
+            PLANE_EXCEPTION("Could not estimate a planar model for the given dataset.");
+        }
+        
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr filteredPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::PointCloud<pcl::Normal>::Ptr filteredNormals(new pcl::PointCloud<pcl::Normal>());
+        for (auto it = inliers->indices.begin(); it != inliers->indices.end(); ++it) {
+            filteredPoints->push_back(points->at(*it));
+            filteredNormals->push_back(normals->at(*it));
+        }
+        points->swap(*filteredPoints);
+        normals->swap(*filteredNormals);
+    }
+    
     if(points->size() < 3){
         segCentroid = Eigen::Vector3f::Zero();
         segCovar = Eigen::Matrix3f::Zero();
@@ -48,36 +78,6 @@ void PlaneSeg::calcSegProp(bool filter){
         areaEst = 0;
     }
     else {
-        if(filter) {
-            //filter out outliers
-            pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-            pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-            // Create the segmentation object
-            pcl::SACSegmentation<pcl::PointXYZRGB> seg;
-            // Optional
-//        seg.setOptimizeCoefficients (true);
-            // Mandatory
-            seg.setModelType(pcl::SACMODEL_PLANE);
-            seg.setMethodType(pcl::SAC_RANSAC);
-            seg.setDistanceThreshold(0.025);
-    
-            seg.setInputCloud(points);
-            seg.segment(*inliers, *coefficients);
-    
-            if (inliers->indices.size() == 0) {
-                PLANE_EXCEPTION("Could not estimate a planar model for the given dataset.");
-            }
-    
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr filteredPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
-            pcl::PointCloud<pcl::Normal>::Ptr filteredNormals(new pcl::PointCloud<pcl::Normal>());
-            for (auto it = inliers->indices.begin(); it != inliers->indices.end(); ++it) {
-                filteredPoints->push_back(points->at(*it));
-                filteredNormals->push_back(normals->at(*it));
-            }
-            points->swap(*filteredPoints);
-            normals->swap(*filteredNormals);
-        }
-    
         pcl::PCA<pcl::PointXYZRGB> pca;
         pca.setInputCloud(points);
     

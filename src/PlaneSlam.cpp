@@ -305,6 +305,8 @@ void PlaneSlam::run(){
 
             vector<LineSeg> lineSegs;
             
+            bool stopFlag = stopEveryFrame;
+            
             if(useLines){
                 viewer->addPointCloud(pointCloud, "cloud_raw", v2);
                 
@@ -322,6 +324,10 @@ void PlaneSlam::run(){
             // if not the last frame for accumulation
             if(curFrameIdx % accFrames != accFrames - 1){
                 localize = false;
+            }
+            
+            if(curFrameIdx % accFrames == accFrames - 2){
+                stopFlag = true;
             }
             
             // if current frame starts accumulation
@@ -347,7 +353,6 @@ void PlaneSlam::run(){
                                                                  v2*/);
             }
             
-			bool stopFlag = stopEveryFrame;
 
             if(globalMatching && localize){
                 RecCode curRecCode;
