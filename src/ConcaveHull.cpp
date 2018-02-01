@@ -42,18 +42,18 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
     
     computeFrame();
     
-    list<Point> points2d;
+    list<Point_2ie> points2d;
     for(int i = 0; i < points3dProj->size(); ++i){
-        points2d.push_back(point3dTo2d(points3dProj->at(i).getVector3fMap().cast<double>()));
+        points2d.push_back(point3dTo2die(points3dProj->at(i).getVector3fMap().cast<double>()));
     }
     
     
     Alpha_shape_2 A(points2d.begin(), points2d.end(),
-                    FT(0.05),
+                    FTie(0.05),
                     Alpha_shape_2::GENERAL);
-    cout << "alpha = " << A.get_alpha() << endl;
+//    cout << "alpha = " << A.get_alpha() << endl;
 
-    std::vector<Segment> segments;
+    std::vector<Segment_2ie> segments;
     auto outIt = std::back_inserter(segments);
     Alpha_shape_edges_iterator it = A.alpha_shape_edges_begin(),
             end = A.alpha_shape_edges_end();
@@ -65,8 +65,8 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
     }
     
     {
-        multimap<Point, int> tgtToIdx;
-        multimap<Point, int> srcToIdx;
+        multimap<Point_2ie, int> tgtToIdx;
+        multimap<Point_2ie, int> srcToIdx;
         for (int s = 0; s < segments.size(); ++s) {
             
             
@@ -94,7 +94,7 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
 
 //        double bestArea = 0.0;
         vector<bool> isVisited(segments.size(), false);
-        cout << "starting" << endl;
+//        cout << "starting" << endl;
         for (int s = 0; s < segments.size(); ++s) {
             if (!isVisited[s]) {
                 
@@ -146,20 +146,24 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
                     }
 
 //                        vector<Segment> curSegments;
-                    Polygon_2 poly;
+                    Polygon_2ie poly;
                     for (auto it = curVisited.rbegin(); it != curVisited.rend(); ++it) {
-                        const Segment &curSegment = segments[*it];
+                        const Segment_2ie &curSegment = segments[*it];
                         poly.push_back(curSegment.target());
                     }
                     
                     poly = CGAL::Polyline_simplification_2::simplify(poly,
                                                                      Cost(),
                                                                      Stop(0.05 * 0.05));
-                    double area = poly.area();
-                    cout << "area = " << area << endl;
+                    double area = CGAL::to_double(poly.area());
+//                    cout << "area = " << area << endl;
 //                        cout << curSegments.size() << "/" << segments.size() << endl;
                     if (abs(area) > 0.1) {
-                        polygons.push_back(poly);
+                        Polygon_2 polye;
+                        for(int pt = 0; pt < poly.size(); ++pt){
+                            polye.push_back(Point_2(poly[pt].x(), poly[pt].y()));
+                        }
+                        polygons.push_back(polye);
                         areas.push_back(abs(area));
                         totalArea += abs(area);
                     }
@@ -171,7 +175,7 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
         polygons3d.emplace_back(new pcl::PointCloud<pcl::PointXYZRGB>());
         for (int s = 0; s < polygons[p].size(); ++s) {
 //                Point src = polygons[p][s];
-            Point tgt = polygons[p][s];
+            Point_2 tgt = polygons[p][s];
 
 //            Eigen::Vector2d curPtTgt(tgt.x(), tgt.y());
 
@@ -209,8 +213,9 @@ ConcaveHull::ConcaveHull(const vector<ConcaveHull::Polygon_2> &polygons,
     computeFrame();
     
     for(const Polygon_2 &curPoly : polygons){
-        areas.push_back(abs(curPoly.area()));
-        totalArea += abs(curPoly.area());
+        double area = CGAL::to_double(curPoly.area());
+        areas.push_back(abs(area));
+        totalArea += abs(area);
     }
 }
 
@@ -219,7 +224,7 @@ ConcaveHull ConcaveHull::transform(Vector7d transform) const {
     Eigen::Matrix3d R = transformMat.block<3, 3>(0, 0);
     Eigen::Vector3d t = transformMat.block<3, 1>(0, 3);
     Eigen::Matrix4d Tinvt = transformMat.inverse();
-    Tinvt = Tinvt.transpose();
+    Tinvt.transposeInPlace();
     
     Eigen::Vector4d transPlaneEq;
     transPlaneEq.head<3>() = plNormal;
@@ -228,11 +233,12 @@ ConcaveHull ConcaveHull::transform(Vector7d transform) const {
     transPlaneEq = Tinvt * transPlaneEq;
     
     Eigen::Vector3d transOrigin = R * origin + t;
-    Eigen::Vector3d transXAxis = R * xAxis + t;
-    Eigen::Vector3d transYAxis = R * yAxis + t;
+    Eigen::Vector3d transXAxis = R * xAxis;
+    Eigen::Vector3d transYAxis = R * yAxis;
     
     vector<Polygon_2> transPolygons;
     vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> transPolygons3d;
+//    auto it = polygons.begin();
     for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPoly3d : polygons3d){
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr transPoly3d(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::transformPointCloud(*curPoly3d, *transPoly3d, transformMat);
@@ -240,10 +246,14 @@ ConcaveHull ConcaveHull::transform(Vector7d transform) const {
         Polygon_2 transPoly;
         for(auto it = transPoly3d->begin(); it != transPoly3d->end(); ++it){
             Eigen::Vector3d point3d = it->getVector3fMap().cast<double>();
-            transPoly.push_back(Point((point3d - transOrigin).dot(transXAxis),
+            transPoly.push_back(Point_2((point3d - transOrigin).dot(transXAxis),
                                       (point3d - transOrigin).dot(transYAxis)));
         }
+//        cout << "polygons.area() = " << it->area() << endl;
+//        cout << "transPoly.area() = " << transPoly.area() << endl;
+//        ++it;
         transPolygons.push_back(transPoly);
+        transPolygons3d.push_back(transPoly3d);
     }
 
 
@@ -256,7 +266,9 @@ ConcaveHull ConcaveHull::transform(Vector7d transform) const {
                        transYAxis);
 }
 
-ConcaveHull ConcaveHull::intersect(const ConcaveHull &other) const {
+ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
+                                   double areaThresh) const
+{
     const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &otherPolygons3d = other.getPolygons3d();
     vector<Polygon_2> otherPolygonsProj;
     // project points onto plane of this hull
@@ -270,17 +282,55 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other) const {
     
     vector<Polygon_2> resPolygons;
     vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> resPolygons3d;
-    for(const Polygon_2 &p1 : polygons){
-        for(const Polygon_2 &p2 : otherPolygonsProj){
-            list<Polygon_holes_2> inter;
-            CGAL::intersection(p1, p2, back_inserter(inter));
-            for(Polygon_holes_2 &pi : inter){
-                if(pi.outer_boundary().area() > 0.1){
-                    resPolygons.push_back(pi.outer_boundary());
-                }
+    {
+        list<Polygon_holes_2> inter;
+        CGAL::intersection(polygons.begin(), polygons.end(),
+                           otherPolygonsProj.begin(), otherPolygonsProj.end(),
+                           back_inserter(inter));
+        for(Polygon_holes_2 &pi : inter){
+            if(pi.outer_boundary().area() > areaThresh){
+//                    Polygon_2 resPoly;
+//                    const Polygon_2e &curPolyInter = pi.outer_boundary();
+//                    cout << "curPolyInter.area() = " << CGAL::to_double(curPolyInter.area()) << endl;
+//                    for(int pt = 0; pt < curPolyInter.size(); ++pt){
+//                        resPoly.push_back(Point_2(CGAL::to_double(curPolyInter[pt].x()),
+//                                                CGAL::to_double(curPolyInter[pt].y())));
+//                    }
+//                    resPolygons.push_back(resPoly);
+                resPolygons.push_back(pi.outer_boundary());
             }
         }
     }
+    
+//    for(const Polygon_2 &p1 : polygons){
+//        for(const Polygon_2 &p2 : otherPolygonsProj){
+////            cout << "intersecting" << endl;
+//            // intersection has to be done using exact kernel
+//            list<Polygon_holes_2> inter;
+////            Polygon_2e p1e, p2e;
+////            for(int pt1 = 0; pt1 < p1.size(); ++pt1){
+////                p1e.push_back(Point_2e(p1[pt1].x(), p1[pt1].y()));
+////            }
+////            for(int pt2 = 0; pt2 < p2.size(); ++pt2){
+////                p1e.push_back(Point_2e(p2[pt2].x(), p2[pt2].y()));
+////            }
+//            CGAL::intersection(p1, p2, back_inserter(inter));
+////            cout << "end intersecting" << endl;
+//            for(Polygon_holes_2 &pi : inter){
+//                if(pi.outer_boundary().area() > 0.05){
+////                    Polygon_2 resPoly;
+////                    const Polygon_2e &curPolyInter = pi.outer_boundary();
+////                    cout << "curPolyInter.area() = " << CGAL::to_double(curPolyInter.area()) << endl;
+////                    for(int pt = 0; pt < curPolyInter.size(); ++pt){
+////                        resPoly.push_back(Point_2(CGAL::to_double(curPolyInter[pt].x()),
+////                                                CGAL::to_double(curPolyInter[pt].y())));
+////                    }
+////                    resPolygons.push_back(resPoly);
+//                    resPolygons.push_back(pi.outer_boundary());
+//                }
+//            }
+//        }
+//    }
     for(const Polygon_2 &p : resPolygons){
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d(new pcl::PointCloud<pcl::PointXYZRGB>());
         for(int i = 0; i < p.size(); ++i){
@@ -340,6 +390,7 @@ void ConcaveHull::display(pcl::visualization::PCLVisualizer::Ptr viewer,
         for (int p = 0; p < chullVertices.vertices.size(); ++p) {
             chullPoints->push_back(polygons3d[poly]->at(chullVertices.vertices[p]));
         }
+        
         viewer->addPolygonMesh<pcl::PointXYZRGB>(polygons3d[poly],
                                                  vector<pcl::Vertices>{chullVertices},
                                                  string("polygon_") + to_string(reinterpret_cast<size_t>(this)) +
@@ -365,7 +416,7 @@ void ConcaveHull::display(pcl::visualization::PCLVisualizer::Ptr viewer,
                                              "_" + to_string(poly),
                                              vp);
         viewer->addPointCloud(chullPoints,
-                              string("polygon_pc_cba_") + to_string(reinterpret_cast<size_t>(this)) +
+                              string("polygon_pc_") + to_string(reinterpret_cast<size_t>(this)) +
                               "_" + to_string(poly),
                               vp);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
@@ -415,14 +466,21 @@ void ConcaveHull::computeFrame() {
     }
 }
 
-ConcaveHull::Point ConcaveHull::point3dTo2d(const Eigen::Vector3d &point3d) const {
-    return Point((point3d - origin).dot(xAxis),
+ConcaveHull::Point_2 ConcaveHull::point3dTo2d(const Eigen::Vector3d &point3d) const {
+    return Point_2((point3d - origin).dot(xAxis),
                  (point3d - origin).dot(yAxis));
 }
 
-Eigen::Vector3d ConcaveHull::point2dTo3d(const ConcaveHull::Point &point2d) const {
-    return origin + point2d.x() * xAxis + point2d.y() * yAxis;
+ConcaveHull::Point_2ie ConcaveHull::point3dTo2die(const Eigen::Vector3d &point3d) const {
+    return Point_2ie((point3d - origin).dot(xAxis),
+                     (point3d - origin).dot(yAxis));
 }
+
+Eigen::Vector3d ConcaveHull::point2dTo3d(const ConcaveHull::Point_2 &point2d) const {
+    return origin + CGAL::to_double(point2d.x()) * xAxis + CGAL::to_double(point2d.y()) * yAxis;
+}
+
+
 
 
 

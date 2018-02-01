@@ -130,7 +130,7 @@ void ObjInstance::transform(Vector7d transform) {
     Eigen::Matrix4d transformMat = transformSE3Quat.to_homogeneous_matrix();
     Eigen::Matrix3d R = transformMat.block<3, 3>(0, 0);
     Eigen::Matrix4d Tinvt = transformMat.inverse();
-    Tinvt = Tinvt.transpose();
+    Tinvt.transposeInPlace();
     
     // pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
     pcl::transformPointCloud(*points, *points, transformMat);
@@ -162,7 +162,9 @@ void ObjInstance::transform(Vector7d transform) {
     // no need to transform
     
     // std::shared_ptr<ConcaveHull> hull;
+//    cout << "before hull->getTotalArea() = " << hull->getTotalArea() << endl;
     *hull = hull->transform(transform);
+//    cout << "after hull->getTotalArea() = " << hull->getTotalArea() << endl;
     
     // std::vector<LineSeg> lineSegs;
     // TODO
@@ -260,6 +262,8 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                     startCpl = pl + 1;
                 }
                 for(int cpl = startCpl; cpl < objInstances[cba].size(); ++cpl){
+//                    cout << "cpl " << cpl << endl;
+                    
                     const ObjInstance& compObj = objInstances[cba][cpl];
                     Eigen::Vector3d compObjNormal = compObj.getNormal().head<3>();
 
@@ -309,8 +313,15 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                         // if the observed face is the same
                         if(normDot > 0){
                             double intArea = 0.0;
-                            double intScore = Matching::checkConvexHullIntersection(curObj, compObj, transform, intArea);
+                            double intScore = Matching::checkConvexHullIntersection(curObj,
+                                                                                    compObj,
+                                                                                    transform,
+                                                                                    intArea/*,
+                                                                                    viewer,
+                                                                                    viewPort1,
+                                                                                    viewPort2*/);
 //                            cout << "intScore = " << intScore << endl;
+//                            cout << "intArea = " << intArea << endl;
                             // if intersection of convex hulls is big enough
                             if(intScore > 0.3){
                                 cout << "merging planes" << endl;
@@ -359,12 +370,14 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
             sets.insert(make_pair(setId, make_pair(ba, pl)));
         }
     }
-    if(viewer){
-        viewer->removeAllPointClouds();
-        viewer->removeAllShapes();
-    }
+
 //    typedef multimap<int, pair<int, int> >::iterator mmIter;
     for(auto it = sets.begin(); it != sets.end(); ){
+        if(viewer) {
+            viewer->removeAllPointClouds();
+            viewer->removeAllShapes();
+        }
+        
         auto range = sets.equal_range(it->first);
 
         vector<const ObjInstance*> curObjs;
@@ -383,10 +396,10 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
         
         it = range.second;
     
-        if(viewer) {
-            const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = retObjInstances.back().getPoints();
-            viewer->addPointCloud(curPl, string("plane_ret_") + to_string(it->first), viewPort1);
-        }
+//        if(viewer) {
+//            const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = retObjInstances.back().getPoints();
+//            viewer->addPointCloud(curPl, string("plane_ret_") + to_string(it->first), viewPort1);
+//        }
     }
 
     return retObjInstances;

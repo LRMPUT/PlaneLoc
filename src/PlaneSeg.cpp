@@ -138,7 +138,7 @@ void PlaneSeg::transform(Vector7d transform) {
     Eigen::Matrix3f R = transformMat.block<3, 3>(0, 0).cast<float>();
     Eigen::Vector3f t = transformMat.block<3, 1>(0, 3).cast<float>();
     Eigen::Matrix4f Tinvt = transformMat.inverse().cast<float>();
-    Tinvt = Tinvt.transpose();
+    Tinvt.transposeInPlace();
     
     // pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
     pcl::transformPointCloud(*points, *points, transformMat);

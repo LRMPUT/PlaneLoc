@@ -341,10 +341,10 @@ void PlaneSlam::run(){
                     accObjInstances.back().transform(accPoseIncr);
                 }
                 
-                accObjInstances = ObjInstance::mergeObjInstances(vector<vector<ObjInstance>>{accObjInstances},
+                accObjInstances = ObjInstance::mergeObjInstances(vector<vector<ObjInstance>>{accObjInstances}/*,
                                                                  viewer,
                                                                  v1,
-                                                                 v2);
+                                                                 v2*/);
             }
             
 			bool stopFlag = stopEveryFrame;
@@ -460,7 +460,14 @@ void PlaneSlam::run(){
 
 
             if(drawVis) {
-                cout << "drawing visualization" << endl;
+                cout << "visualization" << endl;
+    
+                viewer->removeAllPointClouds();
+                viewer->removeAllShapes();
+                for(int o = 0; o < accObjInstances.size(); ++o){
+                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = accObjInstances[o].getPoints();
+                    viewer->addPointCloud(curPc, "cloud_" + to_string(o), v1);
+                }
                 
                 viewer->resetStoppedFlag();
                 viewer->initCameraParameters();

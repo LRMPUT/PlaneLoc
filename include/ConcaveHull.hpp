@@ -18,24 +18,32 @@
 #include <CGAL/Polyline_simplification_2/simplify.h>
 #include <pcl/impl/point_types.hpp>
 #include <pcl/point_cloud.h>
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include "Types.hpp"
 
 class ConcaveHull {
-    typedef CGAL::Exact_predicates_inexact_constructions_kernel  K;
+    typedef CGAL::Exact_predicates_exact_constructions_kernel  K;
     typedef K::FT                                                FT;
-    typedef K::Point_2                                           Point;
-    typedef K::Segment_2                                         Segment;
-    typedef CGAL::Alpha_shape_vertex_base_2<K>                   Vb;
-    typedef CGAL::Alpha_shape_face_base_2<K>                     Fb;
-    typedef CGAL::Triangulation_data_structure_2<Vb,Fb>          Tds;
-    typedef CGAL::Delaunay_triangulation_2<K,Tds>                Triangulation_2;
-    typedef CGAL::Alpha_shape_2<Triangulation_2>                 Alpha_shape_2;
-    typedef Alpha_shape_2::Alpha_shape_edges_iterator            Alpha_shape_edges_iterator;
-    typedef Alpha_shape_2::Alpha_shape_vertices_iterator         Alpha_shape_vertices_iterator;
+    typedef K::Point_2                                           Point_2;
+    typedef K::Segment_2                                         Segment_2;
     typedef CGAL::Polygon_2<K>                                   Polygon_2;
     typedef CGAL::Polygon_with_holes_2<K>                        Polygon_holes_2;
     typedef CGAL::Polyline_simplification_2::Stop_above_cost_threshold Stop;
     typedef CGAL::Polyline_simplification_2::Squared_distance_cost     Cost;
+    
+    typedef CGAL::Exact_predicates_inexact_constructions_kernel    Kie;
+    typedef Kie::FT                                                FTie;
+    typedef Kie::Point_2                                           Point_2ie;
+    typedef Kie::Segment_2                                         Segment_2ie;
+    typedef CGAL::Polygon_2<Kie>                                   Polygon_2ie;
+    typedef CGAL::Polygon_with_holes_2<Kie>                        Polygon_holes_2ie;
+    typedef CGAL::Alpha_shape_vertex_base_2<Kie>                   Vb;
+    typedef CGAL::Alpha_shape_face_base_2<Kie>                     Fb;
+    typedef CGAL::Triangulation_data_structure_2<Vb,Fb>            Tds;
+    typedef CGAL::Delaunay_triangulation_2<Kie,Tds>                Triangulation_2;
+    typedef CGAL::Alpha_shape_2<Triangulation_2>                 Alpha_shape_2;
+    typedef Alpha_shape_2::Alpha_shape_edges_iterator            Alpha_shape_edges_iterator;
+    typedef Alpha_shape_2::Alpha_shape_vertices_iterator         Alpha_shape_vertices_iterator;
     
 public:
     
@@ -62,7 +70,8 @@ public:
         return totalArea;
     }
 
-    ConcaveHull intersect(const ConcaveHull &other) const;
+    ConcaveHull intersect(const ConcaveHull &other,
+                          double areaThresh = 0.05) const;
     
     ConcaveHull transform(Vector7d transform) const;
     
@@ -80,9 +89,11 @@ public:
 private:
     void computeFrame();
     
-    Point point3dTo2d(const Eigen::Vector3d &point3d) const;
+    Point_2 point3dTo2d(const Eigen::Vector3d &point3d) const;
     
-    Eigen::Vector3d point2dTo3d(const Point &point2d) const;
+    Point_2ie point3dTo2die(const Eigen::Vector3d &point3d) const;
+    
+    Eigen::Vector3d point2dTo3d(const Point_2 &point2d) const;
     
     std::vector<Polygon_2> polygons;
     std::vector<double> areas;

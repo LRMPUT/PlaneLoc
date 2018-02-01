@@ -1736,7 +1736,7 @@ double Matching::checkConvexHullIntersection(const ObjInstance& obj1,
     
     ConcaveHull obj1HullTrans = obj1Hull.transform(transformInv);
     
-    ConcaveHull interHull = obj2Hull.intersect(obj1HullTrans);
+    ConcaveHull interHull = obj2Hull.intersect(obj1HullTrans, 0.0);
     
     intArea = interHull.getTotalArea();
     
@@ -1748,7 +1748,9 @@ double Matching::checkConvexHullIntersection(const ObjInstance& obj1,
 //			intAreaTrans += areaInter;
 
     if(viewer){
-
+        viewer->removeAllPointClouds();
+        viewer->removeAllShapes();
+        
         obj1HullTrans.display(viewer, viewPort1);
         obj2Hull.display(viewer, viewPort1);
         
