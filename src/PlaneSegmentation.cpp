@@ -565,7 +565,7 @@ void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg> &svs,
                                               curPoints,
                                               curSvs);
                     {
-                        if(objInstances.back().getConvexHullArea() < areaThresh){
+                        if(objInstances.back().getHull().getTotalArea() < areaThresh){
                             // remove last element
                             objInstances.erase(objInstances.end() - 1);
                         }

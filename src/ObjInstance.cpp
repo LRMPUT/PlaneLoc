@@ -57,8 +57,7 @@ ObjInstance::ObjInstance(int iid,
 	: id(iid),
 	  type(itype),
 	  points(ipoints),
-	  svs(isvs),
-	  convexHull(new pcl::PointCloud<pcl::PointXYZRGB>())
+	  svs(isvs)
 {
     pcl::PCA<pcl::PointXYZRGB> pca;
     pca.setInputCloud(points);
@@ -123,7 +122,7 @@ ObjInstance::ObjInstance(int iid,
     // normalize paramRep
 	Misc::normalizeAndUnify(paramRep);
 
-    hull = ConcaveHull(points, normal);
+    hull.reset(new ConcaveHull(points, normal));
 }
 
 void ObjInstance::transform(Vector7d transform) {
@@ -162,8 +161,8 @@ void ObjInstance::transform(Vector7d transform) {
     // float curv;
     // no need to transform
     
-    // ConcaveHull hull;
-    hull = ConcaveHull(points, normal);
+    // std::shared_ptr<ConcaveHull> hull;
+    *hull = hull->transform(transform);
     
     // std::vector<LineSeg> lineSegs;
     // TODO
@@ -232,62 +231,8 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                          viewPort1);
                 
                 
-                const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &chullPointClouds =
-                            curObj.getHull().getPolygons3d();
+                curObj.getHull().display(viewer, viewPort1);
                 
-                for(int poly = 0; poly < chullPointClouds.size(); ++poly) {
-                    pcl::Vertices chullVertices;
-                    chullVertices.vertices.resize(chullPointClouds[poly]->size());
-                    iota(chullVertices.vertices.begin(), chullVertices.vertices.end(), 0);
-                    chullVertices.vertices.push_back(chullVertices.vertices.front());
-                    
-                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
-                    for (int p = 0; p < chullVertices.vertices.size(); ++p) {
-                        chullPoints->push_back(chullPointClouds[poly]->at(chullVertices.vertices[p]));
-                    }
-                    viewer->addPolygonMesh<pcl::PointXYZRGB>(chullPointClouds[poly],
-                                                             vector<pcl::Vertices>{chullVertices},
-                                                             string("polygon_ba_") + to_string(pl) +
-                                                                   "_" + to_string(poly),
-                                                             viewPort1);
-                    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                             0,
-                                                             1.0,
-                                                             0,
-                                                             string("polygon_ba_") + to_string(pl) +
-                                                                                     "_" + to_string(poly),
-                                                             viewPort1);
-                    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                             0.5,
-                                                             string("polygon_ba_") + to_string(pl) +
-                                                                                     "_" + to_string(poly),
-                                                             viewPort1);
-                    viewer->addPolygon<pcl::PointXYZRGB>(chullPoints,
-                                                         1.0,
-                                                         0.0,
-                                                         0.0,
-                                                         string("polyline_ba_") + to_string(pl) +
-                                                                                  "_" + to_string(poly),
-                                                         viewPort1);
-                    viewer->addPointCloud(chullPoints,
-                                          string("polygon_pc_ba_") + to_string(pl) +
-                                                                     "_" + to_string(poly),
-                                          viewPort1);
-                    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                             0.0, 0.0, 1.0,
-                                                             string("polygon_pc_ba_") +
-                                                             to_string(pl) +
-                                                             "_" + to_string(poly),
-                                                             viewPort1);
-                    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
-                                                             4,
-                                                             string("polygon_pc_ba_") +
-                                                             to_string(pl) +
-                                                             "_" + to_string(poly),
-                                                             viewPort1);
-                    cout << "polygon for plane (pl) " << pl << ", size = "
-                         << chullVertices.vertices.size() << endl;
-                }
             }
             for(int cba = ba; cba < objInstances.size(); ++cba){
 
@@ -324,62 +269,9 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                                  string("plane_cba_") + to_string(cpl),
                                                                  viewPort2);
     
-                        const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &chullPointClouds =
-                                compObj.getHull().getPolygons3d();
+                        compObj.getHull().display(viewer, viewPort2);
     
-                        for(int poly = 0; poly < chullPointClouds.size(); ++poly) {
-                            pcl::Vertices chullVertices;
-                            chullVertices.vertices.resize(chullPointClouds[poly]->size());
-                            iota(chullVertices.vertices.begin(), chullVertices.vertices.end(), 0);
-                            chullVertices.vertices.push_back(chullVertices.vertices.front());
-        
-                            pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
-                            for (int p = 0; p < chullVertices.vertices.size(); ++p) {
-                                chullPoints->push_back(chullPointClouds[poly]->at(chullVertices.vertices[p]));
-                            }
-                            viewer->addPolygonMesh<pcl::PointXYZRGB>(chullPointClouds[poly],
-                                                                     vector<pcl::Vertices>{chullVertices},
-                                                                     string("polygon_cba_") + to_string(cpl) +
-                                                                     "_" + to_string(poly),
-                                                                     viewPort1);
-                            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                                     0,
-                                                                     1.0,
-                                                                     0,
-                                                                     string("polygon_cba_") + to_string(cpl) +
-                                                                     "_" + to_string(poly),
-                                                                     viewPort1);
-                            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                                     0.5,
-                                                                     string("polygon_cba_") + to_string(cpl) +
-                                                                     "_" + to_string(poly),
-                                                                     viewPort1);
-                            viewer->addPolygon<pcl::PointXYZRGB>(chullPoints,
-                                                                 1.0,
-                                                                 0.0,
-                                                                 0.0,
-                                                                 string("polyline_cba_") + to_string(cpl) +
-                                                                 "_" + to_string(poly),
-                                                                 viewPort1);
-                            viewer->addPointCloud(chullPoints,
-                                                  string("polygon_pc_cba_") + to_string(cpl) +
-                                                  "_" + to_string(poly),
-                                                  viewPort1);
-                            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                                     0.0, 0.0, 1.0,
-                                                                     string("polygon_pc_cba_") +
-                                                                     to_string(pl) +
-                                                                     "_" + to_string(poly),
-                                                                     viewPort1);
-                            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
-                                                                     4,
-                                                                     string("polygon_pc_cba_") +
-                                                                     to_string(cpl) +
-                                                                     "_" + to_string(poly),
-                                                                     viewPort1);
-                            cout << "polygon for plane (pl) " << pl << ", size = "
-                                 << chullVertices.vertices.size() << endl;
-                        }
+                        
 //                        for(int p = 1; p < chullPolygon.vertices.size(); ++p){
 //                            viewer->addLine(chullPointCloud->at(chullPolygon.vertices[p - 1]),
 //                                            chullPointCloud->at(chullPolygon.vertices[p]),
@@ -428,36 +320,25 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                         }
                     }
 
-                    if(viewer){
+                    if(viewer) {
                         viewer->resetStoppedFlag();
 
 //                        viewer->initCameraParameters();
 //                        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-                        while (!viewer->wasStopped()){
-                            viewer->spinOnce (100);
+                        while (!viewer->wasStopped()) {
+                            viewer->spinOnce(100);
                             std::this_thread::sleep_for(std::chrono::milliseconds(50));
                         }
-
-
+    
+    
                         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
                                                                  shadingLevel,
-                                                                 string("plane_cba_") + to_string(cpl),
+                                                                 string("plane_cba_") +
+                                                                 to_string(cpl),
                                                                  viewPort2);
-                        const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &chullPointClouds =
-                                compObj.getHull().getPolygons3d();
-    
-                        for(int poly = 0; poly < chullPointClouds.size(); ++poly) {
-                            viewer->removePolygonMesh(string("polygon_cba_") + to_string(cpl) +
-                                                          "_" + to_string(poly),
-                                                      viewPort2);
-                            viewer->removeShape(string("polyline_cba_") + to_string(cpl) +
-                                                    "_" + to_string(poly),
-                                                viewPort2);
-                            viewer->removePointCloud(string("polygon_pc_cba_") + to_string(cpl) +
-                                                        "_" + to_string(poly),
-                                                     viewPort2);
-                        }
+                        compObj.getHull().cleanDisplay(viewer, viewPort2);
                     }
+                        
                 }
             }
 
@@ -466,20 +347,7 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
                                                          shadingLevel,
                                                          string("plane_ba_") + to_string(pl),
                                                          viewPort1);
-                const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &chullPointClouds =
-                        curObj.getHull().getPolygons3d();
-    
-                for(int poly = 0; poly < chullPointClouds.size(); ++poly) {
-                    viewer->removePolygonMesh(string("polygon_ba_") + to_string(pl) +
-                                                 "_" + to_string(poly),
-                                              viewPort1);
-                    viewer->removeShape(string("polyline_ba_") + to_string(pl) +
-                                           "_" + to_string(poly),
-                                        viewPort1);
-                    viewer->removePointCloud(string("polygon_pc_ba_") + to_string(pl) +
-                                                "_" + to_string(poly),
-                                             viewPort1);
-                }
+                 curObj.getHull().cleanDisplay(viewer, viewPort1);
             }
         }
     }

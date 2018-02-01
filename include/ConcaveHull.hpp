@@ -43,9 +43,12 @@ public:
                 Eigen::Vector4d planeEq);
     
     ConcaveHull(const std::vector<Polygon_2> &polygons,
-                const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d,
-                const Eigen::Vector3d &plNormal,
-                double plD);
+                    const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d,
+                    const Eigen::Vector3d &plNormal,
+                    double plD,
+                    const Eigen::Vector3d &origin,
+                    const Eigen::Vector3d &xAxis,
+                    const Eigen::Vector3d &yAxis);
     
     const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &getPolygons3d() const {
         return polygons3d;
@@ -63,8 +66,18 @@ public:
     
     ConcaveHull transform(Vector7d transform) const;
     
-private:
+    double minDistance(const ConcaveHull &other) const;
     
+    void display(pcl::visualization::PCLVisualizer::Ptr viewer,
+                 int vp,
+                 double r = 0.0,
+                 double g = 1.0,
+                 double b = 0.0) const ;
+    
+    void cleanDisplay(pcl::visualization::PCLVisualizer::Ptr viewer,
+                      int vp) const;
+    
+private:
     void computeFrame();
     
     Point point3dTo2d(const Eigen::Vector3d &point3d) const;

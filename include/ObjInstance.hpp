@@ -121,8 +121,12 @@ public:
 //	}
     
     inline const ConcaveHull &getHull() const {
-        return hull;
+        return *hull;
 	}
+    
+    inline const std::vector<LineSeg> &getLineSegs() const {
+        return lineSegs;
+    }
     
     void transform(Vector7d transform);
     
@@ -170,7 +174,7 @@ private:
 //
 //	pcl::Vertices convexHullPolygon;
 
-    ConcaveHull hull;
+    std::shared_ptr<ConcaveHull> hull;
 	
 	std::vector<LineSeg> lineSegs;
 };

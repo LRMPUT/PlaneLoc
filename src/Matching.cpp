@@ -1007,20 +1007,9 @@ void Matching::compObjDistances(const std::vector<ObjInstance>& objInstances,
 //         << ", objDistances.front().size() = " << objDistances.front().size() << endl;
     for(int o1 = 0; o1 < objInstances.size(); ++o1){
 //        cout << "o1 = " << o1 << endl;
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr o1hull = objInstances[o1].getConvexHull();
         for(int o2 = o1 + 1; o2 < objInstances.size(); ++o2){
 //            cout << "o2 = " << o2 << endl;
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr o2hull = objInstances[o2].getConvexHull();
-            double minDist = std::numeric_limits<double>::max();
-            // O(n^2) is enough for a small number of points
-            for(int p1 = 0; p1 < o1hull->size(); ++p1){
-                for(int p2 = 0; p2 < o2hull->size(); ++p2){
-                    Eigen::Vector3f pt1 = o1hull->at(p1).getVector3fMap();
-                    Eigen::Vector3f pt2 = o2hull->at(p2).getVector3fMap();
-                    double curDist = (pt1 - pt2).norm();
-                    minDist = min(curDist, curDist);
-                }
-            }
+            double minDist = objInstances[o1].getHull().minDistance(objInstances[o2].getHull());
 //			cout << "o1 = " << o1 << ", o2 = " << o2 << endl;
             objDistances[o1][o2] = minDist;
             objDistances[o2][o1] = minDist;
@@ -1739,138 +1728,32 @@ double Matching::checkConvexHullIntersection(const ObjInstance& obj1,
     Eigen::Matrix4d transformMat = g2o::SE3Quat(transform).to_homogeneous_matrix();
 //		cout << "transformMat = " << transformMat << endl;
     Eigen::Matrix4d transformMatInv = transformMat.inverse();
+    Vector7d transformInv = g2o::SE3Quat(transformMatInv.block<3, 3>(0, 0),
+                                         transformMatInv.block<3, 1>(0, 3)).toVector();
+    
+    const ConcaveHull &obj1Hull = obj1.getHull();
+    const ConcaveHull &obj2Hull = obj2.getHull();
+    
+    ConcaveHull obj1HullTrans = obj1Hull.transform(transformInv);
+    
+    ConcaveHull interHull = obj2Hull.intersect(obj1HullTrans);
+    
+    intArea = interHull.getTotalArea();
+    
 
-    Eigen::Vector4d curPl2Eq = obj2.getParamRep();
-
-    double curPl1ChullArea;
-    pcl::Vertices curPl1ChullPolygon;
-    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl1Chull = obj1.getConvexHull(curPl1ChullPolygon, curPl1ChullArea);
-
-    double curPl2ChullArea;
-    pcl::Vertices curPl2ChullPolygon;
-    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl2Chull = obj2.getConvexHull(curPl2ChullPolygon, curPl2ChullArea);
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl1ChullTrans(new pcl::PointCloud<pcl::PointXYZRGB>());
-    pcl::transformPointCloud(*curPl1Chull, *curPl1ChullTrans, transformMatInv);
-
-    if(viewer){
-        viewer->removeAllPointClouds(viewPort1);
-        viewer->removeAllShapes(viewPort1);
-        viewer->removeAllPointClouds(viewPort2);
-        viewer->removeAllShapes(viewPort2);
-
-
-        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> pcColHandler(curPl1Chull, 1.0, 0, 0);
-
-        const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl1 = obj1.getPoints();
-//        viewer->addPointCloud(curPl1, string("plane1"), viewPort1);
-
-//        viewer->addPointCloud(curPl1Chull, pcColHandler, string("plane1 chull"), viewPort1);
-        pcl::Vertices curPl1ChullPolygonMesh = curPl1ChullPolygon;
-        curPl1ChullPolygonMesh.vertices.push_back(curPl1ChullPolygonMesh.vertices.front());
-//        viewer->addPolygonMesh<pcl::PointXYZRGB>(curPl1Chull, vector<pcl::Vertices>{curPl1ChullPolygonMesh}, string("plane1 poly"), viewPort1);
-//        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-//                                                 0,
-//                                                 1.0,
-//                                                 0,
-//                                                 string("plane1 poly"),
-//                                                 viewPort1);
-//        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//                                                 0.2,
-//                                                 string("plane1 poly"),
-//                                                 viewPort1);
-
-        const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl2 = obj2.getPoints();
-        viewer->addPointCloud(curPl2, string("plane2"), viewPort1);
-
-        pcl::Vertices curPl2ChullPolygonMesh = curPl2ChullPolygon;
-        curPl2ChullPolygonMesh.vertices.push_back(curPl2ChullPolygonMesh.vertices.front());
-        viewer->addPointCloud(curPl2Chull, pcColHandler, string("plane2 chull"), viewPort2);
-        viewer->addPolygonMesh<pcl::PointXYZRGB>(curPl2Chull, vector<pcl::Vertices>{curPl2ChullPolygonMesh}, string("plane2 poly"), viewPort2);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                 0,
-                                                 1.0,
-                                                 0,
-                                                 string("plane2 poly"),
-                                                 viewPort2);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                 0.5,
-                                                 string("plane2 poly"),
-                                                 viewPort2);
-
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl1Trans(new pcl::PointCloud<pcl::PointXYZRGB>());
-        pcl::transformPointCloud(*curPl1, *curPl1Trans, transformMatInv);
-
-        viewer->addPointCloud(curPl1Trans, string("plane1 trans"), viewPort1);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                 0.2,
-                                                 string("plane1 trans"),
-                                                 viewPort1);
-
-        viewer->addPointCloud(curPl1ChullTrans, pcColHandler, string("plane1 chull trans"), viewPort2);
-        viewer->addPolygonMesh<pcl::PointXYZRGB>(curPl1ChullTrans, vector<pcl::Vertices>{curPl1ChullPolygonMesh}, string("plane1 poly trans"), viewPort2);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                 0,
-                                                 1.0,
-                                                 0,
-                                                 string("plane1 poly trans"),
-                                                 viewPort2);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                 0.5,
-                                                 string("plane1 poly trans"),
-                                                 viewPort2);
-    }
-
-
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullInter(new pcl::PointCloud<pcl::PointXYZRGB>());
-    pcl::Vertices polyInter;
-//			double areaInter = 0.0;
-
-    intArea = 0.0;
-    intersectConvexHulls(curPl1ChullTrans,
-                         curPl1ChullPolygon,
-                         curPl2Chull,
-                         curPl2ChullPolygon,
-                         curPl2Eq,
-                         chullInter,
-                         polyInter,
-                         intArea/*,
-								viewer,
-								viewPort1,
-								viewPort2*/);
-
-//			cout << "chullInter->size() = " << chullInter->size() << endl;
-//			cout << "polyInter.vertices = " << polyInter.vertices << endl;
-    double iou = intArea/(curPl1ChullArea + curPl2ChullArea - intArea);
-    double interScore = max(intArea/curPl1ChullArea, intArea/curPl2ChullArea);
+//    double iou = intArea/(curPl1ChullArea + curPl2ChullArea - intArea);
+    double interScore = max(intArea/obj1Hull.getTotalArea(), intArea/obj2Hull.getTotalArea());
 //			cout << "iou = " << iou << endl;
 //			cout << "interScore = " << interScore << endl;
 //			intAreaTrans += areaInter;
 
     if(viewer){
-        if(chullInter->size() > 0){
-            cout << "curIntArea = " << intArea << endl;
-            cout << "curPl1ChullArea = " << curPl1ChullArea << endl;
-            cout << "curPl2ChullArea = " << curPl2ChullArea << endl;
 
-            pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> pcColHandler(curPl1Chull, 255, 0, 0);
-
-            pcl::Vertices polyInterMesh = polyInter;
-            polyInterMesh.vertices.push_back(polyInterMesh.vertices.front());
-            viewer->addPointCloud(chullInter, pcColHandler, string("chull inter"), viewPort2);
-            viewer->addPolygonMesh<pcl::PointXYZRGB>(chullInter, vector<pcl::Vertices>{polyInterMesh}, string("chull inter poly"), viewPort2);
-            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                     1.0,
-                                                     0,
-                                                     0,
-                                                     string("chull inter poly"),
-                                                     viewPort2);
-            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                     0.9,
-                                                     string("chull inter poly"),
-                                                     viewPort2);
-        }
-
+        obj1HullTrans.display(viewer, viewPort1);
+        obj2Hull.display(viewer, viewPort1);
+        
+        interHull.display(viewer, viewPort2, 1.0, 0.0, 0.0);
+        
         // time for watching
         viewer->resetStoppedFlag();
 
