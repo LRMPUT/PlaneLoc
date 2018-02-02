@@ -131,6 +131,14 @@ public:
         return segCovar;
     }
     
+    const std::vector<Eigen::Vector3f> &getEvecs() const {
+        return evecs;
+    }
+    
+    const std::vector<double> &getEvals() const {
+        return evals;
+    }
+    
     const std::vector<int> &getAdjSegs() const {
         return adjSegs;
     }
@@ -200,6 +208,8 @@ private:
     Eigen::Vector4f segPlaneParams;
     Eigen::Vector3f segCentroid;
     Eigen::Matrix3f segCovar;
+    std::vector<Eigen::Vector3f> evecs;
+    std::vector<double> evals;
     float segCurv;
     bool normAlignConsistent;
     float areaEst;

@@ -72,6 +72,8 @@ void PlaneSeg::calcSegProp(bool filter){
     if(points->size() < 3){
         segCentroid = Eigen::Vector3f::Zero();
         segCovar = Eigen::Matrix3f::Zero();
+        evecs.resize(3);
+        evals.resize(3);
         segNormal = Eigen::Vector3f::Zero();
         segPlaneParams = Eigen::Vector4f::Zero();
         segNormalIntDiff = segCurv = 0;
@@ -81,8 +83,8 @@ void PlaneSeg::calcSegProp(bool filter){
         pcl::PCA<pcl::PointXYZRGB> pca;
         pca.setInputCloud(points);
     
-        Eigen::Matrix3f evecs = pca.getEigenVectors();
-        Eigen::Vector3f evals = pca.getEigenValues();
+        Eigen::Matrix3f evecsMat = pca.getEigenVectors();
+        Eigen::Vector3f evalsVec = pca.getEigenValues();
         segCentroid = pca.getMean().head<3>();
     
         // Same work as in pcl::PCA<pcl::PointXYZRGB> - could be done better
@@ -92,9 +94,17 @@ void PlaneSeg::calcSegProp(bool filter){
                                                  pointsDemean.topRows<3>().transpose());
         segCovar /= points->size();
     
-        Eigen::Vector3f ev0 = evecs.block<3, 1>(0, 0);
-        Eigen::Vector3f ev1 = evecs.block<3, 1>(0, 1);
-        Eigen::Vector3f ev2 = evecs.block<3, 1>(0, 2);
+        Eigen::Vector3f ev0 = evecsMat.block<3, 1>(0, 0);
+        Eigen::Vector3f ev1 = evecsMat.block<3, 1>(0, 1);
+        Eigen::Vector3f ev2 = evecsMat.block<3, 1>(0, 2);
+        
+        evecs.push_back(ev0);
+        evecs.push_back(ev1);
+        evecs.push_back(ev2);
+        
+        evals.push_back(sqrt(evalsVec(0)/points->size()));
+        evals.push_back(sqrt(evalsVec(1)/points->size()));
+        evals.push_back(sqrt(evalsVec(2)/points->size()));
     
         // the eigenvector for the smallest eigenvalue is the normal vector
         segNormal = ev2;
@@ -102,7 +112,7 @@ void PlaneSeg::calcSegProp(bool filter){
         // distance is the dot product of normal and point lying on the plane
         segPlaneParams(3) = -segNormal.dot(segCentroid);
     
-        segCurv = evals(2) / (evals(0) + evals(1) + evals(2));
+        segCurv = evalsVec(2) / (evalsVec(0) + evalsVec(1) + evalsVec(2));
     
         segNormalIntDiff = segCurv;
     
@@ -163,6 +173,14 @@ void PlaneSeg::transform(Vector7d transform) {
     
     // Eigen::Matrix3f segCovar;
     segCovar = R * segCovar * R.transpose();
+    
+    // std::vector<Eigen::Vector3f> evecs;
+    for(Eigen::Vector3f ev : evecs){
+        ev = R * ev;
+    }
+    
+    // std::vector<double> evals;
+    // no need to transform
     
     // float segCurv;
     // no need to transform

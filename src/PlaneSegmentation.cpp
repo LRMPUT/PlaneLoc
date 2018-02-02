@@ -361,6 +361,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
 {
     cv::Mat camMat;
     fs["planeSlam"]["cameraMatrix"] >> camMat;
+    double curvThresh = fs["segmentation"]["curvThresh"];
     
     cv::Mat rgbSegments = segmentRgb(rgb, depth, 0.8, 20, 200);
     
@@ -483,7 +484,8 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
             const pcl::PointXYZRGB &curPt = pointCloud->at(c, r);
             const pcl::Normal &curNorm = normals->at(c, r);
             
-            if(!isnan(curPt.x) && !isnan(curPt.y) && !isnan(curPt.z) &&
+            if(id >= 0 &&
+               !isnan(curPt.x) && !isnan(curPt.y) && !isnan(curPt.z) &&
                abs(curPt.z) >= 1e-3 &&
                !isnan(curNorm.normal_x) && !isnan(curNorm.normal_y) && !isnan(curNorm.normal_z))
             {
@@ -499,12 +501,23 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
         for(int sv = 0; sv < svs.size(); ++sv){
             svs[sv].calcSegProp(true);
             
-            if(!isnan(svs[sv].getSegCurv())){
-                int newIdx = svsCnt++;
-                
-                newSvs.push_back(svs[sv]);
-                newSvs.back().setId(newIdx);
-                oldIdxToNewIdx[sv] = newIdx;
+            if(svs[sv].getPoints()->size() > 50) {
+                if (!isnan(svs[sv].getSegCurv()) &&
+                    svs[sv].getSegCurv() < 2 * curvThresh)
+                {
+                    const vector<double> &evals = svs[sv].getEvals();
+//                    if(evals.size() < 3){
+//                        throw PLANE_EXCEPTION("evals.size() < 3");
+//                    }
+                    if (evals[0] > 0.03 && evals[1] > 0.03) {
+    
+                        int newIdx = svsCnt++;
+    
+                        newSvs.push_back(svs[sv]);
+                        newSvs.back().setId(newIdx);
+                        oldIdxToNewIdx[sv] = newIdx;
+                    }
+                }
             }
         }
         svs.swap(newSvs);
