@@ -179,11 +179,11 @@ planeSlam:
 
   drawVis: 1
 
-  visualizeSegmentation: 0
+  visualizeSegmentation: 1
 
   visualizeMatching: 1
 
-  stopEveryFrame: 0
+  stopEveryFrame: 1
 
   stopWrongFrame: 0
 

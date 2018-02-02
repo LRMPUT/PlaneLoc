@@ -472,11 +472,18 @@ void PlaneSlam::run(){
                 for(int o = 0; o < accObjInstances.size(); ++o){
                     const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = accObjInstances[o].getPoints();
                     viewer->addPointCloud(curPc, "cloud_" + to_string(o), v1);
+    
+                    int colIdx = (o % (sizeof(colors)/sizeof(uint8_t)/3));
+                    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> colHan(curPc,
+                                                                                              colors[colIdx][0],
+                                                                                              colors[colIdx][1],
+                                                                                              colors[colIdx][2]);
+                    viewer->addPointCloud(curPc, colHan, "cloud_col_" + to_string(o), v2);
                 }
                 
                 viewer->resetStoppedFlag();
                 viewer->initCameraParameters();
-                viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
+                viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
                 viewer->spinOnce(100);
                 while (stopFlag && !viewer->wasStopped()) {
                     viewer->spinOnce(100);

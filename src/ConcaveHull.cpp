@@ -2,6 +2,8 @@
 // Created by jachu on 31.01.18.
 //
 
+#define CGAL_DISABLE_ROUNDING_MATH_CHECK
+
 #include <iostream>
 #include <map>
 

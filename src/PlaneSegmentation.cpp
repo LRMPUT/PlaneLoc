@@ -362,10 +362,48 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
     cv::Mat camMat;
     fs["planeSlam"]["cameraMatrix"] >> camMat;
     
-    cv::Mat rgbSegments = segmentRgb(rgb, 0.8, 20, 200);
+    cv::Mat rgbSegments = segmentRgb(rgb, depth, 0.8, 20, 200);
     
     int nrows = rgbSegments.rows;
     int ncols = rgbSegments.cols;
+    
+    {
+        int kSize = 5;
+        // majority filter
+        for(int r = 0; r < nrows; ++r) {
+            for (int c = 0; c < ncols; ++c) {
+                if(rgbSegments.at<int>(r, c) >= 0) {
+                    map<int, int> votes;
+                    for (int dr = -kSize / 2; dr <= kSize / 2; ++dr) {
+                        for (int dc = -kSize / 2; dc <= kSize / 2; ++dc) {
+                            int cr = r + dr;
+                            int cc = c + dc;
+                            if ((cr < nrows) && (cr >= 0) &&
+                                (cc < ncols) && (cc >= 0))
+                            {
+                                int cid = rgbSegments.at<int>(cr, cc);
+                                if(votes.count(cid) == 0){
+                                    votes[cid] = 1;
+                                }
+                                else{
+                                    ++votes[cid];
+                                }
+                            }
+                        }
+                    }
+                    int bestId = -1;
+                    int bestVotes = -1;
+                    for(auto &p : votes){
+                        if(p.second > bestVotes){
+                            bestVotes = p.second;
+                            bestId = p.first;
+                        }
+                    }
+                    rgbSegments.at<int>(r, c) = bestId;
+                }
+            }
+        }
+    }
     
     int nhood[][2] = {{-1, 1},
                       {1, 0},
@@ -385,7 +423,9 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
                 int nhc = c + nhood[nh][1];
                 
                 if((nhr < nrows) && (nhr >= 0) &&
-                   (nhc < ncols) && (nhc >= 0))
+                   (nhc < ncols) && (nhc >= 0) &&
+                    rgbSegments.at<uint8_t>(r, c) >= 0 &&
+                    rgbSegments.at<uint8_t>(nhr, nhc) >= 0)
                 {
                     int nhId = rgbSegments.at<int>(nhr, nhc);
                     
@@ -482,7 +522,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
     
     for(const pair<pair<int, int>, int> &cure : edges){
         // if edge is strong enough than add it to svs
-        static constexpr int edgeStrengthThresh = 20;
+        static constexpr int edgeStrengthThresh = 50;
         if(cure.second > edgeStrengthThresh) {
             int u = cure.first.first;
             int v = cure.first.second;
@@ -576,7 +616,8 @@ void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg> &svs,
     }
 }
 
-cv::Mat PlaneSegmentation::segmentRgb(cv::Mat rgb, float sigma, float k, int minSegment)
+cv::Mat
+PlaneSegmentation::segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, int minSegment)
 {
     using namespace std::chrono;
     high_resolution_clock::time_point start = high_resolution_clock::now();
@@ -584,13 +625,15 @@ cv::Mat PlaneSegmentation::segmentRgb(cv::Mat rgb, float sigma, float k, int min
     high_resolution_clock::time_point endComp;
     high_resolution_clock::time_point endMerging;
     
-    cv::Mat imageR(rgb.rows, rgb.cols, CV_32FC1);
-    cv::Mat imageG(rgb.rows, rgb.cols, CV_32FC1);
-    cv::Mat imageB(rgb.rows, rgb.cols, CV_32FC1);
-    cv::Mat imageChannels[] = {imageR, imageG, imageB};
+    cv::Mat mask = (depth > 0.2);
+    
+//    cv::Mat imageR(rgb.rows, rgb.cols, CV_32FC1);
+//    cv::Mat imageG(rgb.rows, rgb.cols, CV_32FC1);
+//    cv::Mat imageB(rgb.rows, rgb.cols, CV_32FC1);
+//    cv::Mat imageChannels[] = {imageR, imageG, imageB};
     cv::Mat imageFloat(rgb.rows, rgb.cols, CV_32FC3);
     
-    int nchannels = 3;
+//    int nchannels = 3;
     int nhood[][2] = {{-1, 1},
                       {1, 0},
                       {1, 1},
@@ -601,29 +644,42 @@ cv::Mat PlaneSegmentation::segmentRgb(cv::Mat rgb, float sigma, float k, int min
     //cout << "rows: " << image.rows << ", cols: " << image.cols << endl;
 
     rgb.convertTo(imageFloat, CV_32F);
+    // 0 - 255 range
+    cv::cvtColor(imageFloat, imageFloat, cv::COLOR_RGB2GRAY);
+//    double minVal, maxVal;
+//    cv::minMaxIdx(imageFloat, &minVal, &maxVal);
+//    cout << "minVal = " << minVal << endl;
+//    cout << "maxVal = " << maxVal << endl;
     //resize(imageFloat, imageFloat, Size(320, 240));
     GaussianBlur(imageFloat, imageFloat, cv::Size(0, 0), sigma);
-    split(imageFloat, imageChannels);
+//    split(imageFloat, imageChannels);
     
     int nrows = imageFloat.rows;
     int ncols = imageFloat.cols;
     
-    cv::Mat segments(nrows, ncols, CV_32SC1);
+    cv::Mat segments(nrows, ncols, CV_32SC1, cv::Scalar(-1));
     
     vector<SegEdge> edges;
     for(int r = 0; r < nrows; r++){
         for(int c = 0; c < ncols; c++){
             for(int nh = 0; nh < sizeof(nhood)/sizeof(nhood[0]); nh++){
-                if((r + nhood[nh][0] < nrows) && (r + nhood[nh][0] >= 0) &&
-                   (c + nhood[nh][1] < ncols) && (c + nhood[nh][1] >= 0))
+                int nhr = r + nhood[nh][0];
+                int nhc = c + nhood[nh][1];
+                if((nhr < nrows) && (nhr >= 0) &&
+                   (nhc < ncols) && (nhc >= 0) &&
+                    mask.at<uint8_t>(r, c) > 0 &&
+                    mask.at<uint8_t>(nhr, nhc) > 0)
                 {
-                    float diffAll = 0;
-                    for(int ch = 0; ch < nchannels; ch++){
-                        float diff = abs(imageChannels[ch].at<float>(r, c) - imageChannels[ch].at<float>(r + nhood[nh][0], c + nhood[nh][1]));
-                        diffAll += diff*diff;
-                    }
-                    diffAll = sqrt(diffAll);
-                    edges.push_back(SegEdge(c + ncols*r, c + nhood[nh][1] + ncols*(r + nhood[nh][0]), diffAll));
+//                    float diffAll = 0;
+//                    for(int ch = 0; ch < nchannels; ch++){
+//                        float diff = abs(imageChannels[ch].at<float>(r, c) - imageChannels[ch].at<float>(r + nhood[nh][0], c + nhood[nh][1]));
+//                        diffAll += diff*diff;
+//                    }
+//                    diffAll = sqrt(diffAll);
+                    float diffRgb = imageFloat.at<float>(r, c) - imageFloat.at<float>(nhr, nhc);
+                    float diffDepth = depth.at<float>(r, c) - depth.at<float>(nhr, nhc);
+                    
+                    edges.push_back(SegEdge(c + ncols*r, nhc + ncols*nhr, 0.5*abs(diffRgb) + 0.5*128*abs(diffDepth)));
                     //if(edges.back().i == 567768 || edges.back().j == 567768){
                     //	cout << "diff = abs(" << (int)imageChannels[ch].at<unsigned char>(r, c) << " - " << (int)imageChannels[ch].at<unsigned char>(r + nhood[nh][0], c + nhood[nh][1]) << ") = " << diff << endl;
                     //}
@@ -677,14 +733,16 @@ cv::Mat PlaneSegmentation::segmentRgb(cv::Mat rgb, float sigma, float k, int min
     int idxCnt = 0;
     for(int r = 0; r < nrows; r++){
         for(int c = 0; c < ncols; c++){
-            int id = sets.findSet(c + ncols*r);
-            if(idToIdx.count(id) == 0){
-                idToIdx[id] = idxCnt++;
-            }
-            int idx = idToIdx[id];
-            
-            segments.at<int>(r, c) = idx;
+            if(mask.at<uint8_t>(r, c) > 0) {
+                int id = sets.findSet(c + ncols * r);
+                if (idToIdx.count(id) == 0) {
+                    idToIdx[id] = idxCnt++;
+                }
+                int idx = idToIdx[id];
+    
+                segments.at<int>(r, c) = idx;
 //            numElements.insert(sets.findSet(c + ncols*r));
+            }
         }
     }
     cout << "number of elements = " << idToIdx.size() << endl;
@@ -1121,7 +1179,7 @@ void PlaneSegmentation::visualizeSegmentation(const std::vector<PlaneSeg> &svs,
 //
     viewer->resetStoppedFlag();
     viewer->initCameraParameters();
-    viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+    viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
     viewer->spinOnce (100);
     while (!viewer->wasStopped()){
         viewer->spinOnce (50);

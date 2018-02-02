@@ -5,6 +5,8 @@
 #ifndef PLANELOC_CONCAVEHULL_HPP
 #define PLANELOC_CONCAVEHULL_HPP
 
+#define CGAL_DISABLE_ROUNDING_MATH_CHECK
+
 #include <vector>
 
 #include <Eigen/Eigen>
