@@ -183,7 +183,7 @@ planeSlam:
 
   visualizeMatching: 1
 
-  stopEveryFrame: 0
+  stopEveryFrame: 1
 
   stopWrongFrame: 0
 
