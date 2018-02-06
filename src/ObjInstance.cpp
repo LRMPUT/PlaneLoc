@@ -38,6 +38,7 @@
 #include "Types.hpp"
 #include "Matching.hpp"
 #include "UnionFind.h"
+#include "EKFPlane.hpp"
 
 using namespace std;
 
@@ -50,6 +51,22 @@ ObjInstance::ObjInstance(int iid,
 	  points(ipoints),
 	  svs(isvs)
 {
+    {
+        Eigen::MatrixXd pts(3, points->size());
+        for(int i = 0; i < points->size(); ++i){
+            pts.col(i) = points->at(i).getVector3fMap().cast<double>();
+        }
+        
+        Eigen::Quaterniond q;
+        Eigen::Matrix4d covar;
+        EKFPlane::compPlaneEqAndCovar(pts, q, covar);
+//        Eigen::Vector3d om = Misc::logMap(quat);
+//        cout << "q = " << quat.coeffs().transpose() << endl;
+//        cout << "om = " << om.transpose() << endl;
+//        cout << "covar = " << covarQuat << endl;
+    
+        ekf.init(q, covar);
+    }
     pcl::PCA<pcl::PointXYZRGB> pca;
     pca.setInputCloud(points);
     
@@ -74,46 +91,54 @@ ObjInstance::ObjInstance(int iid,
     
     curv = evals(2) / (evals(0) + evals(1) + evals(2));
     
-//	Eigen::Vector4f tmpParamRep;
-//	pcl::computePointNormal(*points, tmpParamRep, curv);
-    
-    bool corrOrient = true;
-    int corrCnt = 0;
-    int incorrCnt = 0;
-    for(int sv = 0; sv < svs.size(); ++sv){
-        pcl::PointNormal svPtNormal;
-        Eigen::Vector3d svNormal = svs[sv].getSegNormal().cast<double>();
-        // if cross product between normal vectors is negative then it is wrongly oriented
-        if(svNormal.dot(paramRep.head<3>()) < 0){
-            ++incorrCnt;
-        }
-        else{
-            ++corrCnt;
-        }
-    }
-    if(incorrCnt > corrCnt){
-        corrOrient = false;
-    }
-    if(incorrCnt != 0 && corrCnt != 0){
-//        throw PLANE_EXCEPTION("Some normals correct and some incorrect");
-		cout << "Some normals correct and some incorrect" << endl;
-        for(int sv = 0; sv < svs.size(); ++sv) {
-            // if cross product between normal vectors is negative then it is wrongly oriented
-            Eigen::Vector3f svNormal = svs[sv].getSegNormal();
-            cout << "svNormal[" << sv << "] = " << svNormal.transpose() << endl;
-        }
-    }
-    // flip the normal
-    if(!corrOrient){
-        paramRep = -paramRep;
-    }
     // normal including distance from origin
     normal = paramRep;
+
+    correctOrient();
     
     // normalize paramRep
 	Misc::normalizeAndUnify(paramRep);
 
     hull.reset(new ConcaveHull(points, normal));
+}
+
+void ObjInstance::merge(const ObjInstance &other) {
+    
+    ekf.update(other.getEkf().getX(), other.getEkf().getP());
+    
+    const Eigen::Quaterniond &q = ekf.getX();
+    Eigen::Vector4d newPlaneEq = q.coeffs();
+    double nNorm = newPlaneEq.head<3>().norm();
+    newPlaneEq /= nNorm;
+    
+    pcl::ModelCoefficients::Ptr mdlCoeff (new pcl::ModelCoefficients);
+    mdlCoeff->values.resize(4);
+    mdlCoeff->values[0] = newPlaneEq(0);
+    mdlCoeff->values[1] = newPlaneEq(1);
+    mdlCoeff->values[2] = newPlaneEq(2);
+    mdlCoeff->values[3] = newPlaneEq(3);
+    
+    points->insert(points->end(), other.getPoints()->begin(), other.getPoints()->end());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsProj(new pcl::PointCloud<pcl::PointXYZRGB>);
+    
+    pcl::ProjectInliers<pcl::PointXYZRGB> proj;
+    proj.setModelType(pcl::SACMODEL_PLANE);
+    proj.setInputCloud(points);
+    proj.setModelCoefficients(mdlCoeff);
+    proj.filter(*pointsProj);
+    
+    pcl::VoxelGrid<pcl::PointXYZRGB> downsamp;
+    downsamp.setInputCloud(pointsProj);
+    downsamp.setLeafSize (0.01f, 0.01f, 0.01f);
+    downsamp.filter(*pointsProj);
+    
+    points->swap(*pointsProj);
+    
+    normal = newPlaneEq;
+    correctOrient();
+    
+    paramRep = newPlaneEq;
+    Misc::normalizeAndUnify(paramRep);
 }
 
 void ObjInstance::transform(Vector7d transform) {
@@ -159,9 +184,62 @@ void ObjInstance::transform(Vector7d transform) {
     
     // std::vector<LineSeg> lineSegs;
     // TODO
+    
+    // EKFPlane ekf;
+    // TODO valid only for NOT merged planes (ones where points haven't been projected onto plane)
+    {
+        Eigen::MatrixXd pts(3, points->size());
+        for(int i = 0; i < points->size(); ++i){
+            pts.col(i) = points->at(i).getVector3fMap().cast<double>();
+        }
+        
+        Eigen::Quaterniond q;
+        Eigen::Matrix4d covar;
+        EKFPlane::compPlaneEqAndCovar(pts, q, covar);
+        Eigen::Vector3d om = Misc::logMap(q);
+//        cout << "q = " << q.coeffs().transpose() << endl;
+//        cout << "om = " << om.transpose() << endl;
+//        cout << "covar = " << covar << endl;
+        
+        ekf.init(q, covar);
+    }
 }
 
-std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::vector<ObjInstance>>& objInstances,
+void ObjInstance::correctOrient() {
+    bool corrOrient = true;
+    int corrCnt = 0;
+    int incorrCnt = 0;
+    for(int sv = 0; sv < svs.size(); ++sv){
+        pcl::PointNormal svPtNormal;
+        Eigen::Vector3d svNormal = svs[sv].getSegNormal().cast<double>();
+        // if cross product between normal vectors is negative then it is wrongly oriented
+        if(svNormal.dot(normal.head<3>()) < 0){
+            ++incorrCnt;
+        }
+        else{
+            ++corrCnt;
+        }
+    }
+    if(incorrCnt > corrCnt){
+        corrOrient = false;
+    }
+    if(incorrCnt != 0 && corrCnt != 0){
+//        throw PLANE_EXCEPTION("Some normals correct and some incorrect");
+        cout << "Some normals correct and some incorrect" << endl;
+        for(int sv = 0; sv < svs.size(); ++sv) {
+            // if cross product between normal vectors is negative then it is wrongly oriented
+            Eigen::Vector3f svNormal = svs[sv].getSegNormal();
+            cout << "svNormal[" << sv << "] = " << svNormal.transpose() << endl;
+        }
+    }
+    // flip the normal
+    if(!corrOrient){
+        normal = -normal;
+    }
+}
+
+
+std::vector<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
                                                         pcl::visualization::PCLVisualizer::Ptr viewer,
                                                         int viewPort1,
                                                         int viewPort2)
@@ -177,7 +255,7 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
         viewer->removeAllShapes(viewPort2);
 
         viewer->initCameraParameters();
-        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
     }
 
     int planesCnt = 0;
@@ -295,24 +373,40 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
 //                        }
                     }
 
+                    double dist1 = curObj.getEkf().distance(compObj.getEkf().getX());
+                    double dist2 = compObj.getEkf().distance(curObj.getEkf().getX());
+                    cout << "dist1 = " << dist1 << endl;
+                    cout << "dist2 = " << dist2 << endl;
+                    
                     double diff = Matching::planeEqDiffLogMap(curObj, compObj, transform);
 //                    cout << "diff = " << diff << endl;
                     // if plane equation is similar
-                    if(diff < 0.01){
+                    if(dist1 < 50 || dist2 < 50){
                         double normDot = curObjNormal.dot(compObjNormal);
-//                        cout << "normDot = " << normDot << endl;
+                        cout << "normDot = " << normDot << endl;
                         // if the observed face is the same
                         if(normDot > 0){
                             double intArea = 0.0;
+    
+                            if(viewer) {
+                                curObj.getHull().cleanDisplay(viewer, viewPort1);
+                                compObj.getHull().cleanDisplay(viewer, viewPort2);
+                            }
+                            
                             double intScore = Matching::checkConvexHullIntersection(curObj,
                                                                                     compObj,
                                                                                     transform,
-                                                                                    intArea/*,
+                                                                                    intArea,
                                                                                     viewer,
                                                                                     viewPort1,
-                                                                                    viewPort2*/);
-//                            cout << "intScore = " << intScore << endl;
-//                            cout << "intArea = " << intArea << endl;
+                                                                                    viewPort2);
+                            if(viewer) {
+                                curObj.getHull().display(viewer, viewPort1);
+                                compObj.getHull().display(viewer, viewPort2);
+                            }
+                            
+                            cout << "intScore = " << intScore << endl;
+                            cout << "intArea = " << intArea << endl;
                             // if intersection of convex hulls is big enough
                             if(intScore > 0.3){
                                 cout << "merging planes" << endl;
@@ -371,19 +465,26 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
         
         auto range = sets.equal_range(it->first);
 
-        vector<const ObjInstance*> curObjs;
+        vector<ObjInstance*> curObjs;
         for(auto rangeIt = range.first; rangeIt != range.second; ++rangeIt){
-            curObjs.emplace_back(&(objInstances[rangeIt->second.first][rangeIt->second.second]));
+            curObjs.push_back(&(objInstances[rangeIt->second.first][rangeIt->second.second]));
         }
-        if(curObjs.size() == 1){
-            retObjInstances.push_back(*curObjs.front());
+        // merge all objects with the first one
+        for(int o = 1; o < curObjs.size(); ++o){
+            curObjs[0]->merge(*curObjs[o]);
         }
-        else{
-            retObjInstances.push_back(merge(curObjs,
-                                            viewer,
-                                            viewPort1,
-                                            viewPort2));
-        }
+    
+        retObjInstances.push_back(*curObjs.front());
+        
+//        if(curObjs.size() == 1){
+//            retObjInstances.push_back(*curObjs.front());
+//        }
+//        else{
+//            retObjInstances.push_back(merge(curObjs,
+//                                            viewer,
+//                                            viewPort1,
+//                                            viewPort2));
+//        }
         
         it = range.second;
     
@@ -396,91 +497,153 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(const std::vector<std::v
     return retObjInstances;
 }
 
-ObjInstance ObjInstance::merge(const std::vector<const ObjInstance*>& objInstances,
-                               pcl::visualization::PCLVisualizer::Ptr viewer,
-                               int viewPort1,
-                               int viewPort2)
-{
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr newPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
-    std::vector<PlaneSeg> newSvs;
-
-    Eigen::Vector3d meanLogMap;
-    meanLogMap << 0.0, 0.0, 0.0;
-    int sumPoints = 0;
-    for(int o = 0; o < objInstances.size(); ++o){
-        Eigen::Vector4d curParamRep = objInstances[o]->getParamRep();
-        Eigen::Vector3d logMapParamRep = Misc::logMap(Eigen::Quaterniond(curParamRep));
-        meanLogMap += logMapParamRep * objInstances[o]->getPoints()->size();
-        sumPoints += objInstances[o]->getPoints()->size();
-    }
-    meanLogMap /= sumPoints;
-
-    Eigen::Quaterniond meanParamRep = Misc::expMap(meanLogMap);
-    Eigen::Vector4d meanPlaneEq;
-    meanPlaneEq[0] = meanParamRep.x();
-    meanPlaneEq[1] = meanParamRep.y();
-    meanPlaneEq[2] = meanParamRep.z();
-    meanPlaneEq[3] = meanParamRep.w();
-    double normNorm = meanPlaneEq.head<3>().norm();
-    meanPlaneEq.head<3>() /= normNorm;
-    meanPlaneEq[3] /= normNorm;
-
-    pcl::ModelCoefficients::Ptr mdlCoeff (new pcl::ModelCoefficients);
-    mdlCoeff->values.resize(4);
-    mdlCoeff->values[0] = meanPlaneEq[0];
-    mdlCoeff->values[1] = meanPlaneEq[1];
-    mdlCoeff->values[2] = meanPlaneEq[2];
-    mdlCoeff->values[3] = meanPlaneEq[3];
-    for(int o = 0; o < objInstances.size(); ++o){
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsProj(new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::ProjectInliers<pcl::PointXYZRGB> proj;
-        proj.setModelType(pcl::SACMODEL_PLANE);
-        proj.setInputCloud(objInstances[o]->getPoints());
-        proj.setModelCoefficients(mdlCoeff);
-        proj.filter(*pointsProj);
+cv::Mat ObjInstance::compColorHist() const {
+    // color histogram
+    int hbins = 32;
+    int sbins = 32;
+    int histSizeH[] = {hbins};
+    int histSizeS[] = {sbins};
+    float hranges[] = {0, 180};
+    float sranges[] = {0, 256};
+    const float* rangesH[] = {hranges};
+    const float* rangesS[] = {sranges};
+    int channelsH[] = {0};
+    int channelsS[] = {0};
     
-        pcl::VoxelGrid<pcl::PointXYZRGB> downsamp;
-        downsamp.setInputCloud(pointsProj);
-        downsamp.setLeafSize (0.01f, 0.01f, 0.01f);
-        downsamp.filter(*pointsProj);
-
-        const vector<PlaneSeg>& svs = objInstances[o]->getSvs();
-
-        newPoints->insert(newPoints->end(), pointsProj->begin(), pointsProj->end());
-        newSvs.insert(newSvs.end(), svs.begin(), svs.end());
-
-        if(viewer) {
-            viewer->addPointCloud(objInstances[o]->getPoints(), string("plane_o_") + to_string(o), viewPort1);
-
-        }
+    int npts = points->size();
+    cv::Mat matPts(1, npts, CV_8UC3);
+    for(int p = 0; p < npts; ++p){
+        matPts.at<cv::Vec3b>(p)[0] = points->at(p).r;
+        matPts.at<cv::Vec3b>(p)[1] = points->at(p).g;
+        matPts.at<cv::Vec3b>(p)[2] = points->at(p).b;
     }
-
-    if(viewer){
-        viewer->addPointCloud(newPoints, string("plane_merged"), viewPort2);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
-                                                 1.0, 0.0, 0.0,
-                                                 string("plane_merged"),
-                                                 viewPort2);
-
-        viewer->resetStoppedFlag();
-
-//                        viewer->initCameraParameters();
-//                        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-        while (!viewer->wasStopped()){
-            viewer->spinOnce (100);
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-
-        for(int o = 0; o < objInstances.size(); ++o){
-            viewer->removePointCloud(string("plane_o_") + to_string(o), viewPort1);
-        }
-        viewer->removePointCloud(string("plane_merged"), viewPort2);
-    }
-
-    return ObjInstance(0,
-                        ObjInstance::ObjType::Plane,
-                        newPoints,
-                        newSvs);
+    cv::cvtColor(matPts, matPts, cv::COLOR_RGB2HSV);
+    cv::Mat hist;
+    cv::calcHist(&matPts,
+                 1,
+                 channelsH,
+                 cv::Mat(),
+                 hist,
+                 1,
+                 histSizeH,
+                 rangesH);
+    // normalization
+    hist /= npts;
+    hist.reshape(1,hbins);
+    
+    cv::Mat histS;
+    cv::calcHist(&matPts,
+                 1,
+                 channelsS,
+                 cv::Mat(),
+                 histS,
+                 1,
+                 histSizeS,
+                 rangesS);
+    // normalization
+    histS /= npts;
+    histS.reshape(1,sbins);
+    
+    // add S part of histogram
+    hist.push_back(histS);
+    
+    return hist;
 }
+
+double ObjInstance::compHistDist(cv::Mat hist1, cv::Mat hist2) {
+//            double histDist = cv::compareHist(frameObjFeats[of], mapObjFeats[om], cv::HISTCMP_CHISQR);
+    cv::Mat histDiff = cv::abs(hist1 - hist2);
+    return cv::sum(histDiff)[0];
+}
+
+//ObjInstance ObjInstance::merge(const std::vector<const ObjInstance*>& objInstances,
+//                               pcl::visualization::PCLVisualizer::Ptr viewer,
+//                               int viewPort1,
+//                               int viewPort2)
+//{
+//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr newPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
+//    std::vector<PlaneSeg> newSvs;
+//
+//    Eigen::Vector3d meanLogMap;
+//    meanLogMap << 0.0, 0.0, 0.0;
+//    int sumPoints = 0;
+//    for(int o = 0; o < objInstances.size(); ++o){
+//        Eigen::Vector4d curParamRep = objInstances[o]->getParamRep();
+//        Eigen::Vector3d logMapParamRep = Misc::logMap(Eigen::Quaterniond(curParamRep));
+//        meanLogMap += logMapParamRep * objInstances[o]->getPoints()->size();
+//        sumPoints += objInstances[o]->getPoints()->size();
+//    }
+//    meanLogMap /= sumPoints;
+//
+//    Eigen::Quaterniond meanParamRep = Misc::expMap(meanLogMap);
+//    Eigen::Vector4d meanPlaneEq;
+//    meanPlaneEq[0] = meanParamRep.x();
+//    meanPlaneEq[1] = meanParamRep.y();
+//    meanPlaneEq[2] = meanParamRep.z();
+//    meanPlaneEq[3] = meanParamRep.w();
+//    double normNorm = meanPlaneEq.head<3>().norm();
+//    meanPlaneEq.head<3>() /= normNorm;
+//    meanPlaneEq[3] /= normNorm;
+//
+//    pcl::ModelCoefficients::Ptr mdlCoeff (new pcl::ModelCoefficients);
+//    mdlCoeff->values.resize(4);
+//    mdlCoeff->values[0] = meanPlaneEq[0];
+//    mdlCoeff->values[1] = meanPlaneEq[1];
+//    mdlCoeff->values[2] = meanPlaneEq[2];
+//    mdlCoeff->values[3] = meanPlaneEq[3];
+//    for(int o = 0; o < objInstances.size(); ++o){
+//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsProj(new pcl::PointCloud<pcl::PointXYZRGB>);
+//        pcl::ProjectInliers<pcl::PointXYZRGB> proj;
+//        proj.setModelType(pcl::SACMODEL_PLANE);
+//        proj.setInputCloud(objInstances[o]->getPoints());
+//        proj.setModelCoefficients(mdlCoeff);
+//        proj.filter(*pointsProj);
+//
+//        pcl::VoxelGrid<pcl::PointXYZRGB> downsamp;
+//        downsamp.setInputCloud(pointsProj);
+//        downsamp.setLeafSize (0.01f, 0.01f, 0.01f);
+//        downsamp.filter(*pointsProj);
+//
+//        const vector<PlaneSeg>& svs = objInstances[o]->getSvs();
+//
+//        newPoints->insert(newPoints->end(), pointsProj->begin(), pointsProj->end());
+//        newSvs.insert(newSvs.end(), svs.begin(), svs.end());
+//
+//        if(viewer) {
+//            viewer->addPointCloud(objInstances[o]->getPoints(), string("plane_o_") + to_string(o), viewPort1);
+//
+//        }
+//    }
+//
+//    if(viewer){
+//        viewer->addPointCloud(newPoints, string("plane_merged"), viewPort2);
+//        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+//                                                 1.0, 0.0, 0.0,
+//                                                 string("plane_merged"),
+//                                                 viewPort2);
+//
+//        viewer->resetStoppedFlag();
+//
+////                        viewer->initCameraParameters();
+////                        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+//        while (!viewer->wasStopped()){
+//            viewer->spinOnce (100);
+//            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//        }
+//
+//        for(int o = 0; o < objInstances.size(); ++o){
+//            viewer->removePointCloud(string("plane_o_") + to_string(o), viewPort1);
+//        }
+//        viewer->removePointCloud(string("plane_merged"), viewPort2);
+//    }
+//
+//    return ObjInstance(0,
+//                        ObjInstance::ObjType::Plane,
+//                        newPoints,
+//                        newSvs);
+//}
+//
+
+
 
 

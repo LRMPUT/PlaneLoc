@@ -70,7 +70,8 @@ set(PlaneSlam_SOURCES
 	src/PlaneSeg.cpp
 	src/LineDet.cpp
 	src/LineSeg.cpp
-    src/ConcaveHull.cpp)
+    src/ConcaveHull.cpp
+	src/EKFPlane.cpp)
 	
 add_library(PlaneSlam
 			${PlaneSlam_SOURCES})

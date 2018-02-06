@@ -736,8 +736,7 @@ vector<Matching::PotMatch> Matching::findPotMatches(const std::vector<ObjInstanc
     for(int of = 0; of < frameObjInstances.size(); ++of){
         for(int om = 0; om < mapObjInstances.size(); ++om){
             cv::Mat histDiff = cv::abs(frameObjFeats[of] - mapObjFeats[om]);
-            double histDist = cv::sum(histDiff)[0];
-//            double histDist = cv::compareHist(frameObjFeats[of], mapObjFeats[om], cv::HISTCMP_CHISQR);
+            double histDist = ObjInstance::compHistDist(frameObjFeats[of], mapObjFeats[om]);
             if(histDist < planeAppThresh){
                 
                 const vector<LineSeg> &frameLineSegs = frameObjInstances[of].getLineSegs();
@@ -943,58 +942,8 @@ vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMat
 void Matching::compObjFeatures(const std::vector<ObjInstance>& objInstances,
 							std::vector<cv::Mat>& objFeats)
 {
-	// color histogram
-	int hbins = 32;
-	int sbins = 32;
-	int histSizeH[] = {hbins};
-	int histSizeS[] = {sbins};
-	float hranges[] = {0, 180};
-	float sranges[] = {0, 256};
-	const float* rangesH[] = {hranges};
-	const float* rangesS[] = {sranges};
-	int channelsH[] = {0};
-	int channelsS[] = {0};
-
 	for(int o = 0; o < objInstances.size(); ++o){
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pts = objInstances[o].getPoints();
-		int npts = pts->size();
-		cv::Mat matPts(1, npts, CV_8UC3);
-		for(int p = 0; p < npts; ++p){
-			matPts.at<cv::Vec3b>(p)[0] = pts->at(p).r;
-			matPts.at<cv::Vec3b>(p)[1] = pts->at(p).g;
-			matPts.at<cv::Vec3b>(p)[2] = pts->at(p).b;
-		}
-		cv::cvtColor(matPts, matPts, cv::COLOR_RGB2HSV);
-		cv::Mat hist;
-		cv::calcHist(&matPts,
-					1,
-					channelsH,
-					cv::Mat(),
-					hist,
-					1,
-					histSizeH,
-					rangesH);
-		// normalization
-		hist /= npts;
-		hist.reshape(1,hbins);
-
-		cv::Mat histS;
-		cv::calcHist(&matPts,
-					1,
-					channelsS,
-					cv::Mat(),
-					histS,
-					1,
-					histSizeS,
-					rangesS);
-		// normalization
-		histS /= npts;
-		histS.reshape(1,sbins);
-
-		// add S part of histogram
-		hist.push_back(histS);
-
-		objFeats.push_back(hist);
+		objFeats.push_back(objInstances[o].compColorHist());
 	}
 }
 
@@ -1748,23 +1697,27 @@ double Matching::checkConvexHullIntersection(const ObjInstance& obj1,
 //			intAreaTrans += areaInter;
 
     if(viewer){
-        viewer->removeAllPointClouds();
-        viewer->removeAllShapes();
+//        viewer->removeAllPointClouds();
+//        viewer->removeAllShapes();
         
         obj1HullTrans.display(viewer, viewPort1);
         obj2Hull.display(viewer, viewPort1);
         
-        interHull.display(viewer, viewPort2, 1.0, 0.0, 0.0);
+        interHull.display(viewer, viewPort1, 1.0, 0.0, 0.0);
         
         // time for watching
         viewer->resetStoppedFlag();
 
-        viewer->initCameraParameters();
-        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+//        viewer->initCameraParameters();
+//        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
         while (!viewer->wasStopped()){
             viewer->spinOnce (100);
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
+    
+        obj1HullTrans.cleanDisplay(viewer, viewPort1);
+        obj2Hull.cleanDisplay(viewer, viewPort1);
+        interHull.cleanDisplay(viewer, viewPort1);
     }
 
     return interScore;

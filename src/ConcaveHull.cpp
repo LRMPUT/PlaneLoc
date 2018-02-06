@@ -46,7 +46,7 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
     downsamp.filter(*points3dProj);
     
     plNormal = planeEq.head<3>();
-    plD = planeEq(3);
+    plD = -planeEq(3);
     
     computeFrame();
     
@@ -236,7 +236,7 @@ ConcaveHull ConcaveHull::transform(Vector7d transform) const {
     
     Eigen::Vector4d transPlaneEq;
     transPlaneEq.head<3>() = plNormal;
-    transPlaneEq(3) = plD;
+    transPlaneEq(3) = -plD;
     
     transPlaneEq = Tinvt * transPlaneEq;
     
@@ -248,6 +248,7 @@ ConcaveHull ConcaveHull::transform(Vector7d transform) const {
     vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> transPolygons3d;
 //    auto it = polygons.begin();
     for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPoly3d : polygons3d){
+        
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr transPoly3d(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::transformPointCloud(*curPoly3d, *transPoly3d, transformMat);
         
@@ -268,7 +269,7 @@ ConcaveHull ConcaveHull::transform(Vector7d transform) const {
     return ConcaveHull(transPolygons,
                        transPolygons3d,
                        transPlaneEq.head<3>(),
-                       transPlaneEq(3),
+                       -transPlaneEq(3),
                        transOrigin,
                        transXAxis,
                        transYAxis);
@@ -310,35 +311,6 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
         }
     }
     
-//    for(const Polygon_2 &p1 : polygons){
-//        for(const Polygon_2 &p2 : otherPolygonsProj){
-////            cout << "intersecting" << endl;
-//            // intersection has to be done using exact kernel
-//            list<Polygon_holes_2> inter;
-////            Polygon_2e p1e, p2e;
-////            for(int pt1 = 0; pt1 < p1.size(); ++pt1){
-////                p1e.push_back(Point_2e(p1[pt1].x(), p1[pt1].y()));
-////            }
-////            for(int pt2 = 0; pt2 < p2.size(); ++pt2){
-////                p1e.push_back(Point_2e(p2[pt2].x(), p2[pt2].y()));
-////            }
-//            CGAL::intersection(p1, p2, back_inserter(inter));
-////            cout << "end intersecting" << endl;
-//            for(Polygon_holes_2 &pi : inter){
-//                if(pi.outer_boundary().area() > 0.05){
-////                    Polygon_2 resPoly;
-////                    const Polygon_2e &curPolyInter = pi.outer_boundary();
-////                    cout << "curPolyInter.area() = " << CGAL::to_double(curPolyInter.area()) << endl;
-////                    for(int pt = 0; pt < curPolyInter.size(); ++pt){
-////                        resPoly.push_back(Point_2(CGAL::to_double(curPolyInter[pt].x()),
-////                                                CGAL::to_double(curPolyInter[pt].y())));
-////                    }
-////                    resPolygons.push_back(resPoly);
-//                    resPolygons.push_back(pi.outer_boundary());
-//                }
-//            }
-//        }
-//    }
     for(const Polygon_2 &p : resPolygons){
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d(new pcl::PointCloud<pcl::PointXYZRGB>());
         for(int i = 0; i < p.size(); ++i){
@@ -351,6 +323,7 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
             
             poly3d->push_back(curPt3d);
         }
+        resPolygons3d.push_back(poly3d);
     }
     
     return ConcaveHull(resPolygons,
@@ -459,7 +432,7 @@ void ConcaveHull::cleanDisplay(pcl::visualization::PCLVisualizer::Ptr viewer, in
 
 void ConcaveHull::computeFrame() {
     // point on plane nearest to origin
-    origin = plNormal * (-plD);
+    origin = plNormal * (plD);
     //if normal vector is not parallel to global x axis
     if(plNormal.cross(Eigen::Vector3d(1.0, 0.0, 0.0)).norm() > 1e-2){
         // plane x axis as a cross product - always perpendicular to normal vector

@@ -10,11 +10,21 @@
 
 class EKFPlane {
 public:
+    EKFPlane();
+    
     EKFPlane(const Eigen::Quaterniond &xq,
              const Eigen::Matrix4d &Pq);
     
+    void init(const Eigen::Quaterniond &xq,
+              const Eigen::Matrix4d &Pq);
+    
     void update(const Eigen::Quaterniond &zq,
                 const Eigen::Matrix4d &Rq);
+    
+    void update(const Eigen::Quaterniond &zq,
+                const Eigen::Matrix3d &R);
+    
+//    void transform(const Eigen::Matrix4d T);
     
     double distance(const Eigen::Quaterniond &xcq) const;
     
@@ -22,11 +32,17 @@ public:
                                     Eigen::Quaterniond &q,
                                     Eigen::Matrix4d &R);
     
+    const Eigen::Quaterniond &getX() const;
+    
+    const Eigen::Matrix3d &getP() const;
+
 private:
     
-    Eigen::MatrixXd jacob_dom_dq(const Eigen::Quaterniond &q) const;
+    static Eigen::MatrixXd jacob_dom_dq(const Eigen::Quaterniond &q);
     
-    Eigen::Vector3d x;
+    static Eigen::MatrixXd jacob_dqn_dq(const Eigen::Quaterniond &q);
+    
+    Eigen::Quaterniond x;
     
     Eigen::Matrix3d P;
 };

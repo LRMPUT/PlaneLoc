@@ -11,18 +11,59 @@
 
 using namespace std;
 
+
+EKFPlane::EKFPlane() {}
+
 EKFPlane::EKFPlane(const Eigen::Quaterniond &xq, const Eigen::Matrix4d &Pq) {
-    x = Misc::logMap(xq);
+    init(xq, Pq);
+}
+
+void EKFPlane::init(const Eigen::Quaterniond &xq, const Eigen::Matrix4d &Pq) {
+    x = xq;
     Eigen::MatrixXd J = jacob_dom_dq(xq);
     P = J * Pq * J.transpose();
 }
 
 void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix4d &Rq) {
-
+    // jacobian of transformation from quaternion to log-map of quaternion
+    Eigen::MatrixXd J_dom_dq = jacob_dom_dq(zq);
+    // covariance in log-map representation
+    Eigen::Matrix3d R = J_dom_dq * Rq * J_dom_dq;
+    
+    update(zq, R);
 }
 
+void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix3d &R) {
+    // innovation
+    Eigen::Vector3d v = Misc::logMap(zq * x.inverse());
+    // jacobian of transformation from quaternion to log-map of quaternion
+    Eigen::MatrixXd J_dom_dq = jacob_dom_dq(zq);
+    // innovation covariance
+    Eigen::Matrix3d S = P + R;
+    // Kalman gain
+    Eigen::Matrix3d K = P * S.inverse();
+    // update of state
+    x = Misc::expMap(K * v) * x;
+    // update of covariance
+    P = (Eigen::Matrix3d::Identity() - K) * P;
+}
+
+//void EKFPlane::transform(const Eigen::Matrix4d T)
+//{
+//    Eigen::Matrix4d Tinv = T.inverse();
+//    Eigen::Matrix4d Tinvt = Tinv.transpose();
+//
+//    Eigen::Vector4d planeEq = Tinvt * x.coeffs();
+//    Eigen::Matrix4d covarQuat = Tinvt * covarQuat * Tinv;
+//}
+
 double EKFPlane::distance(const Eigen::Quaterniond &xcq) const {
-    return 0;
+    Eigen::Matrix3d inf = P.inverse();
+//    cout << "P = " << P << endl;
+//    cout << "inf = " << inf << endl;
+    Eigen::Vector3d e = Misc::logMap(xcq * x.inverse());
+    
+    return e.transpose() * inf * e;
 }
 
 void EKFPlane::compPlaneEqAndCovar(const Eigen::MatrixXd &pts,
@@ -47,12 +88,106 @@ void EKFPlane::compPlaneEqAndCovar(const Eigen::MatrixXd &pts,
 //        eigenvalues_[i] = evd.eigenvalues () [2-i];
 //        eigenvectors_.col (i) = evd.eigenvectors ().col (2-i);
 //    }
+    Eigen::Vector3d mean = Eigen::Vector3d::Zero();
+    for(int i = 0; i < pts.cols(); ++i){
+        mean += pts.col(i);
+    }
+    mean /= pts.cols();
+    
+    Eigen::MatrixXd demeanPts = pts;
+    for(int i = 0; i < demeanPts.cols(); ++i){
+        demeanPts.col(i) -= mean;
+    }
+    
+    Eigen::Matrix3d covar = demeanPts * demeanPts.transpose();
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> evd(covar);
+    
+    Eigen::Matrix3d evecs;
+    Eigen::Vector3d evals;
+    for(int i = 0; i < 3; ++i){
+        evecs.col(i) = evd.eigenvectors().col(2 - i);
+        evals(i) = evd.eigenvalues()(2 - i)/demeanPts.cols();
+    }
+    
+    // the smallest eigenvalue corresponds to the eigenvector that is normal to the plane
+    double varD = evals(2);
+    double varX = evals(2) / evals(0);
+    double varY = evals(2) / evals(1);
+    
+    Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+    T.block<3, 3>(0, 0) = evecs;
+    T.block<3, 1>(0, 3) = mean;
+    Eigen::Matrix4d Tinv = T.inverse();
+    Eigen::Matrix4d Tinvt = Tinv.transpose();
+    
+    // plane with normal (0, 0, 1) and distance 0;
+    Eigen::Vector4d planeEq;
+    planeEq << 0.0, 0.0, 1.0, 0.0;
+    // transform it to destination pose
+    planeEq = Tinvt * planeEq;
+    
+    Eigen::Matrix4d covarQuat = Eigen::Matrix4d::Zero();
+    covarQuat(0, 0) = varX;
+    covarQuat(1, 1) = varY;
+    covarQuat(2, 2) = 0;
+    covarQuat(3, 3) = varD;
+    covarQuat = Tinvt * covarQuat * Tinv;
+    
+    Eigen::Matrix4d J_dqn_dq = jacob_dqn_dq(Eigen::Quaterniond(planeEq(3), planeEq(0), planeEq(1), planeEq(2)));
+    planeEq.normalize();
+    R = J_dqn_dq * covarQuat * J_dqn_dq.transpose();
+    q.coeffs() = planeEq;
 }
 
 //[ (2*acos(qw)*(qy^2 + qz^2))/(qx^2 + qy^2 + qz^2)^(3/2),        -(2*qx*qy*acos(qw))/(qx^2 + qy^2 + qz^2)^(3/2),        -(2*qx*qz*acos(qw))/(qx^2 + qy^2 + qz^2)^(3/2), -(2*qx)/((1 - qw^2)^(1/2)*(qx^2 + qy^2 + qz^2)^(1/2))]
 //[        -(2*qx*qy*acos(qw))/(qx^2 + qy^2 + qz^2)^(3/2), (2*acos(qw)*(qx^2 + qz^2))/(qx^2 + qy^2 + qz^2)^(3/2),        -(2*qy*qz*acos(qw))/(qx^2 + qy^2 + qz^2)^(3/2), -(2*qy)/((1 - qw^2)^(1/2)*(qx^2 + qy^2 + qz^2)^(1/2))]
 //[        -(2*qx*qz*acos(qw))/(qx^2 + qy^2 + qz^2)^(3/2),        -(2*qy*qz*acos(qw))/(qx^2 + qy^2 + qz^2)^(3/2), (2*acos(qw)*(qx^2 + qy^2))/(qx^2 + qy^2 + qz^2)^(3/2), -(2*qz)/((1 - qw^2)^(1/2)*(qx^2 + qy^2 + qz^2)^(1/2))]
 
-Eigen::MatrixXd EKFPlane::jacob_dom_dq(const Eigen::Quaterniond &q) const {
-    return Eigen::Matrix<double, Dynamic, Dynamic>();
+Eigen::MatrixXd EKFPlane::jacob_dom_dq(const Eigen::Quaterniond &q) {
+    Eigen::MatrixXd J(3, 4);
+    double qx = q.x();
+    double qy = q.y();
+    double qz = q.z();
+    double qw = q.w();
+    double sqVecNorm = qx*qx + qy*qy + qz*qz;
+    double vecNorm = sqrt(sqVecNorm);
+    double den = sqVecNorm * vecNorm;
+    J << (2*acos(qw)*(qy*qy + qz*qz))/den,          -(2*qx*qy*acos(qw))/den,          -(2*qx*qz*acos(qw))/den, -(2*qx)/(sqrt(1 - qw*qw)*vecNorm),
+        -(2*qx*qy*acos(qw))/den,           (2*acos(qw)*(qx*qx + qz*qz))/den,          -(2*qy*qz*acos(qw))/den, -(2*qy)/(sqrt(1 - qw*qw)*vecNorm),
+        -(2*qx*qz*acos(qw))/den,                    -(2*qy*qz*acos(qw))/den, (2*acos(qw)*(qx*qx + qy*qy))/den, -(2*qz)/(sqrt(1 - qw*qw)*vecNorm);
+    
+    return J;
 }
+
+
+//[ (qw^2 + qy^2 + qz^2)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qx*qy)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qx*qz)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qw*qx)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2)]
+//[             -(qx*qy)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2), (qw^2 + qx^2 + qz^2)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qy*qz)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qw*qy)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2)]
+//[             -(qx*qz)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qy*qz)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2), (qw^2 + qx^2 + qy^2)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qw*qz)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2)]
+//[             -(qw*qx)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qw*qy)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2),             -(qw*qz)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2), (qx^2 + qy^2 + qz^2)/(qw^2 + qx^2 + qy^2 + qz^2)^(3/2)]
+Eigen::MatrixXd EKFPlane::jacob_dqn_dq(const Eigen::Quaterniond &q) {
+    Eigen::MatrixXd J(4, 4);
+    double qx = q.x();
+    double qy = q.y();
+    double qz = q.z();
+    double qw = q.w();
+    double sqVecNorm = qx*qx + qy*qy + qz*qz + qw*qw;
+    double vecNorm = sqrt(sqVecNorm);
+    double den = sqVecNorm * vecNorm;
+    
+    J << (qw*qw + qy*qy + qz*qz)/den,                -(qx*qy)/den,                -(qx*qz)/den,                -(qw*qx)/den,
+                        -(qx*qy)/den, (qw*qw + qx*qx + qz*qz)/den,                -(qy*qz)/den,                -(qw*qy)/den,
+                        -(qx*qz)/den,                -(qy*qz)/den, (qw*qw + qx*qx + qy*qy)/den,                -(qw*qz)/den,
+                        -(qw*qx)/den,                -(qw*qy)/den,                -(qw*qz)/den, (qx*qx + qy*qy + qz*qz)/den;
+    
+    return J;
+}
+
+const Eigen::Quaterniond &EKFPlane::getX() const {
+    return x;
+}
+
+const Eigen::Matrix3d &EKFPlane::getP() const {
+    return P;
+}
+
+

@@ -39,6 +39,7 @@
 #include "PlaneSeg.hpp"
 #include "LineSeg.hpp"
 #include "ConcaveHull.hpp"
+#include "EKFPlane.hpp"
 
 // only planes in a current version
 class ObjInstance{
@@ -59,6 +60,8 @@ public:
 				ObjType itype,
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
 				const std::vector<PlaneSeg>& isvs);
+	
+	void merge(const ObjInstance &other);
 
 	inline int getId() const {
 		return id;
@@ -128,23 +131,39 @@ public:
         return lineSegs;
     }
     
-    void transform(Vector7d transform);
+//    inline void getQuatAndCovar(Eigen::Quaterniond &q,
+//                                Eigen::Matrix4d &covar) const
+//    {
+//        q = quat;
+//        covar = covarQuat;
+//    }
     
-    static std::vector<ObjInstance> mergeObjInstances(const std::vector<std::vector<ObjInstance>>& objInstances,
-                                                      pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                                                      int viewPort1 = -1,
-                                                      int viewPort2 = -1);
-
-	static ObjInstance merge(const std::vector<const ObjInstance*>& objInstances,
-                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                             int viewPort1 = -1,
-                             int viewPort2 = -1);
+    inline const EKFPlane &getEkf() const {
+        return ekf;
+    }
+    
+    void transform(Vector7d transform);
     
     inline void addLineSeg(const LineSeg &newLineSeg){
         lineSegs.push_back(newLineSeg);
     }
+    
+    cv::Mat compColorHist() const;
+    
+    static double compHistDist(cv::Mat hist1, cv::Mat hist2);
+    
+    static std::vector<ObjInstance> mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
+                                                      pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                                      int viewPort1 = -1,
+                                                      int viewPort2 = -1);
 
+//	static ObjInstance merge(const std::vector<const ObjInstance*>& objInstances,
+//                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+//                             int viewPort1 = -1,
+//                             int viewPort2 = -1);
 private:
+    void correctOrient();
+    
 	int id;
 
 	ObjType type;
@@ -177,6 +196,12 @@ private:
     std::shared_ptr<ConcaveHull> hull;
 	
 	std::vector<LineSeg> lineSegs;
+    
+//    Eigen::Quaterniond quat;
+//
+//    Eigen::Matrix4d covarQuat;
+    
+    EKFPlane ekf;
 };
 
 

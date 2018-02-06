@@ -109,7 +109,7 @@ void PlaneSlam::run(){
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudRead(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
 
 	static constexpr int frameRate = 30;
-	int framesToSkip = 0;
+	int framesToSkip = 150;
 	int framesSkipped = 0;
 	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose) >= 0))
 	{
@@ -346,11 +346,20 @@ void PlaneSlam::run(){
                     accObjInstances.push_back(curObj);
                     accObjInstances.back().transform(accPoseIncr);
                 }
-                
-                accObjInstances = ObjInstance::mergeObjInstances(vector<vector<ObjInstance>>{accObjInstances}/*,
+    
+                vector<vector<ObjInstance>> toMerge{accObjInstances};
+                if(curFrameIdx < 162) {
+                    accObjInstances = ObjInstance::mergeObjInstances(toMerge/*,
                                                                  viewer,
                                                                  v1,
                                                                  v2*/);
+                }
+                else{
+                    accObjInstances = ObjInstance::mergeObjInstances(toMerge,
+                                                                 viewer,
+                                                                 v1,
+                                                                 v2);
+                }
             }
             
 
