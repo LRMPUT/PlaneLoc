@@ -102,9 +102,9 @@ void PlaneSeg::calcSegProp(bool filter){
         evecs.push_back(ev1);
         evecs.push_back(ev2);
         
-        evals.push_back(sqrt(evalsVec(0)/points->size()));
-        evals.push_back(sqrt(evalsVec(1)/points->size()));
-        evals.push_back(sqrt(evalsVec(2)/points->size()));
+        evals.push_back(evalsVec(0));
+        evals.push_back(evalsVec(1));
+        evals.push_back(evalsVec(2));
     
         // the eigenvector for the smallest eigenvalue is the normal vector
         segNormal = ev2;

@@ -34,18 +34,28 @@ void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix4d &Rq) {
 }
 
 void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix3d &R) {
+    cout << endl << "x = " << x.coeffs().transpose() << endl;
+    cout << "P = " << P << endl;
+    cout << "zq = " << zq.coeffs().transpose() << endl;
+    cout << "R = " << R << endl;
     // innovation
     Eigen::Vector3d v = Misc::logMap(zq * x.inverse());
+    cout << "v = " << v.transpose() << endl;
     // jacobian of transformation from quaternion to log-map of quaternion
-    Eigen::MatrixXd J_dom_dq = jacob_dom_dq(zq);
+//    Eigen::MatrixXd J_dom_dq = jacob_dom_dq(zq);
     // innovation covariance
     Eigen::Matrix3d S = P + R;
+    cout << "S = " << S << endl;
     // Kalman gain
     Eigen::Matrix3d K = P * S.inverse();
+    cout << "K = " << K << endl;
     // update of state
+    cout << "K * v = " << K * v << endl;
     x = Misc::expMap(K * v) * x;
+    cout << "updated x = " << x.coeffs().transpose() << endl;
     // update of covariance
     P = (Eigen::Matrix3d::Identity() - K) * P;
+    cout << "updated P = " << P << endl;
 }
 
 //void EKFPlane::transform(const Eigen::Matrix4d T)
@@ -106,11 +116,11 @@ void EKFPlane::compPlaneEqAndCovar(const Eigen::MatrixXd &pts,
     Eigen::Vector3d evals;
     for(int i = 0; i < 3; ++i){
         evecs.col(i) = evd.eigenvectors().col(2 - i);
-        evals(i) = evd.eigenvalues()(2 - i)/demeanPts.cols();
+        evals(i) = evd.eigenvalues()(2 - i);
     }
     
     // the smallest eigenvalue corresponds to the eigenvector that is normal to the plane
-    double varD = evals(2);
+    double varD = evals(2) / demeanPts.cols();
     double varX = evals(2) / evals(0);
     double varY = evals(2) / evals(1);
     
@@ -133,9 +143,14 @@ void EKFPlane::compPlaneEqAndCovar(const Eigen::MatrixXd &pts,
     covarQuat(3, 3) = varD;
     covarQuat = Tinvt * covarQuat * Tinv;
     
-    Eigen::Matrix4d J_dqn_dq = jacob_dqn_dq(Eigen::Quaterniond(planeEq(3), planeEq(0), planeEq(1), planeEq(2)));
-    planeEq.normalize();
-    R = J_dqn_dq * covarQuat * J_dqn_dq.transpose();
+//    Eigen::Matrix4d J_dqn_dq = jacob_dqn_dq(Eigen::Quaterniond(planeEq(3), planeEq(0), planeEq(1), planeEq(2)));
+//    planeEq.normalize();
+//    R = J_dqn_dq * covarQuat * J_dqn_dq.transpose();
+    
+    double planeEqNorm = planeEq.norm();
+    planeEq /= planeEqNorm;
+    R = covarQuat / (planeEqNorm * planeEqNorm);
+    
     q.coeffs() = planeEq;
 }
 

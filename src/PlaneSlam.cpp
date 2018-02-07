@@ -348,7 +348,7 @@ void PlaneSlam::run(){
                 }
     
                 vector<vector<ObjInstance>> toMerge{accObjInstances};
-                if(curFrameIdx < 162) {
+                if(curFrameIdx < 160) {
                     accObjInstances = ObjInstance::mergeObjInstances(toMerge/*,
                                                                  viewer,
                                                                  v1,

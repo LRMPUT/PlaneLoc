@@ -506,10 +506,14 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
                     svs[sv].getSegCurv() < 2 * curvThresh)
                 {
                     const vector<double> &evals = svs[sv].getEvals();
+                    
+                    double varD = evals[2] / svs[sv].getPoints()->size();
+                    double varX = evals[2] / evals[0];
+                    double varY = evals[2] / evals[1];
 //                    if(evals.size() < 3){
 //                        throw PLANE_EXCEPTION("evals.size() < 3");
 //                    }
-                    if (evals[0] > 0.03 && evals[1] > 0.03) {
+                    if (varX < 0.1 && varY < 0.1) {
     
                         int newIdx = svsCnt++;
     
@@ -578,8 +582,6 @@ void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg> &svs,
         planeCandidatesAreaEst[set] += svs[sv].getAreaEst();
     }
     
-    
-    int curObjInstId = 0;
     for(int pl = 0; pl < segs.size(); ++pl){
 //        cout << "planeCandidates[" << pl << "].size() = " << planeCandidates[pl].size() << endl;
 //        cout << "planeCandidatesAreaEst[" << pl << "] = " << planeCandidatesAreaEst[pl] << endl;

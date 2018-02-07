@@ -49,7 +49,10 @@ ObjInstance::ObjInstance(int iid,
 	: id(iid),
 	  type(itype),
 	  points(ipoints),
-	  svs(isvs)
+	  svs(isvs),
+      eolCnt(0),
+      obsCnt(0),
+      trial(false)
 {
     {
         Eigen::MatrixXd pts(3, points->size());
@@ -139,6 +142,8 @@ void ObjInstance::merge(const ObjInstance &other) {
     
     paramRep = newPlaneEq;
     Misc::normalizeAndUnify(paramRep);
+    
+    *hull = ConcaveHull(points, normal);
 }
 
 void ObjInstance::transform(Vector7d transform) {
@@ -201,6 +206,10 @@ void ObjInstance::transform(Vector7d transform) {
 //        cout << "om = " << om.transpose() << endl;
 //        cout << "covar = " << covar << endl;
         
+//        Eigen::Vector4d planeEq = q.coeffs();
+//        planeEq /= planeEq.head<3>().norm();
+//        cout << "planeEq = " << planeEq.transpose() << endl;
+        
         ekf.init(q, covar);
     }
 }
@@ -238,6 +247,63 @@ void ObjInstance::correctOrient() {
     }
 }
 
+void ObjInstance::mergeObjInstances(std::vector<ObjInstance> &mapObjInstances,
+                                    std::vector<ObjInstance> &newObjInstances,
+                                    pcl::visualization::PCLVisualizer::Ptr viewer,
+                                    int viewPort1,
+                                    int viewPort2)
+{
+    for(ObjInstance &mapObj : mapObjInstances){
+        
+        for(ObjInstance &newObj : newObjInstances){
+            
+            double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
+            double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
+            cout << "dist1 = " << dist1 << endl;
+            cout << "dist2 = " << dist2 << endl;
+    
+//            double diff = Matching::planeEqDiffLogMap(mapObj, newObj, transform);
+//                    cout << "diff = " << diff << endl;
+            // if plane equation is similar
+            if(dist1 < 50 || dist2 < 50){
+                double normDot = mapObj.getNormal().head<3>().dot(newObj.getNormal().head<3>());
+                cout << "normDot = " << normDot << endl;
+                // if the observed face is the same
+                if(normDot > 0){
+                    double intArea = 0.0;
+            
+                    if(viewer) {
+                        mapObj.getHull().cleanDisplay(viewer, viewPort1);
+                        newObj.getHull().cleanDisplay(viewer, viewPort2);
+                    }
+            
+                    double intScore = Matching::checkConvexHullIntersection(mapObj,
+                                                                            newObj,
+                                                                            transform,
+                                                                            intArea,
+                                                                            viewer,
+                                                                            viewPort1,
+                                                                            viewPort2);
+                    if(viewer) {
+                        mapObj.getHull().display(viewer, viewPort1);
+                        newObj.getHull().display(viewer, viewPort2);
+                    }
+            
+                    cout << "intScore = " << intScore << endl;
+                    cout << "intArea = " << intArea << endl;
+                    // if intersection of convex hulls is big enough
+                    if(intScore > 0.3){
+                        cout << "merging planes" << endl;
+                        // join the objects
+//                        ufSets.unionSets(planeIds[ba][pl], planeIds[cba][cpl]);
+                    }
+                }
+            }
+        }
+    }
+    
+    
+}
 
 std::vector<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
                                                         pcl::visualization::PCLVisualizer::Ptr viewer,
@@ -343,7 +409,8 @@ std::vector<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<
                                                                  viewPort2);
     
                         compObj.getHull().display(viewer, viewPort2);
-    
+//                        cout << compObj.getNormal().transpose() << endl;
+//                        cout << compObj.getEkf().getX().coeffs().transpose() << endl;
                         
 //                        for(int p = 1; p < chullPolygon.vertices.size(); ++p){
 //                            viewer->addLine(chullPointCloud->at(chullPolygon.vertices[p - 1]),

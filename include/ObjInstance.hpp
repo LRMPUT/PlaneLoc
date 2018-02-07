@@ -142,6 +142,30 @@ public:
         return ekf;
     }
     
+    int getEolCnt() const {
+        return eolCnt;
+    }
+    
+    void setEolCnt(int eolCnt) {
+        ObjInstance::eolCnt = eolCnt;
+    }
+    
+    int getObsCnt() const {
+        return obsCnt;
+    }
+    
+    void setObsCnt(int obsCnt) {
+        ObjInstance::obsCnt = obsCnt;
+    }
+    
+    bool isTrial() const {
+        return trial;
+    }
+    
+    void setTrial(bool trial) {
+        ObjInstance::trial = trial;
+    }
+    
     void transform(Vector7d transform);
     
     inline void addLineSeg(const LineSeg &newLineSeg){
@@ -156,6 +180,12 @@ public:
                                                       pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                                       int viewPort1 = -1,
                                                       int viewPort2 = -1);
+    
+    static void mergeObjInstances(std::vector<ObjInstance> &mapObjInstances,
+                                  std::vector<ObjInstance> &newObjInstances,
+                                  pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                  int viewPort1 = -1,
+                                  int viewPort2 = -1);
 
 //	static ObjInstance merge(const std::vector<const ObjInstance*>& objInstances,
 //                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
@@ -202,6 +232,12 @@ private:
 //    Eigen::Matrix4d covarQuat;
     
     EKFPlane ekf;
+    
+    int eolCnt;
+    
+    int obsCnt;
+    
+    bool trial;
 };
 
 

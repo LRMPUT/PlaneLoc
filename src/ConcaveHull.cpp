@@ -218,7 +218,11 @@ ConcaveHull::ConcaveHull(const vector<ConcaveHull::Polygon_2> &polygons,
           yAxis(yAxis),
           totalArea(0.0)
 {
-    computeFrame();
+//    computeFrame();
+//    Eigen::Vector4d planeEq;
+//    planeEq.head<3>() = plNormal;
+//    planeEq(3) = -plD;
+//    cout << "ConcaveHull::ConcaveHull, planeEq = " << planeEq.transpose() << endl;
     
     for(const Polygon_2 &curPoly : polygons){
         double area = CGAL::to_double(curPoly.area());
@@ -283,12 +287,23 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
     // project points onto plane of this hull
     for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d : otherPolygons3d){
         Polygon_2 polyProj;
+//        cout << "other" << endl;
         for(auto it = poly3d->begin(); it != poly3d->end(); ++it){
             polyProj.push_back(point3dTo2d(it->getVector3fMap().cast<double>()));
+//            cout << it->getVector3fMap().cast<double>().transpose() << endl;
+//            cout << point3dTo2d(it->getVector3fMap().cast<double>()) << endl;
+//            cout << point2dTo3d(point3dTo2d(it->getVector3fMap().cast<double>())).transpose() << endl;
         }
         otherPolygonsProj.push_back(polyProj);
     }
     
+//    for(int p = 0; p < polygons.size(); ++p){
+//        cout << "current" << endl;
+//        for(int i = 0; i < polygons[p].size(); ++i){
+//            cout << polygons3d[p]->at(i).getVector3fMap().cast<double>().transpose() << endl;
+//            cout << point2dTo3d(polygons[p][i]).transpose() << endl;
+//        }
+//    }
     vector<Polygon_2> resPolygons;
     vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> resPolygons3d;
     {
@@ -361,6 +376,11 @@ void ConcaveHull::display(pcl::visualization::PCLVisualizer::Ptr viewer,
                           double g,
                           double b) const
 {
+//    Eigen::Vector4d planeEq;
+//    planeEq.head<3>() = plNormal;
+//    planeEq(3) = -plD;
+//    cout << "ConcaveHull::display, planeEq = " << planeEq.transpose() << endl;
+    
     for(int poly = 0; poly < polygons3d.size(); ++poly) {
         pcl::Vertices chullVertices;
         chullVertices.vertices.resize(polygons3d[poly]->size());

@@ -149,6 +149,8 @@ private:
 
 	static void compSupervoxelsAreaEst(const std::map<uint32_t, pcl::Supervoxel<pcl::PointXYZRGB>::Ptr >& idToSv,
 									std::vector<float>& svAreaEst);
+    
+    static int curObjInstId = 0;
 };
 
 struct SegEdge{
