@@ -31,6 +31,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/pca.h>
+#include <Map.hpp>
 
 #include "ObjInstance.hpp"
 #include "Misc.hpp"
@@ -247,15 +248,21 @@ void ObjInstance::correctOrient() {
     }
 }
 
-void ObjInstance::mergeObjInstances(std::vector<ObjInstance> &mapObjInstances,
-                                    std::vector<ObjInstance> &newObjInstances,
-                                    pcl::visualization::PCLVisualizer::Ptr viewer,
-                                    int viewPort1,
-                                    int viewPort2)
+void ObjInstance::mergeObjInstances(Map &map,
+                                   std::vector<ObjInstance> &newObjInstances,
+                                   pcl::visualization::PCLVisualizer::Ptr viewer,
+                                   int viewPort1,
+                                   int viewPort2)
 {
-    for(ObjInstance &mapObj : mapObjInstances){
+    Vector7d transform;
+    // identity
+    transform << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
+    
+    for(ObjInstance &newObj : newObjInstances){
         
-        for(ObjInstance &newObj : newObjInstances){
+        vector<int> matches;
+        for(int mo = 0; mo < map.size(); ++mo){
+            ObjInstance &mapObj = map[mo];
             
             double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
             double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
@@ -294,11 +301,16 @@ void ObjInstance::mergeObjInstances(std::vector<ObjInstance> &mapObjInstances,
                     // if intersection of convex hulls is big enough
                     if(intScore > 0.3){
                         cout << "merging planes" << endl;
-                        // join the objects
-//                        ufSets.unionSets(planeIds[ba][pl], planeIds[cba][cpl]);
+                        // merge the objects
+                        matches.push_back(mo);
                     }
                 }
             }
+        }
+        
+        if(matches.size() == 1){
+            ObjInstance &mapObj = map[matches.front()];
+            mapObj.merge(newObj);
         }
     }
     

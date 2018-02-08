@@ -24,19 +24,41 @@
 #ifndef INCLUDE_MAP_HPP_
 #define INCLUDE_MAP_HPP_
 
-#include <vector>
+class Map;
 
-#include <opencv2/opencv.hpp>
+#include <vector>
+#include <list>
+#include <set>
+
+//#include <opencv2/opencv.hpp>
 
 #include "ObjInstance.hpp"
 
+struct PendingMatch{
+    std::set<int> matchedIds;
+    
+    int eol;
+    
+    std::vector<std::list<ObjInstance>::iterator> objInstanceIts;
+};
+
+bool operator<(const PendingMatch &lhs, const PendingMatch &rhs);
+
 class Map{
 public:
+	Map();
+	
 	Map(const cv::FileStorage& settings);
 
 	inline void addObj(ObjInstance& obj){
 		objInstances.push_back(obj);
 	}
+    
+    inline void addObjs(std::vector<ObjInstance>::iterator beg,
+                        std::vector<ObjInstance>::iterator end)
+    {
+        objInstances.insert(objInstances.end(), beg, end);
+    }
 
 	void removeObj(int i){
 		objInstances.erase(objInstances.begin() + i);
@@ -49,7 +71,15 @@ public:
 	inline ObjInstance& operator[](int i){
 		return objInstances[i];
 	}
-
+    
+    inline std::vector<ObjInstance>::iterator begin(){
+        return objInstances.begin();
+    }
+    
+    inline std::vector<ObjInstance>::iterator end(){
+        return objInstances.end();
+    }
+    
     inline pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr getOriginalPointCloud(){
         return originalPointCloud;
     }
@@ -60,6 +90,10 @@ private:
 
 
 	std::vector<ObjInstance> objInstances;
+    
+    std::list<ObjInstance> pendingObjInstances;
+    
+    std::set<PendingMatch> pendingMatches;
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr originalPointCloud;
 };

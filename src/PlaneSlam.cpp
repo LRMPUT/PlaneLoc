@@ -166,7 +166,8 @@ void PlaneSlam::run(){
 	}
     
     // variables used for accumulation
-    vector<ObjInstance> accObjInstances;
+//    vector<ObjInstance> accObjInstances;
+    Map accMap;
     Vector7d accStartFramePose;
     int accFrames = 50;
  
@@ -334,7 +335,9 @@ void PlaneSlam::run(){
             if(curFrameIdx % accFrames == 0) {
                 cout << endl << "starting new accumulation" << endl << endl;
                 
-                accObjInstances = curObjInstances;
+                accMap = Map();
+                accMap.addObjs(curObjInstances.begin(), curObjInstances.end());
+                
                 accStartFramePose = pose;
             }
             else{
@@ -342,24 +345,36 @@ void PlaneSlam::run(){
                 
                 g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(accStartFramePose).inverse() * g2o::SE3Quat(pose);
                 Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
-                for(ObjInstance &curObj : curObjInstances){
-                    accObjInstances.push_back(curObj);
-                    accObjInstances.back().transform(accPoseIncr);
+                
+                vector<ObjInstance> curObjInstancesTrans = curObjInstances;
+                for(ObjInstance &curObj : curObjInstancesTrans){
+                    curObj.transform(accPoseIncr);
+                    
+//                    accMap.addObj(curObj);
+
+//                    accObjInstances.push_back(curObj);
+//                    accObjInstances.back().transform(accPoseIncr);
                 }
     
-                vector<vector<ObjInstance>> toMerge{accObjInstances};
-                if(curFrameIdx < 160) {
-                    accObjInstances = ObjInstance::mergeObjInstances(toMerge/*,
-                                                                 viewer,
-                                                                 v1,
-                                                                 v2*/);
-                }
-                else{
-                    accObjInstances = ObjInstance::mergeObjInstances(toMerge,
-                                                                 viewer,
-                                                                 v1,
-                                                                 v2);
-                }
+                ObjInstance::mergeObjInstances(accMap,
+                                               curObjInstancesTrans,
+                                               viewer,
+                                               v1,
+                                               v2);
+                
+//                vector<vector<ObjInstance>> toMerge{accObjInstances};
+//                if(curFrameIdx < 160) {
+//                    accObjInstances = ObjInstance::mergeObjInstances(toMerge/*,
+//                                                                 viewer,
+//                                                                 v1,
+//                                                                 v2*/);
+//                }
+//                else{
+//                    accObjInstances = ObjInstance::mergeObjInstances(toMerge,
+//                                                                 viewer,
+//                                                                 v1,
+//                                                                 v2);
+//                }
             }
             
 
@@ -478,8 +493,8 @@ void PlaneSlam::run(){
     
                 viewer->removeAllPointClouds();
                 viewer->removeAllShapes();
-                for(int o = 0; o < accObjInstances.size(); ++o){
-                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = accObjInstances[o].getPoints();
+                for(int o = 0; o < accMap.size(); ++o){
+                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = accMap[o].getPoints();
                     viewer->addPointCloud(curPc, "cloud_" + to_string(o), v1);
     
                     int colIdx = (o % (sizeof(colors)/sizeof(uint8_t)/3));

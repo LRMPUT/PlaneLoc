@@ -44,7 +44,7 @@
 
 using namespace std;
 
-
+int PlaneSegmentation::curObjInstId = 0;
 
 void PlaneSegmentation::segment(const cv::FileStorage& fs,
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,

@@ -24,6 +24,8 @@
 #ifndef INCLUDE_OBJINSTANCE_HPP_
 #define INCLUDE_OBJINSTANCE_HPP_
 
+class ObjInstance;
+
 #include <vector>
 #include <string>
 
@@ -40,6 +42,7 @@
 #include "LineSeg.hpp"
 #include "ConcaveHull.hpp"
 #include "EKFPlane.hpp"
+#include "Map.hpp"
 
 // only planes in a current version
 class ObjInstance{
@@ -103,26 +106,6 @@ public:
 		return curv;
 	}
 	
-//	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull() const {
-//		return convexHull;
-//	}
-//
-//	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull(pcl::Vertices& polygon) const {
-//		polygon = convexHullPolygon;
-//		return convexHull;
-//	}
-//
-//	inline double getConvexHullArea(){
-//		return chullArea;
-//	}
-//
-//	inline const pcl::PointCloud<pcl::PointXYZRGB>::Ptr getConvexHull(pcl::Vertices& polygon,
-//																	double& area) const {
-//		polygon = convexHullPolygon;
-//		area = chullArea;
-//		return convexHull;
-//	}
-    
     inline const ConcaveHull &getHull() const {
         return *hull;
 	}
@@ -181,11 +164,11 @@ public:
                                                       int viewPort1 = -1,
                                                       int viewPort2 = -1);
     
-    static void mergeObjInstances(std::vector<ObjInstance> &mapObjInstances,
-                                  std::vector<ObjInstance> &newObjInstances,
-                                  pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                                  int viewPort1 = -1,
-                                  int viewPort2 = -1);
+    static void mergeObjInstances(Map &map,
+                                 std::vector<ObjInstance> &newObjInstances,
+                                 pcl::visualization::PCLVisualizer::Ptr viewer,
+                                 int viewPort1,
+                                 int viewPort2);
 
 //	static ObjInstance merge(const std::vector<const ObjInstance*>& objInstances,
 //                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
@@ -217,19 +200,9 @@ private:
     
     float curv;
 
-//	double chullArea;
-//
-//	pcl::PointCloud<pcl::PointXYZRGB>::Ptr convexHull;
-//
-//	pcl::Vertices convexHullPolygon;
-
     std::shared_ptr<ConcaveHull> hull;
 	
 	std::vector<LineSeg> lineSegs;
-    
-//    Eigen::Quaterniond quat;
-//
-//    Eigen::Matrix4d covarQuat;
     
     EKFPlane ekf;
     

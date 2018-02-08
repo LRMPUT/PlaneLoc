@@ -39,6 +39,12 @@
 
 using namespace std;
 
+
+Map::Map()
+    : originalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>()){
+    
+}
+
 Map::Map(const cv::FileStorage& settings)
     :
     originalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>())
@@ -159,3 +165,4 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Map::getColorPointCloud()
     }
     return pcCol;
 }
+
