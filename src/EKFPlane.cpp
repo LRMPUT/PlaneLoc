@@ -34,28 +34,28 @@ void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix4d &Rq) {
 }
 
 void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix3d &R) {
-    cout << endl << "x = " << x.coeffs().transpose() << endl;
-    cout << "P = " << P << endl;
-    cout << "zq = " << zq.coeffs().transpose() << endl;
-    cout << "R = " << R << endl;
+//    cout << endl << "x = " << x.coeffs().transpose() << endl;
+//    cout << "P = " << P << endl;
+//    cout << "zq = " << zq.coeffs().transpose() << endl;
+//    cout << "R = " << R << endl;
     // innovation
     Eigen::Vector3d v = Misc::logMap(zq * x.inverse());
-    cout << "v = " << v.transpose() << endl;
+//    cout << "v = " << v.transpose() << endl;
     // jacobian of transformation from quaternion to log-map of quaternion
 //    Eigen::MatrixXd J_dom_dq = jacob_dom_dq(zq);
     // innovation covariance
     Eigen::Matrix3d S = P + R;
-    cout << "S = " << S << endl;
+//    cout << "S = " << S << endl;
     // Kalman gain
     Eigen::Matrix3d K = P * S.inverse();
-    cout << "K = " << K << endl;
+//    cout << "K = " << K << endl;
     // update of state
-    cout << "K * v = " << K * v << endl;
+//    cout << "K * v = " << K * v << endl;
     x = Misc::expMap(K * v) * x;
-    cout << "updated x = " << x.coeffs().transpose() << endl;
+//    cout << "updated x = " << x.coeffs().transpose() << endl;
     // update of covariance
     P = (Eigen::Matrix3d::Identity() - K) * P;
-    cout << "updated P = " << P << endl;
+//    cout << "updated P = " << P << endl;
 }
 
 //void EKFPlane::transform(const Eigen::Matrix4d T)

@@ -40,6 +40,30 @@
 using namespace std;
 
 
+
+bool operator<(const PendingMatchKey &lhs, const PendingMatchKey &rhs) {
+    auto lit = lhs.matchedIds.begin();
+    auto rit = rhs.matchedIds.begin();
+    
+    for( ; lit != lhs.matchedIds.end() && rit != rhs.matchedIds.end(); ++lit, ++rit){
+        if(*lit < *rit){
+            return true;
+        }
+        else if(*lit > *rit){
+            return false;
+        }
+        // continue if equal
+    }
+    // if lhs has fewer elements
+    if(lit == lhs.matchedIds.end() && rit != rhs.matchedIds.end()){
+        return true;
+    }
+    // if lhs has the same number of elements or more elements
+    else {
+        return false;
+    }
+}
+
 Map::Map()
     : originalPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>()){
     
@@ -139,11 +163,170 @@ Map::Map(const cv::FileStorage& settings)
 	}
 }
 
+
+void Map::addPendingObj(ObjInstance &obj,
+                        const std::set<int> &matchedIds,
+                        const std::vector<std::list<ObjInstance>::iterator> &objInstancesIts,
+                        int eolAdd)
+{
+    pendingObjInstances.push_back(obj);
+    PendingMatchKey pmatchKey = PendingMatchKey{matchedIds};
+    
+    set<PendingMatchKey>::iterator itKey = pendingMatchesSet.find(pmatchKey);
+    
+    if(itKey != pendingMatchesSet.end()){
+//        auto matchIt = itKey->it;
+        itKey->pmatch->eol += eolAdd;
+        itKey->pmatch->pendingObjInstanceIts.push_back(--pendingObjInstances.end());
+    }
+    else {
+        pmatchKey.pmatch.reset(new PendingMatch{matchedIds,
+                                                eolAdd,
+                                                objInstancesIts,
+                                                std::vector<list<ObjInstance>::iterator>{--pendingObjInstances.end()}});
+        pendingMatchesSet.insert(pmatchKey);
+    }
+}
+
+//void Map::addPendingObjs(std::vector<ObjInstance>::iterator beg,
+//                         std::vector<ObjInstance>::iterator end,
+//                         int eolAdd) {
+//
+//}
+
+void Map::removePendingObjsEol() {
+    for(auto it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ++it){
+        for(auto itPObj = it->pmatch->pendingObjInstanceIts.begin(); itPObj != it->pmatch->pendingObjInstanceIts.end(); ++itPObj){
+            pendingObjInstances.erase(*itPObj);
+        }
+    }
+}
+
+std::vector<PendingMatchKey> Map::getPendingMatches(int eolThresh) {
+    vector<PendingMatchKey> retPendingMatches;
+    for(auto it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ++it){
+        if(it->pmatch->eol > eolThresh){
+            retPendingMatches.push_back(*it);
+        }
+    }
+    return retPendingMatches;
+}
+
+
+void Map::executePendingMatches(int eolThresh) {
+    map<int, int> idToIdx;
+    map<int, int> idxToId;
+    vector<list<ObjInstance>::iterator> its;
+    vector<bool> isPending;
+    int idx = 0;
+    // assign each ObjInstance an idx
+    for(auto it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ++it) {
+        if (it->pmatch->eol > eolThresh) {
+            for(auto iti = it->pmatch->objInstanceIts.begin(); iti != it->pmatch->objInstanceIts.end(); ++iti){
+                idToIdx[(*iti)->getId()] = idx;
+                idxToId[idx] = (*iti)->getId();
+                its.push_back(*iti);
+                isPending.push_back(false);
+                ++idx;
+            }
+            for(auto iti = it->pmatch->pendingObjInstanceIts.begin(); iti != it->pmatch->pendingObjInstanceIts.end(); ++iti){
+                idToIdx[(*iti)->getId()] = idx;
+                idxToId[idx] = (*iti)->getId();
+                its.push_back(*iti);
+                isPending.push_back(true);
+                ++idx;
+            }
+        }
+    }
+    
+    UnionFind ufSets(idx);
+    for(auto it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ) {
+        if (it->pmatch->eol > eolThresh) {
+            auto iti = it->pmatch->objInstanceIts.begin();
+            int mergeIdx = idToIdx[(*iti)->getId()];
+            
+            for(++iti; iti != it->pmatch->objInstanceIts.end(); ++iti){
+                int curIdx = idToIdx[(*iti)->getId()];
+                ufSets.unionSets(mergeIdx, curIdx);
+            }
+            for(iti = it->pmatch->pendingObjInstanceIts.begin(); iti != it->pmatch->pendingObjInstanceIts.end(); ++iti){
+                int curIdx = idToIdx[(*iti)->getId()];
+                ufSets.unionSets(mergeIdx, curIdx);
+            }
+            
+            it = pendingMatchesSet.erase(it);
+        }
+        else{
+            ++it;
+        }
+    }
+    
+    multimap<int, int> sets;
+    for(int curIdx = 0; curIdx < idx; ++curIdx){
+        int setId = ufSets.findSet(curIdx);
+        sets.insert(make_pair(setId, curIdx));
+    }
+
+//    typedef multimap<int, pair<int, int> >::iterator mmIter;
+    for(auto it = sets.begin(); it != sets.end(); ) {
+    
+        auto range = sets.equal_range(it->first);
+    
+        vector<list<ObjInstance>::iterator> mapObjIts;
+        vector<list<ObjInstance>::iterator> pendingObjIts;
+        cout << "merging ids:" << endl;
+        for (auto rangeIt = range.first; rangeIt != range.second; ++rangeIt) {
+            int curIdx = rangeIt->second;
+            if(isPending[curIdx]){
+                pendingObjIts.push_back(its[curIdx]);
+            }
+            else{
+                mapObjIts.push_back(its[curIdx]);
+            }
+            cout << idxToId[curIdx] << endl;
+        }
+        
+        auto iti = mapObjIts.begin();
+        auto mergeIt = *iti;
+        
+        // merge all map objects
+        for(++iti; iti != mapObjIts.end(); ++iti){
+            mergeIt->merge(*(*iti));
+            objInstances.erase(*iti);
+        }
+        // merge all pending objects
+        for(iti = pendingObjIts.begin(); iti != pendingObjIts.end(); ++iti){
+            mergeIt->merge(*(*iti));
+            pendingObjInstances.erase(*iti);
+        }
+        
+        it = range.second;
+    }
+}
+
+bool Map::getPendingMatch(PendingMatchKey &pendingMatch) {
+    if(pendingMatchesSet.count(pendingMatch) > 0){
+        auto it = pendingMatchesSet.find(pendingMatch);
+        pendingMatch = *it;
+        
+        return true;
+    }
+    return false;
+}
+
+void Map::decreaseEol(int eolSub) {
+    for(set<PendingMatchKey>::iterator it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ++it){
+        it->pmatch->eol -= eolSub;
+    }
+}
+
+
 pcl::PointCloud<pcl::PointXYZL>::Ptr Map::getLabeledPointCloud()
 {
     pcl::PointCloud<pcl::PointXYZL>::Ptr pcLab(new pcl::PointCloud<pcl::PointXYZL>());
-    for(int o = 0; o < objInstances.size(); ++o){
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = objInstances[o].getPoints();
+    int o = 0;
+    for(auto it = objInstances.begin(); it != objInstances.end(); ++it, ++o){
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = it->getPoints();
         for(int pt = 0; pt < curPc->size(); ++pt){
             pcl::PointXYZL newPt;
             newPt.x = curPc->at(pt).x;
@@ -159,10 +342,9 @@ pcl::PointCloud<pcl::PointXYZL>::Ptr Map::getLabeledPointCloud()
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr Map::getColorPointCloud()
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcCol(new pcl::PointCloud<pcl::PointXYZRGB>());
-    for(int o = 0; o < objInstances.size(); ++o){
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = objInstances[o].getPoints();
+    for(auto it = objInstances.begin(); it != objInstances.end(); ++it){
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = it->getPoints();
         pcCol->insert(pcCol->end(), curPc->begin(), curPc->end());
     }
     return pcCol;
 }
-

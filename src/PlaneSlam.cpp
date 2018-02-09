@@ -95,8 +95,8 @@ void PlaneSlam::run(){
 	// Map
 	cout << "Getting object instances from map" << endl;
 	vector<ObjInstance> mapObjInstances;
-	for(int i = 0; i < map.size(); ++i){
-		mapObjInstances.push_back(map[i]);
+    for(auto it = map.begin(); it != map.end(); ++it){
+		mapObjInstances.push_back(*it);
 	}
 
 	vector<ObjInstance> prevObjInstances;
@@ -357,10 +357,10 @@ void PlaneSlam::run(){
                 }
     
                 ObjInstance::mergeObjInstances(accMap,
-                                               curObjInstancesTrans,
+                                               curObjInstancesTrans/*,
                                                viewer,
                                                v1,
-                                               v2);
+                                               v2*/);
                 
 //                vector<vector<ObjInstance>> toMerge{accObjInstances};
 //                if(curFrameIdx < 160) {
@@ -493,8 +493,9 @@ void PlaneSlam::run(){
     
                 viewer->removeAllPointClouds();
                 viewer->removeAllShapes();
-                for(int o = 0; o < accMap.size(); ++o){
-                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = accMap[o].getPoints();
+                int o = 0;
+                for(auto it = accMap.begin(); it != accMap.end(); ++it, ++o){
+                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = it->getPoints();
                     viewer->addPointCloud(curPc, "cloud_" + to_string(o), v1);
     
                     int colIdx = (o % (sizeof(colors)/sizeof(uint8_t)/3));

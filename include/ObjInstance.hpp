@@ -159,16 +159,16 @@ public:
     
     static double compHistDist(cv::Mat hist1, cv::Mat hist2);
     
-    static std::vector<ObjInstance> mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
+    static std::list<ObjInstance> mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
                                                       pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                                       int viewPort1 = -1,
                                                       int viewPort2 = -1);
     
     static void mergeObjInstances(Map &map,
                                  std::vector<ObjInstance> &newObjInstances,
-                                 pcl::visualization::PCLVisualizer::Ptr viewer,
-                                 int viewPort1,
-                                 int viewPort2);
+                                 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                 int viewPort1 = -1,
+                                 int viewPort2 = -1);
 
 //	static ObjInstance merge(const std::vector<const ObjInstance*>& objInstances,
 //                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,

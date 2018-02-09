@@ -260,9 +260,9 @@ void ObjInstance::mergeObjInstances(Map &map,
     
     for(ObjInstance &newObj : newObjInstances){
         
-        vector<int> matches;
-        for(int mo = 0; mo < map.size(); ++mo){
-            ObjInstance &mapObj = map[mo];
+        vector<list<ObjInstance>::iterator> matches;
+        for(auto it = map.begin(); it != map.end(); ++it){
+            ObjInstance &mapObj = *it;
             
             double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
             double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
@@ -302,29 +302,51 @@ void ObjInstance::mergeObjInstances(Map &map,
                     if(intScore > 0.3){
                         cout << "merging planes" << endl;
                         // merge the objects
-                        matches.push_back(mo);
+                        matches.push_back(it);
                     }
                 }
             }
         }
         
-        if(matches.size() == 1){
-            ObjInstance &mapObj = map[matches.front()];
+        if(matches.size() == 0){
+            map.addObj(newObj);
+        }
+        else if(matches.size() == 1){
+            ObjInstance &mapObj = *matches.front();
             mapObj.merge(newObj);
+        }
+        else{
+            set<int> matchedIds;
+            for(auto it : matches){
+                matchedIds.insert(it->getId());
+            }
+            PendingMatchKey pmatchKey{matchedIds};
+            if(map.getPendingMatch(pmatchKey)){
+                map.addPendingObj(newObj, matchedIds, matches, 2);
+            }
+            else{
+                map.addPendingObj(newObj, matchedIds, matches, 4);
+            }
+            
+            cout << "Multiple matches" << endl;
         }
     }
     
+    map.executePendingMatches(8);
     
+    map.decreaseEol(1);
+    
+    map.removePendingObjsEol();
 }
 
-std::vector<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
+std::list<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
                                                         pcl::visualization::PCLVisualizer::Ptr viewer,
                                                         int viewPort1,
                                                         int viewPort2)
 {
     static constexpr double shadingLevel = 0.01;
 
-    vector<ObjInstance> retObjInstances;
+    list<ObjInstance> retObjInstances;
 
     if(viewer){
         viewer->removeAllPointClouds(viewPort1);
