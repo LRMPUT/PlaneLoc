@@ -195,9 +195,17 @@ void Map::addPendingObj(ObjInstance &obj,
 //}
 
 void Map::removePendingObjsEol() {
-    for(auto it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ++it){
-        for(auto itPObj = it->pmatch->pendingObjInstanceIts.begin(); itPObj != it->pmatch->pendingObjInstanceIts.end(); ++itPObj){
-            pendingObjInstances.erase(*itPObj);
+    for(auto it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ){
+        auto curIt = it++;
+        
+        cout << "curIt->pmatch->eol = " << curIt->pmatch->eol << endl;
+        if(curIt->pmatch->eol <= 0) {
+            for (auto itPObj = curIt->pmatch->pendingObjInstanceIts.begin();
+                 itPObj != curIt->pmatch->pendingObjInstanceIts.end(); ++itPObj) {
+                pendingObjInstances.erase(*itPObj);
+            }
+            
+            pendingMatchesSet.erase(curIt);
         }
     }
 }
@@ -314,12 +322,41 @@ bool Map::getPendingMatch(PendingMatchKey &pendingMatch) {
     return false;
 }
 
-void Map::decreaseEol(int eolSub) {
+void Map::decreasePendingEol(int eolSub) {
     for(set<PendingMatchKey>::iterator it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ++it){
         it->pmatch->eol -= eolSub;
     }
 }
 
+void Map::decreaseObjEol(int eolSub) {
+    for(ObjInstance &obj : objInstances){
+        if(obj.getEolCnt() < 8){
+            obj.decreaseEolCnt(eolSub);
+        }
+    }
+}
+
+void Map::removeObjsEol() {
+    for(auto it = objInstances.begin(); it != objInstances.end(); ){
+        if(it->getEolCnt() <= 0){
+            it = objInstances.erase(it);
+        }
+        else{
+            ++it;
+        }
+    }
+}
+
+void Map::removeObjsObsThresh(int obsThresh) {
+    for(auto it = objInstances.begin(); it != objInstances.end(); ){
+        if(it->getObsCnt() < obsThresh){
+            it = objInstances.erase(it);
+        }
+        else{
+            ++it;
+        }
+    }
+}
 
 pcl::PointCloud<pcl::PointXYZL>::Ptr Map::getLabeledPointCloud()
 {
@@ -348,3 +385,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Map::getColorPointCloud()
     }
     return pcCol;
 }
+
+
+
+

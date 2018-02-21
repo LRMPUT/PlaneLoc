@@ -18,17 +18,28 @@ EKFPlane::EKFPlane(const Eigen::Quaterniond &xq, const Eigen::Matrix4d &Pq) {
     init(xq, Pq);
 }
 
+EKFPlane::EKFPlane(const Eigen::Quaterniond &xq, int npts) {
+    init(xq, npts);
+}
+
+
+
 void EKFPlane::init(const Eigen::Quaterniond &xq, const Eigen::Matrix4d &Pq) {
     x = xq;
     Eigen::MatrixXd J = jacob_dom_dq(xq);
     P = J * Pq * J.transpose();
 }
 
+void EKFPlane::init(const Eigen::Quaterniond &xq, int npts) {
+    x = xq;
+    EKFPlane::npts = npts;
+}
+
 void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix4d &Rq) {
     // jacobian of transformation from quaternion to log-map of quaternion
     Eigen::MatrixXd J_dom_dq = jacob_dom_dq(zq);
     // covariance in log-map representation
-    Eigen::Matrix3d R = J_dom_dq * Rq * J_dom_dq;
+    Eigen::Matrix3d R = J_dom_dq * Rq * J_dom_dq.transpose();
     
     update(zq, R);
 }
@@ -41,13 +52,42 @@ void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix3d &R) {
     // innovation
     Eigen::Vector3d v = Misc::logMap(zq * x.inverse());
 //    cout << "v = " << v.transpose() << endl;
-    // jacobian of transformation from quaternion to log-map of quaternion
-//    Eigen::MatrixXd J_dom_dq = jacob_dom_dq(zq);
     // innovation covariance
     Eigen::Matrix3d S = P + R;
 //    cout << "S = " << S << endl;
     // Kalman gain
     Eigen::Matrix3d K = P * S.inverse();
+//    {
+//        Eigen::EigenSolver<Eigen::Matrix3d> evd(R);
+//
+//        Eigen::Matrix3d evecs;
+//        Eigen::Vector3d evals;
+//        for(int i = 0; i < 3; ++i){
+//            evecs.col(i) = evd.eigenvectors().col(2 - i).real();
+//            evals(i) = evd.eigenvalues()(2 - i).real();
+//        }
+////        if(evals(0) > 1.0){
+//            cout << endl << "evecs = " << evecs << endl;
+//            cout << "evals = " << evals.transpose() << endl;
+//
+//            cout  << "x = " << x.coeffs().transpose() << endl;
+//            cout  << "log(x) = " << Misc::logMap(x).transpose() << endl;
+//            cout << "zq = " << zq.coeffs().transpose() << endl;
+//            cout  << "log(zq) = " << Misc::logMap(zq).transpose() << endl;
+//            cout << "v = " << v.transpose() << endl;
+//            cout << "updated x = " << (Misc::expMap(K * v) * x).coeffs().transpose() << endl;
+//            cout  << "log(updated x) = " << Misc::logMap(Misc::expMap(K * v) * x).transpose() << endl;
+//            cout << "P = " << P << endl;
+//            cout << "R = " << R << endl;
+//            cout << "S = " << S << endl;
+//            cout << "S.inverse() = " << S.inverse() << endl;
+//            cout << "K = " << K << endl;
+//            cout << "K * v = " << (K * v).transpose() << endl;
+//
+////            char a;
+////            cin >> a;
+////        }
+//    }
 //    cout << "K = " << K << endl;
     // update of state
 //    cout << "K * v = " << K * v << endl;
@@ -67,13 +107,34 @@ void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix3d &R) {
 //    Eigen::Matrix4d covarQuat = Tinvt * covarQuat * Tinv;
 //}
 
+void EKFPlane::update(const Eigen::Quaterniond &zq, int znpts) {
+    Eigen::Vector3d meanLogMap;
+    meanLogMap << 0.0, 0.0, 0.0;
+    int sumPoints = 0;
+    {
+        Eigen::Vector3d z = Misc::logMap(zq);
+        meanLogMap += z * znpts;
+        sumPoints += znpts;
+    }
+    {
+        Eigen::Vector3d xu = Misc::logMap(x);
+        meanLogMap += xu * npts;
+        sumPoints += npts;
+    }
+    meanLogMap /= sumPoints;
+    
+    x = Misc::expMap(meanLogMap);
+    npts = sumPoints;
+}
+
 double EKFPlane::distance(const Eigen::Quaterniond &xcq) const {
-    Eigen::Matrix3d inf = P.inverse();
+//    Eigen::Matrix3d inf = P.inverse();
 //    cout << "P = " << P << endl;
 //    cout << "inf = " << inf << endl;
     Eigen::Vector3d e = Misc::logMap(xcq * x.inverse());
     
-    return e.transpose() * inf * e;
+//    return e.transpose() * inf * e;
+    return e.transpose() * e;
 }
 
 void EKFPlane::compPlaneEqAndCovar(const Eigen::MatrixXd &pts,
@@ -204,5 +265,7 @@ const Eigen::Quaterniond &EKFPlane::getX() const {
 const Eigen::Matrix3d &EKFPlane::getP() const {
     return P;
 }
+
+
 
 

@@ -27,6 +27,7 @@
 #include <thread>
 
 #include <boost/filesystem.hpp>
+#include <boost/archive/text_oarchive.hpp>
 
 #include <opencv2/opencv.hpp>
 
@@ -109,7 +110,7 @@ void PlaneSlam::run(){
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudRead(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
 
 	static constexpr int frameRate = 30;
-	int framesToSkip = 150;
+	int framesToSkip = 850;
 	int framesSkipped = 0;
 	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose) >= 0))
 	{
@@ -327,7 +328,7 @@ void PlaneSlam::run(){
                 localize = false;
             }
             
-            if(curFrameIdx % accFrames == accFrames - 2){
+            if(curFrameIdx % accFrames == accFrames - 1){
                 stopFlag = true;
             }
             
@@ -377,6 +378,14 @@ void PlaneSlam::run(){
 //                }
             }
             
+            // if last frame in accumulation
+            if(curFrameIdx % accFrames == accFrames - 1){
+                accMap.removeObjsObsThresh(6);
+                
+                std::ofstream ofs("filename");
+                boost::archive::text_oarchive oa(ofs);
+                oa << accMap;
+            }
 
             if(globalMatching && localize){
                 RecCode curRecCode;
@@ -493,6 +502,7 @@ void PlaneSlam::run(){
     
                 viewer->removeAllPointClouds();
                 viewer->removeAllShapes();
+                viewer->addCoordinateSystem();
                 int o = 0;
                 for(auto it = accMap.begin(); it != accMap.end(); ++it, ++o){
                     const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = it->getPoints();

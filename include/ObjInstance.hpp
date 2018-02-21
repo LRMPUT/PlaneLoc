@@ -29,6 +29,8 @@ class ObjInstance;
 #include <vector>
 #include <string>
 
+#include <boost/serialization/vector.hpp>
+
 #include <opencv2/opencv.hpp>
 
 #include <Eigen/Eigen>
@@ -43,6 +45,7 @@ class ObjInstance;
 #include "ConcaveHull.hpp"
 #include "EKFPlane.hpp"
 #include "Map.hpp"
+#include "Serialization.hpp"
 
 // only planes in a current version
 class ObjInstance{
@@ -93,11 +96,11 @@ public:
     inline const std::vector<Eigen::Vector3d> getPrincComp() const {
         return princComp;
     }
-    
+
     inline const std::vector<double> &getPrincCompLens() const {
         return princCompLens;
     }
-    
+
     inline double getShorterComp() const {
         return shorterComp;
     }
@@ -133,6 +136,10 @@ public:
         ObjInstance::eolCnt = eolCnt;
     }
     
+    void decreaseEolCnt(int eolSub){
+        ObjInstance::eolCnt -= eolSub;
+    }
+    
     int getObsCnt() const {
         return obsCnt;
     }
@@ -155,7 +162,9 @@ public:
         lineSegs.push_back(newLineSeg);
     }
     
-    cv::Mat compColorHist() const;
+    cv::Mat getColorHist() const {
+        return colorHist;
+    }
     
     static double compHistDist(cv::Mat hist1, cv::Mat hist2);
     
@@ -177,6 +186,8 @@ public:
 private:
     void correctOrient();
     
+    void compColorHist();
+    
 	int id;
 
 	ObjType type;
@@ -193,12 +204,14 @@ private:
 	Eigen::Vector4d normal;
 
 	std::vector<Eigen::Vector3d> princComp;
-    
+
     std::vector<double> princCompLens;
-    
+
     double shorterComp;
     
     float curv;
+    
+    cv::Mat colorHist;
 
     std::shared_ptr<ConcaveHull> hull;
 	
@@ -211,6 +224,30 @@ private:
     int obsCnt;
     
     bool trial;
+    
+    friend class boost::serialization::access;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & id;
+        ar & type;
+        ar & points;
+        ar & svs;
+        ar & paramRep;
+        ar & normal;
+        ar & princComp;
+        ar & princCompLens;
+        ar & shorterComp;
+        ar & curv;
+        ar & colorHist;
+        ar & hull;
+        ar & lineSegs;
+        ar & ekf;
+        ar & eolCnt;
+        ar & obsCnt;
+        ar & trial;
+    }
 };
 
 

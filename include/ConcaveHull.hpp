@@ -9,6 +9,8 @@
 
 #include <vector>
 
+#include <boost/serialization/vector.hpp>
+
 #include <Eigen/Eigen>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -24,6 +26,8 @@
 #include "Types.hpp"
 
 class ConcaveHull {
+
+public:
     typedef CGAL::Exact_predicates_exact_constructions_kernel  K;
     typedef K::FT                                                FT;
     typedef K::Point_2                                           Point_2;
@@ -46,8 +50,6 @@ class ConcaveHull {
     typedef CGAL::Alpha_shape_2<Triangulation_2>                 Alpha_shape_2;
     typedef Alpha_shape_2::Alpha_shape_edges_iterator            Alpha_shape_edges_iterator;
     typedef Alpha_shape_2::Alpha_shape_vertices_iterator         Alpha_shape_vertices_iterator;
-    
-public:
     
     ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr ipoints3d,
                 Eigen::Vector4d planeEq);
@@ -107,7 +109,39 @@ private:
     // point on the plane nearest to origin
     Eigen::Vector3d origin;
     Eigen::Vector3d xAxis, yAxis;
+    
+    friend class boost::serialization::access;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & polygons;
+        ar & areas;
+        ar & totalArea;
+        ar & polygons3d;
+        ar & plNormal;
+        ar & plD;
+        ar & origin;
+        ar & xAxis;
+        ar & yAxis;
+    }
 };
 
+namespace boost {
+    namespace serialization {
+    
+        template<class Archive>
+        void serialize(Archive & ar, ConcaveHull::Point_2 &g, const unsigned int version) {
+            ar & g.x();
+            ar & g.y();
+        }
+        
+        template<class Archive>
+        void serialize(Archive & ar, ConcaveHull::Polygon_2 &g, const unsigned int version) {
+            ar & g.size();
+        }
+    
+    } // namespace serialization
+} // namespace boost
 
 #endif //PLANELOC_CONCAVEHULL_HPP

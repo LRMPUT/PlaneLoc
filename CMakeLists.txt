@@ -22,7 +22,7 @@ option(BUILD_DEMO_PLANESLAM "Build PlaneSlam demo" ON)
 include_directories("${CMAKE_SOURCE_DIR}/include")
 
 # Boost
-find_package(Boost COMPONENTS system filesystem)
+find_package(Boost COMPONENTS system filesystem serialization)
 
 # OpenCV
 find_package(OpenCV REQUIRED)

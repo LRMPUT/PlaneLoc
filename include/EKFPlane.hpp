@@ -15,14 +15,21 @@ public:
     EKFPlane(const Eigen::Quaterniond &xq,
              const Eigen::Matrix4d &Pq);
     
+    EKFPlane(const Eigen::Quaterniond &xq, int npts);
+    
     void init(const Eigen::Quaterniond &xq,
               const Eigen::Matrix4d &Pq);
+    
+    void init(const Eigen::Quaterniond &xq, int npts);
     
     void update(const Eigen::Quaterniond &zq,
                 const Eigen::Matrix4d &Rq);
     
     void update(const Eigen::Quaterniond &zq,
                 const Eigen::Matrix3d &R);
+    
+    void update(const Eigen::Quaterniond &zq,
+                int znpts);
     
 //    void transform(const Eigen::Matrix4d T);
     
@@ -45,6 +52,18 @@ private:
     Eigen::Quaterniond x;
     
     Eigen::Matrix3d P;
+    
+    int npts;
+    
+    friend class boost::serialization::access;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & x;
+        ar & P;
+        ar & npts;
+    }
 };
 
 

@@ -11,6 +11,7 @@
 #include <Eigen/Eigen>
 
 #include "Types.hpp"
+#include "Serialization.hpp"
 
 class LineSeg {
 public:
@@ -48,6 +49,18 @@ private:
     std::vector<Eigen::Vector2d> pis1, pis2;
 
     Eigen::Vector3d p1, p2;
+    
+    friend class boost::serialization::access;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & frameIds;
+        ar & pis1;
+        ar & pis2;
+        ar & p1;
+        ar & p2;
+    }
 };
 
 

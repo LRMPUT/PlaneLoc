@@ -31,9 +31,12 @@ class Map;
 #include <set>
 #include <memory>
 
+#include <boost/serialization/list.hpp>
+
 //#include <opencv2/opencv.hpp>
 
 #include "ObjInstance.hpp"
+#include "Serialization.hpp"
 
 struct PendingMatch {
     std::set<int> matchedIds;
@@ -111,7 +114,13 @@ public:
         return pendingObjInstances.size();
     }
     
-    void decreaseEol(int eolSub);
+    void decreasePendingEol(int eolSub);
+    
+    void decreaseObjEol(int eolSub);
+    
+    void removeObjsEol();
+    
+    void removeObjsObsThresh(int obsThresh);
     
 //	inline std::list<ObjInstance>::iterator pbegin(){
 //		return pendingObjInstances.begin();
@@ -145,6 +154,17 @@ private:
 //    std::list<PendingMatch> pendingMatches;
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr originalPointCloud;
+    
+    friend class boost::serialization::access;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & objInstances;
+//        ar & pendingObjInstances;
+//        ar & pendingMatchesSet;
+        ar & originalPointCloud;
+    }
 };
 
 

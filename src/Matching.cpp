@@ -943,7 +943,7 @@ void Matching::compObjFeatures(const std::vector<ObjInstance>& objInstances,
 							std::vector<cv::Mat>& objFeats)
 {
 	for(int o = 0; o < objInstances.size(); ++o){
-		objFeats.push_back(objInstances[o].compColorHist());
+		objFeats.push_back(objInstances[o].getColorHist());
 	}
 }
 

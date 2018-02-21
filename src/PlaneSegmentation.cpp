@@ -369,6 +369,8 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
     int ncols = rgbSegments.cols;
     
     {
+        cv::Mat filtRgbSegments = rgbSegments.clone();
+        
         int kSize = 5;
         // majority filter
         for(int r = 0; r < nrows; ++r) {
@@ -400,10 +402,13 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
                             bestId = p.first;
                         }
                     }
-                    rgbSegments.at<int>(r, c) = bestId;
+//                    if(bestId != )
+                    filtRgbSegments.at<int>(r, c) = bestId;
                 }
             }
         }
+        
+        rgbSegments = filtRgbSegments;
     }
     
     int nhood[][2] = {{-1, 1},
@@ -513,7 +518,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
 //                    if(evals.size() < 3){
 //                        throw PLANE_EXCEPTION("evals.size() < 3");
 //                    }
-                    if (varX < 0.1 && varY < 0.1) {
+                    if (varX < 0.4 && varY < 0.4) {
     
                         int newIdx = svsCnt++;
     
@@ -646,7 +651,8 @@ PlaneSegmentation::segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, 
 //    cv::Mat imageG(rgb.rows, rgb.cols, CV_32FC1);
 //    cv::Mat imageB(rgb.rows, rgb.cols, CV_32FC1);
 //    cv::Mat imageChannels[] = {imageR, imageG, imageB};
-    cv::Mat imageFloat(rgb.rows, rgb.cols, CV_32FC3);
+    cv::Mat imageFilt(rgb.rows, rgb.cols, CV_32FC3);
+    cv::Mat depthFilt = depth.clone();
     
 //    int nchannels = 3;
     int nhood[][2] = {{-1, 1},
@@ -658,19 +664,20 @@ PlaneSegmentation::segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, 
     //cout << "Size of nhood " << sizeof(nhood)/sizeof(nhood[0]) << endl;
     //cout << "rows: " << image.rows << ", cols: " << image.cols << endl;
 
-    rgb.convertTo(imageFloat, CV_32F);
+    rgb.convertTo(imageFilt, CV_32F);
     // 0 - 255 range
-    cv::cvtColor(imageFloat, imageFloat, cv::COLOR_RGB2GRAY);
+    cv::cvtColor(imageFilt, imageFilt, cv::COLOR_RGB2GRAY);
 //    double minVal, maxVal;
 //    cv::minMaxIdx(imageFloat, &minVal, &maxVal);
 //    cout << "minVal = " << minVal << endl;
 //    cout << "maxVal = " << maxVal << endl;
     //resize(imageFloat, imageFloat, Size(320, 240));
-    GaussianBlur(imageFloat, imageFloat, cv::Size(0, 0), sigma);
+    GaussianBlur(imageFilt, imageFilt, cv::Size(0, 0), sigma);
+    GaussianBlur(depthFilt, depthFilt, cv::Size(0, 0), sigma);
 //    split(imageFloat, imageChannels);
     
-    int nrows = imageFloat.rows;
-    int ncols = imageFloat.cols;
+    int nrows = imageFilt.rows;
+    int ncols = imageFilt.cols;
     
     cv::Mat segments(nrows, ncols, CV_32SC1, cv::Scalar(-1));
     
@@ -691,10 +698,10 @@ PlaneSegmentation::segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, 
 //                        diffAll += diff*diff;
 //                    }
 //                    diffAll = sqrt(diffAll);
-                    float diffRgb = imageFloat.at<float>(r, c) - imageFloat.at<float>(nhr, nhc);
-                    float diffDepth = depth.at<float>(r, c) - depth.at<float>(nhr, nhc);
+                    float diffRgb = imageFilt.at<float>(r, c) - imageFilt.at<float>(nhr, nhc);
+                    float diffDepth = (depthFilt.at<float>(r, c) - depthFilt.at<float>(nhr, nhc))/depthFilt.at<float>(r, c) ;
                     
-                    edges.push_back(SegEdge(c + ncols*r, nhc + ncols*nhr, 0.5*abs(diffRgb) + 0.5*128*abs(diffDepth)));
+                    edges.push_back(SegEdge(c + ncols*r, nhc + ncols*nhr, 0.5*abs(diffRgb) + 0.5*64*abs(diffDepth)));
                     //if(edges.back().i == 567768 || edges.back().j == 567768){
                     //	cout << "diff = abs(" << (int)imageChannels[ch].at<unsigned char>(r, c) << " - " << (int)imageChannels[ch].at<unsigned char>(r + nhood[nh][0], c + nhood[nh][1]) << ") = " << diff << endl;
                     //}
@@ -702,7 +709,7 @@ PlaneSegmentation::segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, 
             }
         }
     }
-    sort(edges.begin(), edges.end()); //possible improvement by bin sorting
+    sort(edges.begin(), edges.end());
     
     endSorting = high_resolution_clock::now();
     cout << "End sorting" << endl;
@@ -784,6 +791,10 @@ PlaneSegmentation::segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, 
     cout << "Segment Average whole time: " << wholeTime.count()/times << endl;
     
     return segments;
+}
+
+cv::Mat PlaneSegmentation::segmentRgb2(cv::Mat rgb, cv::Mat depth) {
+    return cv::Mat();
 }
 
 void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs,

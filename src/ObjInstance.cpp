@@ -51,8 +51,8 @@ ObjInstance::ObjInstance(int iid,
 	  type(itype),
 	  points(ipoints),
 	  svs(isvs),
-      eolCnt(0),
-      obsCnt(0),
+      eolCnt(4),
+      obsCnt(1),
       trial(false)
 {
     {
@@ -69,7 +69,8 @@ ObjInstance::ObjInstance(int iid,
 //        cout << "om = " << om.transpose() << endl;
 //        cout << "covar = " << covarQuat << endl;
     
-        ekf.init(q, covar);
+//        ekf.init(q, covar);
+        ekf.init(q, points->size());
     }
     pcl::PCA<pcl::PointXYZRGB> pca;
     pca.setInputCloud(points);
@@ -104,11 +105,13 @@ ObjInstance::ObjInstance(int iid,
 	Misc::normalizeAndUnify(paramRep);
 
     hull.reset(new ConcaveHull(points, normal));
+    
+    compColorHist();
 }
 
 void ObjInstance::merge(const ObjInstance &other) {
     
-    ekf.update(other.getEkf().getX(), other.getEkf().getP());
+    ekf.update(other.getEkf().getX(), other.getPoints()->size());
     
     const Eigen::Quaterniond &q = ekf.getX();
     Eigen::Vector4d newPlaneEq = q.coeffs();
@@ -145,6 +148,11 @@ void ObjInstance::merge(const ObjInstance &other) {
     Misc::normalizeAndUnify(paramRep);
     
     *hull = ConcaveHull(points, normal);
+    
+    compColorHist();
+    
+    eolCnt += 2;
+    obsCnt += 1;
 }
 
 void ObjInstance::transform(Vector7d transform) {
@@ -202,7 +210,7 @@ void ObjInstance::transform(Vector7d transform) {
         Eigen::Quaterniond q;
         Eigen::Matrix4d covar;
         EKFPlane::compPlaneEqAndCovar(pts, q, covar);
-        Eigen::Vector3d om = Misc::logMap(q);
+//        Eigen::Vector3d om = Misc::logMap(q);
 //        cout << "q = " << q.coeffs().transpose() << endl;
 //        cout << "om = " << om.transpose() << endl;
 //        cout << "covar = " << covar << endl;
@@ -211,7 +219,7 @@ void ObjInstance::transform(Vector7d transform) {
 //        planeEq /= planeEq.head<3>().norm();
 //        cout << "planeEq = " << planeEq.transpose() << endl;
         
-        ekf.init(q, covar);
+        ekf.init(q, points->size());
     }
 }
 
@@ -248,6 +256,59 @@ void ObjInstance::correctOrient() {
     }
 }
 
+void ObjInstance::compColorHist() {
+    // color histogram
+    int hbins = 32;
+    int sbins = 32;
+    int histSizeH[] = {hbins};
+    int histSizeS[] = {sbins};
+    float hranges[] = {0, 180};
+    float sranges[] = {0, 256};
+    const float* rangesH[] = {hranges};
+    const float* rangesS[] = {sranges};
+    int channelsH[] = {0};
+    int channelsS[] = {0};
+    
+    int npts = points->size();
+    cv::Mat matPts(1, npts, CV_8UC3);
+    for(int p = 0; p < npts; ++p){
+        matPts.at<cv::Vec3b>(p)[0] = points->at(p).r;
+        matPts.at<cv::Vec3b>(p)[1] = points->at(p).g;
+        matPts.at<cv::Vec3b>(p)[2] = points->at(p).b;
+    }
+    cv::cvtColor(matPts, matPts, cv::COLOR_RGB2HSV);
+    cv::Mat hist;
+    cv::calcHist(&matPts,
+                 1,
+                 channelsH,
+                 cv::Mat(),
+                 hist,
+                 1,
+                 histSizeH,
+                 rangesH);
+    // normalization
+    hist /= npts;
+    hist.reshape(1,hbins);
+    
+    cv::Mat histS;
+    cv::calcHist(&matPts,
+                 1,
+                 channelsS,
+                 cv::Mat(),
+                 histS,
+                 1,
+                 histSizeS,
+                 rangesS);
+    // normalization
+    histS /= npts;
+    histS.reshape(1,sbins);
+    
+    // add S part of histogram
+    hist.push_back(histS);
+    
+    colorHist = hist;
+}
+
 void ObjInstance::mergeObjInstances(Map &map,
                                    std::vector<ObjInstance> &newObjInstances,
                                    pcl::visualization::PCLVisualizer::Ptr viewer,
@@ -261,48 +322,58 @@ void ObjInstance::mergeObjInstances(Map &map,
     for(ObjInstance &newObj : newObjInstances){
         
         vector<list<ObjInstance>::iterator> matches;
-        for(auto it = map.begin(); it != map.end(); ++it){
+        for(auto it = map.begin(); it != map.end(); ++it) {
             ObjInstance &mapObj = *it;
+    
             
+        
             double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
             double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
-            cout << "dist1 = " << dist1 << endl;
-            cout << "dist2 = " << dist2 << endl;
-    
+//            cout << "dist1 = " << dist1 << endl;
+//            cout << "dist2 = " << dist2 << endl;
+
 //            double diff = Matching::planeEqDiffLogMap(mapObj, newObj, transform);
 //                    cout << "diff = " << diff << endl;
             // if plane equation is similar
-            if(dist1 < 50 || dist2 < 50){
-                double normDot = mapObj.getNormal().head<3>().dot(newObj.getNormal().head<3>());
-                cout << "normDot = " << normDot << endl;
-                // if the observed face is the same
-                if(normDot > 0){
-                    double intArea = 0.0;
-            
-                    if(viewer) {
-                        mapObj.getHull().cleanDisplay(viewer, viewPort1);
-                        newObj.getHull().cleanDisplay(viewer, viewPort2);
-                    }
-            
-                    double intScore = Matching::checkConvexHullIntersection(mapObj,
-                                                                            newObj,
-                                                                            transform,
-                                                                            intArea,
-                                                                            viewer,
-                                                                            viewPort1,
-                                                                            viewPort2);
-                    if(viewer) {
-                        mapObj.getHull().display(viewer, viewPort1);
-                        newObj.getHull().display(viewer, viewPort2);
-                    }
-            
-                    cout << "intScore = " << intScore << endl;
-                    cout << "intArea = " << intArea << endl;
-                    // if intersection of convex hulls is big enough
-                    if(intScore > 0.3){
-                        cout << "merging planes" << endl;
-                        // merge the objects
-                        matches.push_back(it);
+            if (dist1 < 0.05 || dist2 < 0.05) {
+    
+                cv::Mat mapHist = mapObj.getColorHist();
+                cv::Mat newHist = newObj.getColorHist();
+
+                double histDist = compHistDist(mapHist, newHist);
+                cout << "histDist = " << histDist << endl;
+                if (histDist < 3.5) {
+                    double normDot = mapObj.getNormal().head<3>().dot(newObj.getNormal().head<3>());
+                    cout << "normDot = " << normDot << endl;
+                    // if the observed face is the same
+                    if (normDot > 0) {
+                        double intArea = 0.0;
+                
+                        if (viewer) {
+                            mapObj.getHull().cleanDisplay(viewer, viewPort1);
+                            newObj.getHull().cleanDisplay(viewer, viewPort2);
+                        }
+                
+                        double intScore = Matching::checkConvexHullIntersection(mapObj,
+                                                                                newObj,
+                                                                                transform,
+                                                                                intArea,
+                                                                                viewer,
+                                                                                viewPort1,
+                                                                                viewPort2);
+                        if (viewer) {
+                            mapObj.getHull().display(viewer, viewPort1);
+                            newObj.getHull().display(viewer, viewPort2);
+                        }
+                
+                        cout << "intScore = " << intScore << endl;
+                        cout << "intArea = " << intArea << endl;
+                        // if intersection of convex hulls is big enough
+                        if (intScore > 0.3) {
+                            cout << "merging planes" << endl;
+                            // merge the objects
+                            matches.push_back(it);
+                        }
                     }
                 }
             }
@@ -332,11 +403,12 @@ void ObjInstance::mergeObjInstances(Map &map,
         }
     }
     
-    map.executePendingMatches(8);
-    
-    map.decreaseEol(1);
-    
+    map.executePendingMatches(6);
+    map.decreasePendingEol(1);
     map.removePendingObjsEol();
+    
+    map.decreaseObjEol(1);
+    map.removeObjsEol();
 }
 
 std::list<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
@@ -598,58 +670,6 @@ std::list<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<Ob
     return retObjInstances;
 }
 
-cv::Mat ObjInstance::compColorHist() const {
-    // color histogram
-    int hbins = 32;
-    int sbins = 32;
-    int histSizeH[] = {hbins};
-    int histSizeS[] = {sbins};
-    float hranges[] = {0, 180};
-    float sranges[] = {0, 256};
-    const float* rangesH[] = {hranges};
-    const float* rangesS[] = {sranges};
-    int channelsH[] = {0};
-    int channelsS[] = {0};
-    
-    int npts = points->size();
-    cv::Mat matPts(1, npts, CV_8UC3);
-    for(int p = 0; p < npts; ++p){
-        matPts.at<cv::Vec3b>(p)[0] = points->at(p).r;
-        matPts.at<cv::Vec3b>(p)[1] = points->at(p).g;
-        matPts.at<cv::Vec3b>(p)[2] = points->at(p).b;
-    }
-    cv::cvtColor(matPts, matPts, cv::COLOR_RGB2HSV);
-    cv::Mat hist;
-    cv::calcHist(&matPts,
-                 1,
-                 channelsH,
-                 cv::Mat(),
-                 hist,
-                 1,
-                 histSizeH,
-                 rangesH);
-    // normalization
-    hist /= npts;
-    hist.reshape(1,hbins);
-    
-    cv::Mat histS;
-    cv::calcHist(&matPts,
-                 1,
-                 channelsS,
-                 cv::Mat(),
-                 histS,
-                 1,
-                 histSizeS,
-                 rangesS);
-    // normalization
-    histS /= npts;
-    histS.reshape(1,sbins);
-    
-    // add S part of histogram
-    hist.push_back(histS);
-    
-    return hist;
-}
 
 double ObjInstance::compHistDist(cv::Mat hist1, cv::Mat hist2) {
 //            double histDist = cv::compareHist(frameObjFeats[of], mapObjFeats[om], cv::HISTCMP_CHISQR);

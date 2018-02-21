@@ -83,7 +83,9 @@ private:
 								 int viewPort2 = -1);
 	
 	static cv::Mat segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, int minSegment);
- 
+	
+	static cv::Mat segmentRgb2(cv::Mat rgb, cv::Mat depth);
+	
 	static inline float distToPlane(const pcl::PointNormal& plane,
 								const pcl::PointNormal& pt)
 	{

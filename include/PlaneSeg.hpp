@@ -33,6 +33,7 @@
 
 #include "UnionFind.h"
 #include "Types.hpp"
+#include "Serialization.hpp"
 
 class PlaneSeg {
 public:
@@ -215,6 +216,29 @@ private:
     float areaEst;
     
     std::vector<int> adjSegs;
+    
+    friend class boost::serialization::access;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & id;
+        ar & label;
+        ar & points;
+        ar & normals;
+        ar & origPlaneSegs;
+        ar & segNormal;
+        ar & segNormalIntDiff;
+        ar & segPlaneParams;
+        ar & segCentroid;
+        ar & segCovar;
+        ar & evecs;
+        ar & evals;
+        ar & segCurv;
+        ar & normAlignConsistent;
+        ar & areaEst;
+        ar & adjSegs;
+    }
 };
 
 
