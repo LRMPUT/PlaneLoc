@@ -5,13 +5,19 @@
 #ifndef PLANELOC_CONCAVEHULL_HPP
 #define PLANELOC_CONCAVEHULL_HPP
 
-#define CGAL_DISABLE_ROUNDING_MATH_CHECK
+//#define CGAL_DISABLE_ROUNDING_MATH_CHECK
+
+class ConcaveHull;
 
 #include <vector>
 
 #include <boost/serialization/vector.hpp>
 
 #include <Eigen/Eigen>
+
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/impl/point_types.hpp>
+#include <pcl/point_cloud.h>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/algorithm.h>
@@ -20,10 +26,10 @@
 #include <CGAL/IO/io.h>
 #include <CGAL/Polygon_with_holes_2.h>
 #include <CGAL/Polyline_simplification_2/simplify.h>
-#include <pcl/impl/point_types.hpp>
-#include <pcl/point_cloud.h>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+
 #include "Types.hpp"
+#include "Serialization.hpp"
 
 class ConcaveHull {
 
@@ -127,21 +133,5 @@ private:
     }
 };
 
-namespace boost {
-    namespace serialization {
-    
-        template<class Archive>
-        void serialize(Archive & ar, ConcaveHull::Point_2 &g, const unsigned int version) {
-            ar & g.x();
-            ar & g.y();
-        }
-        
-        template<class Archive>
-        void serialize(Archive & ar, ConcaveHull::Polygon_2 &g, const unsigned int version) {
-            ar & g.size();
-        }
-    
-    } // namespace serialization
-} // namespace boost
 
 #endif //PLANELOC_CONCAVEHULL_HPP

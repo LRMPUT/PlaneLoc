@@ -45,6 +45,8 @@
 #include "Misc.hpp"
 #include "Matching.hpp"
 #include "PlaneSegmentation.hpp"
+#include "Serialization.hpp"
+#include "ConcaveHull.hpp"
 
 using namespace std;
 using namespace cv;

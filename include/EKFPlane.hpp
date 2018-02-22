@@ -5,6 +5,8 @@
 #ifndef PLANELOC_EKFPLANE_HPP
 #define PLANELOC_EKFPLANE_HPP
 
+#include <boost/serialization/access.hpp>
+
 #include <Eigen/Eigen>
 
 

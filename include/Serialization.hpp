@@ -5,6 +5,8 @@
 #ifndef PLANELOC_SERIALIZATION_HPP
 #define PLANELOC_SERIALIZATION_HPP
 
+#include <sstream>
+
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/split_free.hpp>
@@ -18,9 +20,67 @@
 #include <Eigen/Dense>
 
 
+#include <CGAL/IO/io.h>
+#include <CGAL/Polygon_with_holes_2.h>
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+
 namespace boost {
     namespace serialization {
     
+//        template<class Archive>
+//        void serialize(Archive & ar, ConcaveHull::Point_2 &g, const unsigned int version) {
+//            ar & g.x();
+//            ar & g.y();
+//        }
+//
+//        template<class Archive>
+//        void save(Archive & ar, const ConcaveHull::Polygon_2 &g, const unsigned int version) {
+//            size_t polySize = g.size();
+//            ar << polySize;
+//            for(int i = 0; i < polySize; ++i){
+//                ar << g[i];
+//            }
+//        }
+//
+//        template<class Archive>
+//        void load(Archive & ar, ConcaveHull::Polygon_2 &g, const unsigned int version) {
+//            size_t polySize = 0;
+//            ar >> polySize;
+//            for(int i = 0; i < polySize; ++i){
+//                ConcaveHull::Point_2 p;
+//                ar >> p;
+//                g.push_back(p);
+//            }
+//        }
+        
+        typedef ::CGAL::Exact_predicates_exact_constructions_kernel  K;
+        typedef K::Point_2                                           Point_2;
+        typedef K::Segment_2                                         Segment_2;
+        typedef ::CGAL::Polygon_2<K>                                   Polygon_2;
+        
+        template<class Archive>
+        void save(Archive & ar, const Polygon_2 &g, const unsigned int version) {
+            std::stringstream ss;
+            ss << g;
+            std::string str = ss.str();
+            ar << str;
+        }
+
+        template<class Archive>
+        void load(Archive & ar, Polygon_2 &g, const unsigned int version) {
+            std::string str;
+            ar >> str;
+            std::stringstream ss(str);
+            ss >> g;
+        }
+    
+        template<class Archive>
+        void serialize(Archive & ar, Polygon_2 &g, const unsigned int version) {
+            split_free(ar, g, version);
+        }
+    
+        
+        
         template<class Archive, typename _Scalar, int _Rows, int _Cols, int _Options, int _MaxRows, int _MaxCols>
         inline void save( Archive& ar,
                           const Eigen::Matrix<_Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols>& M,
@@ -317,8 +377,8 @@ namespace boost {
         
         
         
-        template<class Archive>
-        void serialize(Archive & ar, pcl::PointCloud<pcl::PointXYZRGB>& g, const unsigned int version) {
+        template<class Archive, class PointT>
+        void serialize(Archive & ar, pcl::PointCloud<PointT>& g, const unsigned int version) {
             ar & g.points;
         }
         
@@ -330,6 +390,13 @@ namespace boost {
             ar & g.getRGBVector3i().data()[0];
             ar & g.getRGBVector3i().data()[1];
             ar & g.getRGBVector3i().data()[2];
+        }
+    
+        template<class Archive>
+        void serialize(Archive & ar, pcl::Normal& g, const unsigned int version) {
+            ar & g.getNormalVector3fMap()[0];
+            ar & g.getNormalVector3fMap()[1];
+            ar & g.getNormalVector3fMap()[2];
         }
         
     } // namespace serialization
