@@ -15,6 +15,8 @@
 
 class LineSeg {
 public:
+    LineSeg();
+    
     LineSeg(int iframeId,
             Eigen::Vector2d ipi1,
             Eigen::Vector2d ipi2,

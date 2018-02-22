@@ -57,6 +57,8 @@ public:
     typedef Alpha_shape_2::Alpha_shape_edges_iterator            Alpha_shape_edges_iterator;
     typedef Alpha_shape_2::Alpha_shape_vertices_iterator         Alpha_shape_vertices_iterator;
     
+    ConcaveHull();
+    
     ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr ipoints3d,
                 Eigen::Vector4d planeEq);
     

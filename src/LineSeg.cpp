@@ -6,6 +6,9 @@
 #include "Misc.hpp"
 #include "LineSeg.hpp"
 
+
+LineSeg::LineSeg() {}
+
 LineSeg::LineSeg(int iframeId,
                  Eigen::Vector2d ipi1,
                  Eigen::Vector2d ipi2,
@@ -163,4 +166,5 @@ double LineSeg::eqDist(const LineSeg &other) {
     
     return dist;
 }
+
 

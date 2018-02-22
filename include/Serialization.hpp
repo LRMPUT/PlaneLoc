@@ -376,27 +376,50 @@ namespace boost {
         
         
         
+        template<class Archive>
+        void serialize(Archive & ar, pcl::PCLHeader & g, const unsigned int version)
+        {
+            ar & g.seq;
+            ar & g.stamp;
+            ar & g.frame_id;
+        }
         
-        template<class Archive, class PointT>
-        void serialize(Archive & ar, pcl::PointCloud<PointT>& g, const unsigned int version) {
+        
+        template<class Archive>
+        void serialize(Archive & ar, pcl::PointCloud<pcl::Normal> & g, const unsigned int version)
+        {
+            ar & g.header;
             ar & g.points;
+            ar & g.height;
+            ar & g.width;
+            ar & g.is_dense;
+        }
+        
+        template<class Archive>
+        void serialize(Archive & ar, pcl::PointCloud<pcl::PointXYZRGB> & g, const unsigned int version)
+        {
+            ar & g.header;
+            ar & g.points;
+            ar & g.height;
+            ar & g.width;
+            ar & g.is_dense;
         }
         
         template<class Archive>
         void serialize(Archive & ar, pcl::PointXYZRGB& g, const unsigned int version) {
-            ar & g.getVector3fMap().data()[0];
-            ar & g.getVector3fMap().data()[1];
-            ar & g.getVector3fMap().data()[2];
-            ar & g.getRGBVector3i().data()[0];
-            ar & g.getRGBVector3i().data()[1];
-            ar & g.getRGBVector3i().data()[2];
+            ar & g.x;
+            ar & g.y;
+            ar & g.z;
+            ar & g.r;
+            ar & g.g;
+            ar & g.b;
         }
     
         template<class Archive>
         void serialize(Archive & ar, pcl::Normal& g, const unsigned int version) {
-            ar & g.getNormalVector3fMap()[0];
-            ar & g.getNormalVector3fMap()[1];
-            ar & g.getNormalVector3fMap()[2];
+            ar & g.normal_x;
+            ar & g.normal_y;
+            ar & g.normal_z;
         }
         
     } // namespace serialization

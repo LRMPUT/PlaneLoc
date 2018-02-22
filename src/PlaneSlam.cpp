@@ -28,6 +28,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 #include <opencv2/opencv.hpp>
 
@@ -179,7 +180,22 @@ void PlaneSlam::run(){
     cout << "Starting the loop" << endl;
 	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, pointCloudRead)) >= 0){
 		cout << "curFrameIdx = " << curFrameIdx << endl;
-
+        
+//        // saving
+//        {
+//            cout << "saving map to file" << endl;
+//            std::ofstream ofs("filename");
+//            boost::archive::text_oarchive oa(ofs);
+//            oa << accMap;
+//        }
+//        // loading
+//        {
+//            cout << "loading map from file" << endl;
+//            std::ifstream ifs("filename");
+//            boost::archive::text_iarchive ia(ifs);
+//            ia >> accMap;
+//        }
+        
 		int64_t timestamp = (int64_t)curFrameIdx * 1e6 / frameRate;
 		cout << "timestamp = " << timestamp << endl;
 
@@ -383,11 +399,7 @@ void PlaneSlam::run(){
             // if last frame in accumulation
             if(curFrameIdx % accFrames == accFrames - 1){
                 accMap.removeObjsObsThresh(6);
-                
-                std::ofstream ofs("filename");
-                boost::archive::text_oarchive oa(ofs);
-                oa << accMap;
-            }
+             }
 
             if(globalMatching && localize){
                 RecCode curRecCode;

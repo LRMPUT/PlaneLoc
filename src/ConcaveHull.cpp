@@ -23,6 +23,8 @@
 
 using namespace std;
 
+ConcaveHull::ConcaveHull() : totalArea(0.0) {}
+
 ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
                          Eigen::Vector4d planeEq)
     : totalArea(0.0)
@@ -480,6 +482,7 @@ ConcaveHull::Point_2ie ConcaveHull::point3dTo2die(const Eigen::Vector3d &point3d
 Eigen::Vector3d ConcaveHull::point2dTo3d(const ConcaveHull::Point_2 &point2d) const {
     return origin + CGAL::to_double(point2d.x()) * xAxis + CGAL::to_double(point2d.y()) * yAxis;
 }
+
 
 
 

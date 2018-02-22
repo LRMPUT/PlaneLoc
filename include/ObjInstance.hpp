@@ -54,7 +54,9 @@ public:
 		Plane,
 		Unknown
 	};
-
+    
+    ObjInstance();
+    
     /**
      *
      * @param iid

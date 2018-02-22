@@ -43,6 +43,8 @@
 
 using namespace std;
 
+ObjInstance::ObjInstance() : id(-1) {}
+
 ObjInstance::ObjInstance(int iid,
 					ObjType itype,
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
@@ -676,6 +678,7 @@ double ObjInstance::compHistDist(cv::Mat hist1, cv::Mat hist2) {
     cv::Mat histDiff = cv::abs(hist1 - hist2);
     return cv::sum(histDiff)[0];
 }
+
 
 //ObjInstance ObjInstance::merge(const std::vector<const ObjInstance*>& objInstances,
 //                               pcl::visualization::PCLVisualizer::Ptr viewer,
