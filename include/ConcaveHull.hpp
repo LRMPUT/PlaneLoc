@@ -60,7 +60,7 @@ public:
     ConcaveHull();
     
     ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr ipoints3d,
-                Eigen::Vector4d planeEq);
+                const Eigen::Vector4d &planeEq);
     
     ConcaveHull(const std::vector<Polygon_2> &polygons,
                     const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d,
@@ -85,7 +85,7 @@ public:
     ConcaveHull intersect(const ConcaveHull &other,
                           double areaThresh = 0.05) const;
     
-    ConcaveHull transform(Vector7d transform) const;
+    ConcaveHull transform(const Vector7d &transform) const;
     
     double minDistance(const ConcaveHull &other) const;
     
@@ -98,6 +98,7 @@ public:
     void cleanDisplay(pcl::visualization::PCLVisualizer::Ptr viewer,
                       int vp) const;
     
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     void computeFrame();
     

@@ -25,9 +25,24 @@
 #define INCLUDE_TYPES_HPP_
 
 #include <Eigen/Eigen>
+#include <Eigen/StdVector>
+#include <Eigen/StdList>
 
 typedef Eigen::Matrix<double, 6, 1, Eigen::ColMajor> Vector6d;
 typedef Eigen::Matrix<double, 7, 1, Eigen::ColMajor> Vector7d;
 
+class ObjInstance;
+class PlaneSeg;
+class LineSeg;
+
+typedef std::vector<ObjInstance, Eigen::aligned_allocator<ObjInstance> > vectorObjInstance;
+typedef std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg> > vectorPlaneSeg;
+typedef std::vector<LineSeg, Eigen::aligned_allocator<LineSeg> > vectorLineSeg;
+typedef std::vector<Vector7d, Eigen::aligned_allocator<Vector7d> > vectorVector7d;
+typedef std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > vectorVector2d;
+typedef std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > vectorVector3d;
+typedef std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > vectorVector4d;
+
+typedef std::list<ObjInstance, Eigen::aligned_allocator<ObjInstance> > listObjInstance;
 
 #endif /* INCLUDE_TYPES_HPP_ */

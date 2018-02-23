@@ -14,9 +14,9 @@ using namespace std;
 void LineDet::detectLineSegments(const cv::FileStorage &settings,
                                  cv::Mat rgb,
                                  cv::Mat depth,
-                                 vector<ObjInstance> &planes,
+                                 vectorObjInstance &planes,
                                  cv::Mat cameraMatrix,
-                                 std::vector<LineSeg> &lineSegs,
+                                 vectorLineSeg &lineSegs,
                                  pcl::visualization::PCLVisualizer::Ptr viewer,
                                  int viewPort1,
                                  int viewPort2)

@@ -65,33 +65,33 @@ public:
 
 	static bool nextChoice(std::vector<int>& choice, int N);
 
-	static Eigen::Quaterniond planeEqToQuat(Eigen::Vector4d planeEq);
+	static Eigen::Quaterniond planeEqToQuat(const Eigen::Vector4d &planeEq);
 
 	static void normalizeAndUnify(Eigen::Quaterniond& q);
 
 	static void normalizeAndUnify(Eigen::Vector4d& q);
 
-    static Eigen::Vector4d toNormalPlaneEquation(Eigen::Vector4d plane);
+    static Eigen::Vector4d toNormalPlaneEquation(const Eigen::Vector4d &plane);
 
-	static Eigen::Vector3d logMap(Eigen::Quaterniond quat);
+	static Eigen::Vector3d logMap(const Eigen::Quaterniond &quat);
 
-	static Eigen::Quaterniond expMap(Eigen::Vector3d vec);
+	static Eigen::Quaterniond expMap(const Eigen::Vector3d &vec);
 
-	static Eigen::Matrix4d matrixQ(Eigen::Quaterniond q);
+	static Eigen::Matrix4d matrixQ(const Eigen::Quaterniond &q);
 
-	static Eigen::Matrix4d matrixW(Eigen::Quaterniond q);
+	static Eigen::Matrix4d matrixW(const Eigen::Quaterniond &q);
 
-	static Eigen::Matrix3d matrixK(Eigen::Quaterniond q);
+	static Eigen::Matrix3d matrixK(const Eigen::Quaterniond &q);
 
-	static bool checkIfAlignedWithNormals(const Eigen::Vector3f& testedNormal,
+	static bool checkIfAlignedWithNormals(const Eigen::Vector3d& testedNormal,
                                             pcl::PointCloud<pcl::Normal>::ConstPtr normals,
                                             bool& alignConsistent);
 
-	static double transformLogDist(Vector7d trans1,
-									Vector7d trans2);
+	static double transformLogDist(const Vector7d &trans1,
+								   const Vector7d &trans2);
 
-    static double rotLogDist(Eigen::Vector4d rot1,
-                             Eigen::Vector4d rot2);
+    static double rotLogDist(const Eigen::Vector4d &rot1,
+							 const Eigen::Vector4d &rot2);
 
     static cv::Mat colorIds(cv::Mat ids);
 	

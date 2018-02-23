@@ -70,12 +70,12 @@ void PlaneSeg::calcSegProp(bool filter){
     }
     
     if(points->size() < 3){
-        segCentroid = Eigen::Vector3f::Zero();
-        segCovar = Eigen::Matrix3f::Zero();
+        segCentroid = Eigen::Vector3d::Zero();
+        segCovar = Eigen::Matrix3d::Zero();
         evecs.resize(3);
         evals.resize(3);
-        segNormal = Eigen::Vector3f::Zero();
-        segPlaneParams = Eigen::Vector4f::Zero();
+        segNormal = Eigen::Vector3d::Zero();
+        segPlaneParams = Eigen::Vector4d::Zero();
         segNormalIntDiff = segCurv = 0;
         areaEst = 0;
     }
@@ -83,20 +83,20 @@ void PlaneSeg::calcSegProp(bool filter){
         pcl::PCA<pcl::PointXYZRGB> pca;
         pca.setInputCloud(points);
     
-        Eigen::Matrix3f evecsMat = pca.getEigenVectors();
-        Eigen::Vector3f evalsVec = pca.getEigenValues();
-        segCentroid = pca.getMean().head<3>();
+        Eigen::Matrix3d evecsMat = pca.getEigenVectors().cast<double>();
+        Eigen::Vector3d evalsVec = pca.getEigenValues().cast<double>();
+        segCentroid = pca.getMean().head<3>().cast<double>();
     
         // Same work as in pcl::PCA<pcl::PointXYZRGB> - could be done better
         Eigen::MatrixXf pointsDemean;
         demeanPointCloud(*points, pca.getMean(), pointsDemean);
-        segCovar = static_cast<Eigen::Matrix3f> (pointsDemean.topRows<3>() *
-                                                 pointsDemean.topRows<3>().transpose());
+        segCovar = (pointsDemean.topRows<3>() *
+                     pointsDemean.topRows<3>().transpose()).cast<double>();
         segCovar /= points->size();
     
-        Eigen::Vector3f ev0 = evecsMat.block<3, 1>(0, 0);
-        Eigen::Vector3f ev1 = evecsMat.block<3, 1>(0, 1);
-        Eigen::Vector3f ev2 = evecsMat.block<3, 1>(0, 2);
+        Eigen::Vector3d ev0 = evecsMat.block<3, 1>(0, 0);
+        Eigen::Vector3d ev1 = evecsMat.block<3, 1>(0, 1);
+        Eigen::Vector3d ev2 = evecsMat.block<3, 1>(0, 2);
         
         evecs.push_back(ev0);
         evecs.push_back(ev1);
@@ -130,7 +130,7 @@ void PlaneSeg::calcSegProp(bool filter){
         float curAreaCoeff = 0.0;
         for (int pt = 0; pt < points->size(); ++pt) {
             pcl::PointXYZRGB curPt = points->at(pt);
-            Eigen::Vector3f curPtCentroid = curPt.getVector3fMap() - segCentroid;
+            Eigen::Vector3d curPtCentroid = curPt.getVector3fMap().cast<double>() - segCentroid;
             float lenSq = curPtCentroid.squaredNorm();
             float normLen = segNormal.dot(curPtCentroid);
             float distPlaneSq = lenSq - normLen * normLen;
@@ -142,12 +142,12 @@ void PlaneSeg::calcSegProp(bool filter){
     }
 }
 
-void PlaneSeg::transform(Vector7d transform) {
+void PlaneSeg::transform(const Vector7d &transform) {
     g2o::SE3Quat transformSE3Quat(transform);
     Eigen::Matrix4d transformMat = transformSE3Quat.to_homogeneous_matrix();
-    Eigen::Matrix3f R = transformMat.block<3, 3>(0, 0).cast<float>();
-    Eigen::Vector3f t = transformMat.block<3, 1>(0, 3).cast<float>();
-    Eigen::Matrix4f Tinvt = transformMat.inverse().cast<float>();
+    Eigen::Matrix3d R = transformMat.block<3, 3>(0, 0);
+    Eigen::Vector3d t = transformMat.block<3, 1>(0, 3);
+    Eigen::Matrix4d Tinvt = transformMat.inverse();
     Tinvt.transposeInPlace();
     
     // pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
@@ -159,23 +159,23 @@ void PlaneSeg::transform(Vector7d transform) {
     //  std::vector<int> origPlaneSegs;
     // no need to transform
     
-    // Eigen::Vector3f segNormal;
+    // Eigen::Vector3d segNormal;
     segNormal = R * segNormal;
     
     // double segNormalIntDiff;
     // no need to transform
     
-    // Eigen::Vector3f segCentroid;
+    // Eigen::Vector3d segCentroid;
     segCentroid = R * segCentroid + t;
     
-    // Eigen::Vector4f segPlaneParams;
+    // Eigen::Vector4d segPlaneParams;
     segPlaneParams = Tinvt * segPlaneParams;
     
     // Eigen::Matrix3f segCovar;
     segCovar = R * segCovar * R.transpose();
     
-    // std::vector<Eigen::Vector3f> evecs;
-    for(Eigen::Vector3f ev : evecs){
+    // std::vector<Eigen::Vector3d> evecs;
+    for(Eigen::Vector3d &ev : evecs){
         ev = R * ev;
     }
     

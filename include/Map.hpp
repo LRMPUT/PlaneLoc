@@ -43,9 +43,9 @@ struct PendingMatch {
     
     int eol;
     
-    std::vector<std::list<ObjInstance>::iterator> objInstanceIts;
+    std::vector<listObjInstance::iterator> objInstanceIts;
     
-    std::vector<std::list<ObjInstance>::iterator> pendingObjInstanceIts;
+    std::vector<listObjInstance::iterator> pendingObjInstanceIts;
 };
 
 struct PendingMatchKey{
@@ -66,13 +66,13 @@ public:
 		objInstances.push_back(obj);
 	}
     
-    inline void addObjs(std::vector<ObjInstance>::iterator beg,
-                        std::vector<ObjInstance>::iterator end)
+    inline void addObjs(vectorObjInstance::iterator beg,
+                        vectorObjInstance::iterator end)
     {
         objInstances.insert(objInstances.end(), beg, end);
     }
     
-    inline std::list<ObjInstance>::iterator removeObj(std::list<ObjInstance>::iterator it){
+    inline listObjInstance::iterator removeObj(listObjInstance::iterator it){
 		return objInstances.erase(it);
 	}
 
@@ -84,18 +84,18 @@ public:
 //		return objInstances[i];
 //	}
     
-    inline std::list<ObjInstance>::iterator begin(){
+    inline listObjInstance::iterator begin(){
         return objInstances.begin();
     }
     
-    inline std::list<ObjInstance>::iterator end(){
+    inline listObjInstance::iterator end(){
         return objInstances.end();
     }
     
     
     void addPendingObj(ObjInstance &obj,
                            const std::set<int> &matchedIds,
-                           const std::vector<std::list<ObjInstance>::iterator> &objInstancesIts,
+                           const std::vector<listObjInstance::iterator> &objInstancesIts,
                            int eolAdd);
     
 //    void addPendingObjs(std::vector<ObjInstance>::iterator beg,
@@ -122,11 +122,11 @@ public:
     
     void removeObjsObsThresh(int obsThresh);
     
-//	inline std::list<ObjInstance>::iterator pbegin(){
+//	inline listObjInstance::iterator pbegin(){
 //		return pendingObjInstances.begin();
 //	}
 //
-//	inline std::list<ObjInstance>::iterator pend(){
+//	inline listObjInstance::iterator pend(){
 //		return pendingObjInstances.end();
 //	}
 //
@@ -143,11 +143,11 @@ private:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr getColorPointCloud();
 
 
-	std::list<ObjInstance> objInstances;
+	listObjInstance objInstances;
     
-//    std::map<int, std::list<ObjInstance>::iterator> idToIter;
+//    std::map<int, listObjInstance::iterator> idToIter;
     
-    std::list<ObjInstance> pendingObjInstances;
+    listObjInstance pendingObjInstances;
     
     std::set<PendingMatchKey> pendingMatchesSet;
     

@@ -43,14 +43,14 @@ public:
 	};
 
 	static MatchType matchFrameToMap(const cv::FileStorage &fs,
-                                     const std::vector<ObjInstance> &frameObjInstances,
-                                     const std::vector<ObjInstance> &mapObjInstances,
-                                     std::vector<Vector7d> &bestTrans,
-                                     std::vector<double> &bestTransProbs,
-                                     std::vector<double> &bestTransFits,
-                                     pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                                     int viewPort1 = -1,
-                                     int viewPort2 = -1);
+									 const vectorObjInstance &frameObjInstances,
+									 const vectorObjInstance &mapObjInstances,
+									 vectorVector7d &bestTrans,
+									 std::vector<double> &bestTransProbs,
+									 std::vector<double> &bestTransFits,
+									 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+									 int viewPort1 = -1,
+									 int viewPort2 = -1);
 
     static double planeEqDiffLogMap(const ObjInstance &obj1,
                                     const ObjInstance &obj2,
@@ -73,37 +73,37 @@ public:
                                            const Vector7d &transform,
                                            double &intLen);
 
-    static Vector7d bestTransformPointsDirsDists(const std::vector<Eigen::Vector3d>& points1,
-                                                 const std::vector<Eigen::Vector3d>& points2,
-                                                 const std::vector<double>& pointsW,
-                                                 const std::vector<Eigen::Vector3d>& virtPoints1,
-                                                 const std::vector<Eigen::Vector3d>& virtPoints2,
-                                                 const std::vector<double>& virtPointsW,
-                                                 const std::vector<Eigen::Vector3d>& dirs1,
-                                                 const std::vector<Eigen::Vector3d>& dirs2,
-                                                 const std::vector<double>& dirsW,
-                                                 const std::vector<double> &dists1,
-                                                 const std::vector<double> &dists2,
-                                                 const std::vector<Eigen::Vector3d> &distDirs1,
-                                                 const std::vector<double> &distsW,
-                                                 const std::vector<Eigen::Vector3d> &distPts1,
-                                                 const std::vector<Eigen::Vector3d> &distPts2,
-                                                 const std::vector<Eigen::Vector3d> &distPtsDirs1,
-                                                 const std::vector<double> &distsPtsW,
-                                                 double sinValsThresh,
-                                                 bool &fullConstrRot,
-                                                 bool &fullConstrTrans);
+    static Vector7d bestTransformPointsDirsDists(const vectorVector3d &points1,
+												 const vectorVector3d &points2,
+												 const std::vector<double> &pointsW,
+												 const vectorVector3d &virtPoints1,
+												 const vectorVector3d &virtPoints2,
+												 const std::vector<double> &virtPointsW,
+												 const vectorVector3d &dirs1,
+												 const vectorVector3d &dirs2,
+												 const std::vector<double> &dirsW,
+												 const std::vector<double> &dists1,
+												 const std::vector<double> &dists2,
+												 const vectorVector3d &distDirs1,
+												 const std::vector<double> &distsW,
+												 const vectorVector3d &distPts1,
+												 const vectorVector3d &distPts2,
+												 const vectorVector3d &distPtsDirs1,
+												 const std::vector<double> &distsPtsW,
+												 double sinValsThresh,
+												 bool &fullConstrRot,
+												 bool &fullConstrTrans);
     
-    static void convertToPointsDirsDists(const std::vector<Eigen::Vector3d> &points,
-                                        const std::vector<Eigen::Vector4d> &planes,
+    static void convertToPointsDirsDists(const vectorVector3d &points,
+                                        const std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d>> &planes,
                                         const std::vector<Vector6d> &lines,
-                                        std::vector<Eigen::Vector3d> &retPoints,
-                                        std::vector<Eigen::Vector3d> &retVirtPoints,
-                                        std::vector<Eigen::Vector3d> &retDirs,
+                                        vectorVector3d &retPoints,
+                                        vectorVector3d &retVirtPoints,
+                                        vectorVector3d &retDirs,
                                         std::vector<double> &retDists,
-                                        std::vector<Eigen::Vector3d> &retDistDirs,
-                                        std::vector<Eigen::Vector3d> &retDistPts,
-                                        std::vector<Eigen::Vector3d> &retDistPtsDirs);
+                                        vectorVector3d &retDistDirs,
+                                        vectorVector3d &retDistPts,
+                                        vectorVector3d &retDistPtsDirs);
     
 private:
     
@@ -185,27 +185,27 @@ private:
 		double weight;
 	};
     
-    static double compAngleDiffBetweenNormals(Eigen::Vector3d nf1,
-                                              Eigen::Vector3d ns1,
-                                              Eigen::Vector3d nf2,
-                                              Eigen::Vector3d ns2);
+    static double compAngleDiffBetweenNormals(const Eigen::Vector3d &nf1,
+											  const Eigen::Vector3d &ns1,
+											  const Eigen::Vector3d &nf2,
+											  const Eigen::Vector3d &ns2);
     
-    static bool checkLineToLineAng(const std::vector<LineSeg> &lineSegs1,
-                                   const std::vector<LineSeg> &lineSegs2,
+    static bool checkLineToLineAng(const vectorLineSeg &lineSegs1,
+                                   const vectorLineSeg &lineSegs2,
                                    double lineToLineAngThresh);
                                    
-    static bool checkPlaneToPlaneAng(const std::vector<Eigen::Vector4d> &planes1,
-                                     const std::vector<Eigen::Vector4d> &planes2,
+    static bool checkPlaneToPlaneAng(const vectorVector4d &planes1,
+                                     const vectorVector4d &planes2,
                                      double planeToPlaneAngThresh);
     
-    static bool checkPlaneToLineAng(const std::vector<Eigen::Vector4d> &planes1,
-                                     const std::vector<LineSeg> &lineSegs1,
-                                     const std::vector<Eigen::Vector4d> &planes2,
-                                     const std::vector<LineSeg> &lineSegs2,
+    static bool checkPlaneToLineAng(const vectorVector4d &planes1,
+                                     const vectorLineSeg &lineSegs1,
+                                     const vectorVector4d &planes2,
+                                     const vectorLineSeg &lineSegs2,
                                      double planeToLineAngThresh);
     
-    static std::vector<PotMatch> findPotMatches(const std::vector<ObjInstance>& objInstances1,
-                                                const std::vector<ObjInstance>& objInstances2,
+    static std::vector<PotMatch> findPotMatches(const vectorObjInstance& objInstances1,
+                                                const vectorObjInstance& objInstances2,
                                                 double planeAppThresh,
                                                 double lineAppThresh,
                                                 double lineToLineAngThresh,
@@ -214,8 +214,8 @@ private:
                                                 int viewPort2 = -1);
     
     static std::vector<std::vector<PotMatch> > findPotSets(std::vector<PotMatch> potMatches,
-                                                           const std::vector<ObjInstance>& objInstances1,
-                                                           const std::vector<ObjInstance>& objInstances2,
+                                                           const vectorObjInstance& objInstances1,
+                                                           const vectorObjInstance& objInstances2,
                                                            double planeDistThresh,
                                                            double lineToLineAngThresh,
                                                            double planeToPlaneAngThresh,
@@ -224,29 +224,29 @@ private:
                                                            int viewPort1 = -1,
                                                            int viewPort2 = -1);
     
-	static void compObjFeatures(const std::vector<ObjInstance>& objInstances,
+	static void compObjFeatures(const vectorObjInstance& objInstances,
 								std::vector<cv::Mat>& objFeats);
 
-    static void compObjDistances(const std::vector<ObjInstance>& objInstances,
+    static void compObjDistances(const vectorObjInstance& objInstances,
                                 std::vector<std::vector<double>>& objDistances);
 
-	static void comp3DTransform(const std::vector<Eigen::Vector4d>& planes1,
-								const std::vector<Eigen::Vector4d>& planes2,
+	static void comp3DTransform(const vectorVector4d& planes1,
+								const vectorVector4d& planes2,
 								const std::vector<std::pair<int, int>>& triplet,
 								Vector7d& transform,
                                 double sinValsThresh,
 								bool& fullConstr);
 
-	static Vector7d bestTransformPlanes(const std::vector<Eigen::Vector4d>& planes1,
-                                        const std::vector<Eigen::Vector4d>& planes2,
+	static Vector7d bestTransformPlanes(const vectorVector4d& planes1,
+                                        const vectorVector4d& planes2,
                                         double sinValsThresh,
                                         bool &fullConstr);
 
-	static Vector7d bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d>& points1,
-                                               const std::vector<Eigen::Vector3d>& points2,
+	static Vector7d bestTransformPointsAndDirs(const vectorVector3d& points1,
+                                               const vectorVector3d& points2,
                                                const std::vector<double>& pointsW,
-                                               const std::vector<Eigen::Vector3d>& dirs1,
-                                               const std::vector<Eigen::Vector3d>& dirs2,
+                                               const vectorVector3d& dirs1,
+                                               const vectorVector3d& dirs2,
                                                const std::vector<double>& dirsW,
                                                double sinValsThresh,
                                                bool compTrans,
@@ -257,8 +257,8 @@ private:
 
 	static double scoreTransformByProjection(const Vector7d& transform,
 								const std::vector<std::pair<int, int>> triplet,
-								const std::vector<ObjInstance>& objInstances1,
-								const std::vector<ObjInstance>& objInstances2,
+								const vectorObjInstance& objInstances1,
+								const vectorObjInstance& objInstances2,
 								std::vector<double>& intAreaPair,
                                 double planeEqDiffThresh,
                                 double intAreaThresh,
@@ -268,8 +268,8 @@ private:
     
     static double scoreTransformByProjection(const Vector7d &transform,
                                              const std::vector<PotMatch> curSet,
-                                             const std::vector<ObjInstance> &objInstances1,
-                                             const std::vector<ObjInstance> &objInstances2,
+                                             const vectorObjInstance &objInstances1,
+                                             const vectorObjInstance &objInstances2,
                                              std::vector<double> &intAreaPlanes,
                                              std::vector<std::vector<double> > &intLenLines,
                                              double planeEqDiffThresh,
@@ -280,20 +280,20 @@ private:
                                              int viewPort1,
                                              int viewPort2);
 
-	static double evalPoint(Vector7d pt,
-						const std::vector<ProbDistKernel>& dist);
+	static double evalPoint(const Vector7d &pt,
+							const std::vector<ProbDistKernel> &dist);
     
 	static void intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull1,
-									const pcl::Vertices& poly1,
-									const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull2,
-									const pcl::Vertices& poly2,
-									const Eigen::Vector4d planeEq,
-									pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullRes,
-									pcl::Vertices& polyRes,
-									double& areaRes,
-									pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-									int viewPort1 = -1,
-									int viewPort2 = -1);
+									 const pcl::Vertices &poly1,
+									 const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull2,
+									 const pcl::Vertices &poly2,
+									 const Eigen::Vector4d &planeEq,
+									 pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullRes,
+									 pcl::Vertices &polyRes,
+									 double &areaRes,
+									 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+									 int viewPort1 = -1,
+									 int viewPort2 = -1);
 	enum class SegIntType{
 		Collinear,
 		Vertex,
@@ -337,8 +337,8 @@ private:
 	static double cross2d(const Eigen::Vector2d& v1,
 						const Eigen::Vector2d& v2);
 
-	static void makeCclockwise(std::vector<Eigen::Vector2d>& chull,
-								double eps = 1e-6);
+	static void makeCclockwise(vectorVector2d &chull,
+							   double eps = 1e-6);
 };
 
 #endif /* INCLUDE_MATCHING_HPP_ */

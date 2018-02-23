@@ -85,7 +85,7 @@ Map::Map(const cv::FileStorage& settings)
 		vector<cv::String> mapFilepaths;
         settings["map"]["mapFiles"] >> mapFilepaths;
 
-        vector<vector<ObjInstance> > allObjInstances;
+        vector<vectorObjInstance> allObjInstances;
         for(int f = 0; f < mapFilepaths.size(); ++f) {
             viewer->removeAllPointClouds();
 
@@ -107,7 +107,7 @@ Map::Map(const cv::FileStorage& settings)
 
             pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
 //    		vector<ObjInstance> curObjInstances;
-            allObjInstances.push_back(vector<ObjInstance>());
+            allObjInstances.push_back(vectorObjInstance());
 
             PlaneSegmentation::segment(settings,
                                   pointCloudNormal,
@@ -166,7 +166,7 @@ Map::Map(const cv::FileStorage& settings)
 
 void Map::addPendingObj(ObjInstance &obj,
                         const std::set<int> &matchedIds,
-                        const std::vector<std::list<ObjInstance>::iterator> &objInstancesIts,
+                        const std::vector<listObjInstance::iterator> &objInstancesIts,
                         int eolAdd)
 {
     pendingObjInstances.push_back(obj);

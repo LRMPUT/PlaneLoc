@@ -49,7 +49,7 @@ int PlaneSegmentation::curObjInstId = 0;
 void PlaneSegmentation::segment(const cv::FileStorage& fs,
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,
 						pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
-						std::vector<ObjInstance>& objInstances,
+						vectorObjInstance& objInstances,
 						bool segmentMap,
 						pcl::visualization::PCLVisualizer::Ptr viewer,
 						int viewPort1,
@@ -68,7 +68,7 @@ void PlaneSegmentation::segment(const cv::FileStorage& fs,
     float areaThresh = (double)fs["segmentation"]["areaThresh"];
     float normalThresh = (double)fs["segmentation"]["normalThresh"];
     
-    vector<PlaneSeg> svsInfo;
+    vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> svsInfo;
     
     makeSupervoxels(fs,
                     pcNormals,
@@ -77,7 +77,7 @@ void PlaneSegmentation::segment(const cv::FileStorage& fs,
     
     UnionFind sets(svsInfo.size());
     
-    vector<PlaneSeg> planeSegs = svsInfo;
+    vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> planeSegs = svsInfo;
     
     mergeSegmentsFF(planeSegs,
                     sets,
@@ -136,7 +136,7 @@ void PlaneSegmentation::segment(const cv::FileStorage &fs,
                                 cv::Mat rgb,
                                 cv::Mat depth,
                                 pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
-                                std::vector<ObjInstance> &objInstances,
+                                vectorObjInstance &objInstances,
                                 pcl::visualization::PCLVisualizer::Ptr viewer,
                                 int viewPort1,
                                 int viewPort2)
@@ -154,7 +154,7 @@ void PlaneSegmentation::segment(const cv::FileStorage &fs,
     float areaThresh = (double)fs["segmentation"]["areaThresh"];
     float normalThresh = (double)fs["segmentation"]["normalThresh"];
     
-    vector<PlaneSeg> svsInfo;
+    vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> svsInfo;
     
     makeSupervoxels(fs,
                     rgb,
@@ -183,7 +183,7 @@ void PlaneSegmentation::segment(const cv::FileStorage &fs,
 //        viewer->removePointCloud("cloud_svs", viewPort1);
 //    }
     
-    vector<PlaneSeg> planeSegs = svsInfo;
+    vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> planeSegs = svsInfo;
     
     mergeSegmentsFF(planeSegs,
                     sets,
@@ -241,7 +241,7 @@ void
 PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs,
                                   pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,
                                   bool segmentMap,
-                                  std::vector<PlaneSeg> &svs)
+                                  std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs)
 {
     // compute normals
     pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
@@ -357,7 +357,10 @@ PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs,
     }
 }
 
-void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, cv::Mat depth, std::vector<PlaneSeg> &svs)
+void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs,
+                                        cv::Mat rgb,
+                                        cv::Mat depth,
+                                        std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs)
 {
     cv::Mat camMat;
     fs["planeSlam"]["cameraMatrix"] >> camMat;
@@ -501,7 +504,7 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
     
     {
         map<int, int> oldIdxToNewIdx;
-        std::vector<PlaneSeg> newSvs;
+        std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> newSvs;
         int svsCnt = 0;
         for(int sv = 0; sv < svs.size(); ++sv){
             svs[sv].calcSegProp(true);
@@ -562,12 +565,12 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, 
     cv::imshow("rgb segments", segCol);
 }
 
-void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg> &svs,
-                                         const std::vector<PlaneSeg> &segs,
+void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs,
+                                         const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &segs,
                                          UnionFind &sets,
                                          std::vector<int> &svLabels,
                                          pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
-                                         std::vector<ObjInstance> &objInstances,
+                                         vectorObjInstance &objInstances,
                                          float curvThresh,
                                          double normalThresh,
                                          double stepThresh,
@@ -598,7 +601,7 @@ void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg> &svs,
 //                    cout << "Adding with lab = " << pl << endl;
                     int lab = pl;
                     
-                    std::vector<PlaneSeg> curSvs;
+                    vectorPlaneSeg curSvs;
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
                     
                     for(int s = 0; s < planeCandidates[pl].size(); ++s){
@@ -797,7 +800,7 @@ cv::Mat PlaneSegmentation::segmentRgb2(cv::Mat rgb, cv::Mat depth) {
     return cv::Mat();
 }
 
-void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs,
+void PlaneSegmentation::mergeSegments(vectorPlaneSeg &segs,
                                       UnionFind &sets,
                                       double curvThresh,
                                       double normalThresh,
@@ -959,7 +962,7 @@ void PlaneSegmentation::mergeSegments(std::vector<PlaneSeg> &segs,
     
 }
 
-void PlaneSegmentation::mergeSegmentsFF(std::vector<PlaneSeg> &segs,
+void PlaneSegmentation::mergeSegmentsFF(vectorPlaneSeg &segs,
                                         UnionFind &sets,
                                         double curvThresh,
                                         double normalThresh,
@@ -997,7 +1000,7 @@ void PlaneSegmentation::mergeSegmentsFF(std::vector<PlaneSeg> &segs,
                     {
                         // if planar enough
                         if(segs[nhIdx].getSegCurv() < 2*curvThresh) {
-                            Eigen::Vector3f centrVec = segs[nhIdx].getSegCentroid() -
+                            Eigen::Vector3d centrVec = segs[nhIdx].getSegCentroid() -
                                                        segs[curIdx].getSegCentroid();
                             float step1 = std::fabs(centrVec.dot(segs[nhIdx].getSegNormal()));
                             float step2 = std::fabs((-centrVec).dot(segs[curIdx].getSegNormal()));
@@ -1005,7 +1008,7 @@ void PlaneSegmentation::mergeSegmentsFF(std::vector<PlaneSeg> &segs,
                                 float normalScore = segs[curIdx].getSegNormal().dot(segs[nhIdx].getSegNormal());
                                 
                                 if(normalScore > normalThresh) {
-                                    Eigen::Vector3f centrDir = centrVec.normalized();
+                                    Eigen::Vector3d centrDir = centrVec.normalized();
                                     // variance of points scatter in a direction
                                     // of the line that connects centroids
                                     float varCentrDir1 = centrDir.transpose() * segs[curIdx].getSegCovar()
@@ -1056,7 +1059,7 @@ bool PlaneSegmentation::checkIfCoplanar(const PlaneSeg &seg1,
     if((seg1.getSegCurv() < curvThresh && seg2.getSegCurv() < 2*curvThresh) ||
        (seg1.getSegCurv() < 2*curvThresh && seg2.getSegCurv() < curvThresh))
     {
-        Eigen::Vector3f centrVec = seg2.getSegCentroid() -
+        Eigen::Vector3d centrVec = seg2.getSegCentroid() -
                                    seg1.getSegCentroid();
         float step1 = std::fabs(centrVec.dot(seg2.getSegNormal()));
         float step2 = std::fabs((-centrVec).dot(seg1.getSegNormal()));
@@ -1086,7 +1089,7 @@ PlaneSegmentation::compEdgeScore(const PlaneSeg &seg1,
     
     double curvScore = std::min(1.0, std::exp(-(std::max(seg1.getSegCurv(), seg2.getSegCurv()) - curvThresh)/curvThresh));
     
-    Eigen::Vector3f centrVec = seg2.getSegCentroid() -
+    Eigen::Vector3d centrVec = seg2.getSegCentroid() -
                                seg1.getSegCentroid();
     double step1 = std::fabs(centrVec.dot(seg2.getSegNormal()));
     double step2 = std::fabs((-centrVec).dot(seg1.getSegNormal()));
@@ -1102,7 +1105,7 @@ PlaneSegmentation::compEdgeScore(const PlaneSeg &seg1,
 void PlaneSegmentation::drawSegments(pcl::visualization::PCLVisualizer::Ptr viewer,
                                      std::string name,
                                      int vp,
-                                     std::vector<PlaneSeg> segs,
+                                     const vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &segs,
                                      UnionFind &sets)
 {
     viewer->removePointCloud(name, vp);
@@ -1132,8 +1135,8 @@ void PlaneSegmentation::drawSegments(pcl::visualization::PCLVisualizer::Ptr view
     viewer->addPointCloud(pcLab, name, vp);
 }
 
-void PlaneSegmentation::visualizeSegmentation(const std::vector<PlaneSeg> &svs,
-                                              const std::vector<PlaneSeg> &segs,
+void PlaneSegmentation::visualizeSegmentation(const vectorPlaneSeg &svs,
+                                              const vectorPlaneSeg &segs,
                                               std::vector<int> &svLabels,
                                               pcl::visualization::PCLVisualizer::Ptr viewer,
                                               int viewPort1,
@@ -1234,7 +1237,7 @@ float PlaneSegmentation::compSvToPlaneDist(pcl::PointNormal sv,
 
 
 void PlaneSegmentation::compPlaneNormals(const std::vector<int>& svLabels,
-                                    const std::vector<PlaneSeg>& svsInfo,
+                                    const vectorPlaneSeg& svsInfo,
 									pcl::PointCloud<pcl::PointNormal>::Ptr planeNorm,
 									std::vector<std::vector<int>>& planeSvsIdx)
 {

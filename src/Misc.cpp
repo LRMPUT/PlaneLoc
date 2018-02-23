@@ -139,7 +139,7 @@ bool Misc::nextChoice(std::vector<int>& choice, int N)
 	return valid;
 }
 
-Eigen::Quaterniond Misc::planeEqToQuat(Eigen::Vector4d planeEq)
+Eigen::Quaterniond Misc::planeEqToQuat(const Eigen::Vector4d &planeEq)
 {
 	Eigen::Quaterniond ret(planeEq(3), planeEq(0), planeEq(1), planeEq(2));
 	normalizeAndUnify(ret);
@@ -170,18 +170,19 @@ void Misc::normalizeAndUnify(Eigen::Vector4d& v){
 	}
 }
 
-Eigen::Vector4d Misc::toNormalPlaneEquation(Eigen::Vector4d plane)
+Eigen::Vector4d Misc::toNormalPlaneEquation(const Eigen::Vector4d &plane)
 {
     double nnorm = plane.head<3>().norm();
     return plane / nnorm;
 }
 
-Eigen::Vector3d Misc::logMap(Eigen::Quaterniond quat)
+Eigen::Vector3d Misc::logMap(const Eigen::Quaterniond &quat)
 {
+    Eigen::Quaterniond lquat = quat;
 	Eigen::Vector3d res;
 
-    normalizeAndUnify(quat);
-	double qvNorm = sqrt(quat.x()*quat.x() + quat.y()*quat.y() + quat.z()*quat.z());
+    normalizeAndUnify(lquat);
+	double qvNorm = sqrt(lquat.x()*lquat.x() + lquat.y()*lquat.y() + lquat.z()*lquat.z());
 	if(qvNorm > 1e-6){
 		res[0] = quat.x()/qvNorm;
 		res[1] = quat.y()/qvNorm;
@@ -193,13 +194,13 @@ Eigen::Vector3d Misc::logMap(Eigen::Quaterniond quat)
 		res[1] = 0.57735026919;
 		res[2] = 0.57735026919;;
 	}
-	double acosQw = acos(quat.w());
+	double acosQw = acos(lquat.w());
 	res *= 2.0*acosQw;
 //		cout << "2.0*acosQw = " << 2.0*acosQw << endl;
 	return res;
 }
 
-Eigen::Quaterniond Misc::expMap(Eigen::Vector3d vec)
+Eigen::Quaterniond Misc::expMap(const Eigen::Vector3d &vec)
 {
     double arg = 0.5 * std::sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2]);
 //    if(fabs(arg) > 0.5 * pi){
@@ -227,7 +228,7 @@ Eigen::Quaterniond Misc::expMap(Eigen::Vector3d vec)
     return res;
 }
 
-Eigen::Matrix4d Misc::matrixQ(Eigen::Quaterniond q)
+Eigen::Matrix4d Misc::matrixQ(const Eigen::Quaterniond &q)
 {
 	Eigen::Matrix4d ret;
 	ret.block<3, 3>(0, 0) = matrixK(q) + Eigen::Matrix3d::Identity() * q.w();
@@ -237,7 +238,7 @@ Eigen::Matrix4d Misc::matrixQ(Eigen::Quaterniond q)
 	return ret;
 }
 
-Eigen::Matrix4d Misc::matrixW(Eigen::Quaterniond q)
+Eigen::Matrix4d Misc::matrixW(const Eigen::Quaterniond &q)
 {
 	Eigen::Matrix4d ret;
 	ret.block<3, 3>(0, 0) = -matrixK(q) + Eigen::Matrix3d::Identity() * q.w();
@@ -247,7 +248,7 @@ Eigen::Matrix4d Misc::matrixW(Eigen::Quaterniond q)
 	return ret;
 }
 
-Eigen::Matrix3d Misc::matrixK(Eigen::Quaterniond q)
+Eigen::Matrix3d Misc::matrixK(const Eigen::Quaterniond &q)
 {
 	Eigen::Matrix3d ret;
 	ret <<	0,		-q.z(),	q.y(),
@@ -256,7 +257,7 @@ Eigen::Matrix3d Misc::matrixK(Eigen::Quaterniond q)
 	return ret;
 }
 
-bool Misc::checkIfAlignedWithNormals(const Eigen::Vector3f& testedNormal,
+bool Misc::checkIfAlignedWithNormals(const Eigen::Vector3d& testedNormal,
 									  pcl::PointCloud<pcl::Normal>::ConstPtr normals,
 									  bool& alignConsistent)
 {
@@ -266,7 +267,7 @@ bool Misc::checkIfAlignedWithNormals(const Eigen::Vector3f& testedNormal,
     // check if aligned with majority of normals
     int alignedCnt = 0;
     for(int p = 0; p < normals->size(); ++p){
-        Eigen::Vector3f curNorm = normals->at(p).getNormalVector3fMap();
+        Eigen::Vector3d curNorm = normals->at(p).getNormalVector3fMap().cast<double>();
         if(testedNormal.dot(curNorm) > 0){
             ++alignedCnt;
         }
@@ -290,7 +291,7 @@ bool Misc::checkIfAlignedWithNormals(const Eigen::Vector3f& testedNormal,
     return isAligned;
 }
 
-double Misc::transformLogDist(Vector7d trans1, Vector7d trans2) {
+double Misc::transformLogDist(const Vector7d &trans1, const Vector7d &trans2) {
 	g2o::SE3Quat trans(trans1);
 	g2o::SE3Quat transComp(trans2);
 	g2o::SE3Quat diff = trans.inverse() * transComp;
@@ -299,7 +300,7 @@ double Misc::transformLogDist(Vector7d trans1, Vector7d trans2) {
 	return dist;
 }
 
-double Misc::rotLogDist(Eigen::Vector4d rot1, Eigen::Vector4d rot2) {
+double Misc::rotLogDist(const Eigen::Vector4d &rot1, const Eigen::Vector4d &rot2) {
     Eigen::Quaterniond r1(rot1[3], rot1[0], rot1[1], rot1[2]);
     Eigen::Quaterniond r2(rot2[3], rot2[0], rot2[1], rot2[2]);
     Eigen::Vector3d logDiff = logMap(r1.inverse() * r2);

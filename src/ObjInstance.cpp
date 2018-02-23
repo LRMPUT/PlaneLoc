@@ -48,7 +48,7 @@ ObjInstance::ObjInstance() : id(-1) {}
 ObjInstance::ObjInstance(int iid,
 					ObjType itype,
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
-					const std::vector<PlaneSeg>& isvs)
+					const vectorPlaneSeg& isvs)
 	: id(iid),
 	  type(itype),
 	  points(ipoints),
@@ -93,7 +93,7 @@ ObjInstance::ObjInstance(int iid,
     // distance is the dot product of normal and point lying on the plane
     paramRep(3) = -ev2.dot(pcaMean.head<3>());
     
-    princComp = vector<Eigen::Vector3d>{ev0.cast<double>(), ev1.cast<double>(), ev2.cast<double>()};
+    princComp = vectorVector3d{ev0.cast<double>(), ev1.cast<double>(), ev2.cast<double>()};
     princCompLens = vector<double>{evals(0), evals(1), evals(2)};
     
     curv = evals(2) / (evals(0) + evals(1) + evals(2));
@@ -157,7 +157,7 @@ void ObjInstance::merge(const ObjInstance &other) {
     obsCnt += 1;
 }
 
-void ObjInstance::transform(Vector7d transform) {
+void ObjInstance::transform(const Vector7d &transform) {
     g2o::SE3Quat transformSE3Quat(transform);
     Eigen::Matrix4d transformMat = transformSE3Quat.to_homogeneous_matrix();
     Eigen::Matrix3d R = transformMat.block<3, 3>(0, 0);
@@ -248,7 +248,7 @@ void ObjInstance::correctOrient() {
         cout << "Some normals correct and some incorrect" << endl;
         for(int sv = 0; sv < svs.size(); ++sv) {
             // if cross product between normal vectors is negative then it is wrongly oriented
-            Eigen::Vector3f svNormal = svs[sv].getSegNormal();
+            Eigen::Vector3d svNormal = svs[sv].getSegNormal();
             cout << "svNormal[" << sv << "] = " << svNormal.transpose() << endl;
         }
     }
@@ -312,7 +312,7 @@ void ObjInstance::compColorHist() {
 }
 
 void ObjInstance::mergeObjInstances(Map &map,
-                                   std::vector<ObjInstance> &newObjInstances,
+                                   vectorObjInstance &newObjInstances,
                                    pcl::visualization::PCLVisualizer::Ptr viewer,
                                    int viewPort1,
                                    int viewPort2)
@@ -413,14 +413,14 @@ void ObjInstance::mergeObjInstances(Map &map,
     map.removeObjsEol();
 }
 
-std::list<ObjInstance> ObjInstance::mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
+listObjInstance ObjInstance::mergeObjInstances(std::vector<vectorObjInstance>& objInstances,
                                                         pcl::visualization::PCLVisualizer::Ptr viewer,
                                                         int viewPort1,
                                                         int viewPort2)
 {
     static constexpr double shadingLevel = 0.01;
 
-    list<ObjInstance> retObjInstances;
+    listObjInstance retObjInstances;
 
     if(viewer){
         viewer->removeAllPointClouds(viewPort1);

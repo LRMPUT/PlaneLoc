@@ -48,8 +48,8 @@ private:
     };
     
 	void evaluateMatching(const cv::FileStorage &fs,
-                          const std::vector<ObjInstance> &objInstances1,
-                          const std::vector<ObjInstance> &objInstances2,
+                          const vectorObjInstance &objInstances1,
+                          const vectorObjInstance &objInstances2,
                           std::ifstream &inputResFile,
                           std::ofstream &outputResFile,
                           const Vector7d &gtTransform,

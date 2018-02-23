@@ -26,7 +26,7 @@ using namespace std;
 ConcaveHull::ConcaveHull() : totalArea(0.0) {}
 
 ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
-                         Eigen::Vector4d planeEq)
+                         const Eigen::Vector4d &planeEq)
     : totalArea(0.0)
 {
     pcl::ModelCoefficients::Ptr mdlCoeff (new pcl::ModelCoefficients);
@@ -233,7 +233,7 @@ ConcaveHull::ConcaveHull(const vector<ConcaveHull::Polygon_2> &polygons,
     }
 }
 
-ConcaveHull ConcaveHull::transform(Vector7d transform) const {
+ConcaveHull ConcaveHull::transform(const Vector7d &transform) const {
     Eigen::Matrix4d transformMat = g2o::SE3Quat(transform).to_homogeneous_matrix();
     Eigen::Matrix3d R = transformMat.block<3, 3>(0, 0);
     Eigen::Vector3d t = transformMat.block<3, 1>(0, 3);

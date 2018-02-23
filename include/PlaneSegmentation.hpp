@@ -44,7 +44,7 @@ public:
 	static void segment(const cv::FileStorage& fs,
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,
 						pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
-						std::vector<ObjInstance>& objInstances,
+						vectorObjInstance& objInstances,
 						bool segmentMap = false,
 						pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
 						int viewPort1 = -1,
@@ -54,7 +54,7 @@ public:
                         cv::Mat rgb,
                         cv::Mat depth,
                         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
-                        std::vector<ObjInstance>& objInstances,
+                        vectorObjInstance& objInstances,
                         pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                         int viewPort1 = -1,
                         int viewPort2 = -1);
@@ -64,16 +64,19 @@ private:
     static void makeSupervoxels(const cv::FileStorage &fs,
                                    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,
                                    bool segmentMap,
-                                   std::vector<PlaneSeg> &svs);
+                                   std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs);
     
-    static void makeSupervoxels(const cv::FileStorage &fs, cv::Mat rgb, cv::Mat depth, std::vector<PlaneSeg> &svs);
+    static void makeSupervoxels(const cv::FileStorage &fs,
+								cv::Mat rgb,
+								cv::Mat depth,
+								std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs);
 	
-	static void makeObjInstances(const std::vector<PlaneSeg> &svs,
-								 const std::vector<PlaneSeg> &segs,
+	static void makeObjInstances(const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs,
+								 const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &segs,
 								 UnionFind &sets,
 								 std::vector<int> &svLabels,
 								 pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
-								 std::vector<ObjInstance>& objInstances,
+								 vectorObjInstance& objInstances,
 								 float curvThresh,
 								 double normalThresh,
 								 double stepThresh,
@@ -96,7 +99,7 @@ private:
 		return fabs(plane.normal_x * dx + plane.normal_y * dy + plane.normal_z * dz);
 	}
     
-    static void mergeSegments(std::vector<PlaneSeg> &segs,
+    static void mergeSegments(vectorPlaneSeg &segs,
 							  UnionFind &sets,
 							  double curvThresh,
 							  double normalThresh,
@@ -105,7 +108,7 @@ private:
                               int viewPort1 = -1,
                               int viewPort2 = -1);
     
-    static void mergeSegmentsFF(std::vector<PlaneSeg> &segs,
+    static void mergeSegmentsFF(vectorPlaneSeg &segs,
                               UnionFind &sets,
                               double curvThresh,
                               double normalThresh,
@@ -127,13 +130,13 @@ private:
                                    double stepThresh);
     
     static void drawSegments(pcl::visualization::PCLVisualizer::Ptr viewer,
-                                 std::string name,
-                                 int vp,
-                                 std::vector<PlaneSeg> segs,
-                                 UnionFind &sets);
+							 std::string name,
+							 int vp,
+							 const vectorPlaneSeg &segs,
+							 UnionFind &sets);
 	
-	static void visualizeSegmentation(const std::vector<PlaneSeg> &svs,
-									  const std::vector<PlaneSeg> &segs,
+	static void visualizeSegmentation(const vectorPlaneSeg &svs,
+									  const vectorPlaneSeg &segs,
 									  std::vector<int> &svLabels,
 									  pcl::visualization::PCLVisualizer::Ptr viewer,
 									  int viewPort1,
@@ -145,7 +148,7 @@ private:
 
 
 	static void compPlaneNormals(const std::vector<int>& svLabels,
-                                 const std::vector<PlaneSeg>& svsInfo,
+                                 const vectorPlaneSeg& svsInfo,
 									pcl::PointCloud<pcl::PointNormal>::Ptr planeNorm,
 									std::vector<std::vector<int>>& planeSvsIdx);
 

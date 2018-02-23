@@ -47,9 +47,9 @@ using namespace std;
 //}
 
 Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
-                                              const std::vector<ObjInstance> &frameObjInstances,
-                                              const std::vector<ObjInstance> &mapObjInstances,
-                                              std::vector<Vector7d> &bestTrans,
+                                              const vectorObjInstance &frameObjInstances,
+                                              const vectorObjInstance &mapObjInstances,
+                                              vectorVector7d &bestTrans,
                                               std::vector<double> &bestTransProbs,
                                               std::vector<double> &bestTransFits,
                                               pcl::visualization::PCLVisualizer::Ptr viewer,
@@ -150,34 +150,34 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 	for(int s = 0; s < potSets.size(); ++s){
 //		cout << "s = " << s << endl;
         
-        std::vector<Eigen::Vector3d> pointsMap;
-        std::vector<Eigen::Vector4d> planesMap;
+        vectorVector3d pointsMap;
+        vectorVector4d planesMap;
         std::vector<Vector6d> linesMap;
-        std::vector<Eigen::Vector3d> pointsFrame;
-        std::vector<Eigen::Vector4d> planesFrame;
+        vectorVector3d pointsFrame;
+        vectorVector4d planesFrame;
         std::vector<Vector6d> linesFrame;
 
         for(int ch = 0; ch < potSets[s].size(); ++ch) {
             planesMap.push_back(mapObjInstances[potSets[s][ch].plane1].getNormal());
-            const vector<LineSeg> &allLinesMap = mapObjInstances[potSets[s][ch].plane1].getLineSegs();
+            const vectorLineSeg &allLinesMap = mapObjInstances[potSets[s][ch].plane1].getLineSegs();
             for (int lm = 0; lm < potSets[s][ch].lineSegs1.size(); ++lm) {
                 linesMap.push_back(allLinesMap[potSets[s][ch].lineSegs1[lm]].toPointNormalEq());
             }
     
             planesFrame.push_back(frameObjInstances[potSets[s][ch].plane2].getNormal());
-            const vector<LineSeg> &allLinesFrame = frameObjInstances[potSets[s][ch].plane2].getLineSegs();
+            const vectorLineSeg &allLinesFrame = frameObjInstances[potSets[s][ch].plane2].getLineSegs();
             for (int lf = 0; lf < potSets[s][ch].lineSegs2.size(); ++lf) {
                 linesFrame.push_back(allLinesFrame[potSets[s][ch].lineSegs2[lf]].toPointNormalEq());
             }
         }
         
-        std::vector<Eigen::Vector3d> retPointsMap;
-        std::vector<Eigen::Vector3d> retVirtPointsMap;
-        std::vector<Eigen::Vector3d> retDirsMap;
+        vectorVector3d retPointsMap;
+        vectorVector3d retVirtPointsMap;
+        vectorVector3d retDirsMap;
         std::vector<double> retDistsMap;
-        std::vector<Eigen::Vector3d> retDistDirsMap;
-        std::vector<Eigen::Vector3d> retDistPtsMap;
-        std::vector<Eigen::Vector3d> retDistPtsDirsMap;
+        vectorVector3d retDistDirsMap;
+        vectorVector3d retDistPtsMap;
+        vectorVector3d retDistPtsDirsMap;
         Matching::convertToPointsDirsDists(pointsMap,
                                            planesMap,
                                            linesMap,
@@ -189,13 +189,13 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                            retDistPtsMap,
                                            retDistPtsDirsMap);
         
-        std::vector<Eigen::Vector3d> retPointsFrame;
-        std::vector<Eigen::Vector3d> retVirtPointsFrame;
-        std::vector<Eigen::Vector3d> retDirsFrame;
+        vectorVector3d retPointsFrame;
+        vectorVector3d retVirtPointsFrame;
+        vectorVector3d retDirsFrame;
         std::vector<double> retDistsFrame;
-        std::vector<Eigen::Vector3d> retDistDirsFrame;
-        std::vector<Eigen::Vector3d> retDistPtsFrame;
-        std::vector<Eigen::Vector3d> retDistPtsDirsFrame;
+        vectorVector3d retDistDirsFrame;
+        vectorVector3d retDistPtsFrame;
+        vectorVector3d retDistPtsDirsFrame;
         Matching::convertToPointsDirsDists(pointsFrame,
                                            planesFrame,
                                            linesFrame,
@@ -579,16 +579,16 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 }
 
 
-void Matching::convertToPointsDirsDists(const std::vector<Eigen::Vector3d> &points,
-                                        const std::vector<Eigen::Vector4d> &planes,
+void Matching::convertToPointsDirsDists(const vectorVector3d &points,
+                                        const vectorVector4d &planes,
                                         const std::vector<Vector6d> &lines,
-                                        std::vector<Eigen::Vector3d> &retPoints,
-                                        std::vector<Eigen::Vector3d> &retVirtPoints,
-                                        std::vector<Eigen::Vector3d> &retDirs,
+                                        vectorVector3d &retPoints,
+                                        vectorVector3d &retVirtPoints,
+                                        vectorVector3d &retDirs,
                                         std::vector<double> &retDists,
-                                        std::vector<Eigen::Vector3d> &retDistDirs,
-                                        std::vector<Eigen::Vector3d> &retDistPts,
-                                        std::vector<Eigen::Vector3d> &retDistPtsDirs)
+                                        vectorVector3d &retDistDirs,
+                                        vectorVector3d &retDistPts,
+                                        vectorVector3d &retDistPtsDirs)
 {
     for(int p = 0; p < points.size(); ++p){
         retPoints.push_back(points[p]);
@@ -628,10 +628,10 @@ void Matching::convertToPointsDirsDists(const std::vector<Eigen::Vector3d> &poin
     }
 }
 
-double Matching::compAngleDiffBetweenNormals(Eigen::Vector3d nf1,
-                                             Eigen::Vector3d ns1,
-                                             Eigen::Vector3d nf2,
-                                             Eigen::Vector3d ns2)
+double Matching::compAngleDiffBetweenNormals(const Eigen::Vector3d &nf1,
+                                             const Eigen::Vector3d &ns1,
+                                             const Eigen::Vector3d &nf2,
+                                             const Eigen::Vector3d &ns2)
 {
     double ang1 = acos(nf1.dot(ns1));
 //    ang1 = min(ang1, pi - ang1);
@@ -643,8 +643,8 @@ double Matching::compAngleDiffBetweenNormals(Eigen::Vector3d nf1,
 }
 
 
-bool Matching::checkLineToLineAng(const std::vector<LineSeg> &lineSegs1,
-                                  const std::vector<LineSeg> &lineSegs2,
+bool Matching::checkLineToLineAng(const vectorLineSeg &lineSegs1,
+                                  const vectorLineSeg &lineSegs2,
                                   double lineToLineAngThresh)
 {
     bool isConsistent = true;
@@ -667,8 +667,8 @@ bool Matching::checkLineToLineAng(const std::vector<LineSeg> &lineSegs1,
 }
 
 
-bool Matching::checkPlaneToPlaneAng(const std::vector<Eigen::Vector4d> &planes1,
-                                    const std::vector<Eigen::Vector4d> &planes2,
+bool Matching::checkPlaneToPlaneAng(const vectorVector4d &planes1,
+                                    const vectorVector4d &planes2,
                                     double planeToPlaneAngThresh)
 {
     bool isConsistent = true;
@@ -691,10 +691,10 @@ bool Matching::checkPlaneToPlaneAng(const std::vector<Eigen::Vector4d> &planes1,
     return isConsistent;
 }
 
-bool Matching::checkPlaneToLineAng(const std::vector<Eigen::Vector4d> &planes1,
-                                   const std::vector<LineSeg> &lineSegs1,
-                                   const std::vector<Eigen::Vector4d> &planes2,
-                                   const std::vector<LineSeg> &lineSegs2,
+bool Matching::checkPlaneToLineAng(const vectorVector4d &planes1,
+                                   const vectorLineSeg &lineSegs1,
+                                   const vectorVector4d &planes2,
+                                   const vectorLineSeg &lineSegs2,
                                    double planeToLineAngThresh)
 {
     bool isConsistent = true;
@@ -717,8 +717,8 @@ bool Matching::checkPlaneToLineAng(const std::vector<Eigen::Vector4d> &planes1,
     return isConsistent;
 }
 
-vector<Matching::PotMatch> Matching::findPotMatches(const std::vector<ObjInstance> &frameObjInstances,
-                                                    const std::vector<ObjInstance> &mapObjInstances,
+vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &frameObjInstances,
+                                                    const vectorObjInstance &mapObjInstances,
                                                     double planeAppThresh,
                                                     double lineAppThresh,
                                                     double lineToLineAngThresh,
@@ -739,8 +739,8 @@ vector<Matching::PotMatch> Matching::findPotMatches(const std::vector<ObjInstanc
             double histDist = ObjInstance::compHistDist(frameObjFeats[of], mapObjFeats[om]);
             if(histDist < planeAppThresh){
                 
-                const vector<LineSeg> &frameLineSegs = frameObjInstances[of].getLineSegs();
-                const vector<LineSeg> &mapLineSegs = mapObjInstances[om].getLineSegs();
+                const vectorLineSeg &frameLineSegs = frameObjInstances[of].getLineSegs();
+                const vectorLineSeg &mapLineSegs = mapObjInstances[om].getLineSegs();
                 vector<pair<int, int> > potLineMatches;
                 for(int lf = 0; lf < frameLineSegs.size(); ++lf){
                     for(int lm = 0; lm < mapLineSegs.size(); ++lm){
@@ -768,9 +768,9 @@ vector<Matching::PotMatch> Matching::findPotMatches(const std::vector<ObjInstanc
                             }
                             else{
                                 for(int prevl = 0; prevl < linesMap.size(); ++prevl){
-                                    if(!checkLineToLineAng(vector<LineSeg>{mapLineSegs[linesMap[prevl]],
+                                    if(!checkLineToLineAng(vectorLineSeg{mapLineSegs[linesMap[prevl]],
                                                                            mapLineSegs[potLineMatches[l].first]},
-                                                           vector<LineSeg>{frameLineSegs[linesFrame[prevl]],
+                                                           vectorLineSeg{frameLineSegs[linesFrame[prevl]],
                                                                            frameLineSegs[potLineMatches[l].second]},
                                                            lineToLineAngThresh))
                                     {
@@ -834,8 +834,8 @@ vector<Matching::PotMatch> Matching::findPotMatches(const std::vector<ObjInstanc
 }
 
 vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMatch> potMatches,
-                                                         const std::vector<ObjInstance> &frameObjInstances,
-                                                         const std::vector<ObjInstance> &mapObjInstances,
+                                                         const vectorObjInstance &frameObjInstances,
+                                                         const vectorObjInstance &mapObjInstances,
                                                          double planeDistThresh,
                                                          double lineToLineAngThresh,
                                                          double planeToPlaneAngThresh,
@@ -902,19 +902,19 @@ vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMat
             if(valid){
                 // check angles between planes and lines
                 
-                vector<Eigen::Vector4d> planesMap;
-                vector<LineSeg> linesMap;
-                vector<Eigen::Vector4d> planesFrame;
-                vector<LineSeg> linesFrame;
+                vectorVector4d planesMap;
+                vectorLineSeg linesMap;
+                vectorVector4d planesFrame;
+                vectorLineSeg linesFrame;
                 for(int ch = 0; ch < curSet.size(); ++ch){
                     planesMap.push_back(mapObjInstances[curSet[ch].plane1].getNormal());
-                    const vector<LineSeg> &allLinesMap = mapObjInstances[curSet[ch].plane1].getLineSegs();
+                    const vectorLineSeg &allLinesMap = mapObjInstances[curSet[ch].plane1].getLineSegs();
                     for(int lm = 0; lm < curSet[ch].lineSegs1.size(); ++lm){
                         linesMap.push_back(allLinesMap[curSet[ch].lineSegs1[lm]]);
                     }
                     
                     planesFrame.push_back(frameObjInstances[curSet[ch].plane2].getNormal());
-                    const vector<LineSeg> &allLinesFrame = frameObjInstances[curSet[ch].plane2].getLineSegs();
+                    const vectorLineSeg &allLinesFrame = frameObjInstances[curSet[ch].plane2].getLineSegs();
                     for(int lf = 0; lf < curSet[ch].lineSegs2.size(); ++lf){
                         linesFrame.push_back(allLinesFrame[curSet[ch].lineSegs2[lf]]);
                     }
@@ -939,7 +939,7 @@ vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMat
     return potSets;
 }
 
-void Matching::compObjFeatures(const std::vector<ObjInstance>& objInstances,
+void Matching::compObjFeatures(const vectorObjInstance& objInstances,
 							std::vector<cv::Mat>& objFeats)
 {
 	for(int o = 0; o < objInstances.size(); ++o){
@@ -948,7 +948,7 @@ void Matching::compObjFeatures(const std::vector<ObjInstance>& objInstances,
 }
 
 
-void Matching::compObjDistances(const std::vector<ObjInstance>& objInstances,
+void Matching::compObjDistances(const vectorObjInstance& objInstances,
                                 std::vector<std::vector<double>>& objDistances)
 {
     objDistances.resize(objInstances.size(), vector<double>(objInstances.size(), 0));
@@ -966,16 +966,16 @@ void Matching::compObjDistances(const std::vector<ObjInstance>& objInstances,
     }
 }
 
-void Matching::comp3DTransform(const std::vector<Eigen::Vector4d>& planes1,
-								const std::vector<Eigen::Vector4d>& planes2,
+void Matching::comp3DTransform(const vectorVector4d& planes1,
+								const vectorVector4d& planes2,
 								const std::vector<std::pair<int, int>>& triplet,
 								Vector7d& transform,
                                 double sinValsThresh,
 								bool& fullConstr)
 {
 
-    std::vector<Eigen::Vector4d> triPlanes1;
-    std::vector<Eigen::Vector4d> triPlanes2;
+    vectorVector4d triPlanes1;
+    vectorVector4d triPlanes2;
     for(int p = 0; p < triplet.size(); ++p){
 //			cout << "triplets[t][p] = (" << triplet[p].first << ", " << triplet[p].second << ")" << endl;
         triPlanes1.push_back(planes1[triplet[p].first]);
@@ -984,8 +984,8 @@ void Matching::comp3DTransform(const std::vector<Eigen::Vector4d>& planes1,
     transform = bestTransformPlanes(triPlanes1, triPlanes2, sinValsThresh, fullConstr);
 
 //    {
-//        vector<Eigen::Vector3d> points1, points2;
-//        vector<Eigen::Vector3d> dirs1, dirs2;
+//        vectorVector4d points1, points2;
+//        vectorVector4d dirs1, dirs2;
 //        for(int p = 0; p < triPlanes1.size(); ++p) {
 //            cout << "triPlanes1[p] = " << triPlanes1[p].transpose() << endl;
 //            double normNorm1 = triPlanes1[p].head<3>().norm();
@@ -1042,8 +1042,8 @@ void Matching::comp3DTransform(const std::vector<Eigen::Vector4d>& planes1,
 }
 
 
-Vector7d Matching::bestTransformPlanes(const std::vector<Eigen::Vector4d>& planes1,
-                                       const std::vector<Eigen::Vector4d>& planes2,
+Vector7d Matching::bestTransformPlanes(const vectorVector4d& planes1,
+                                       const vectorVector4d& planes2,
                                        double sinValsThresh,
                                        bool &fullConstr)
 {
@@ -1154,11 +1154,11 @@ Vector7d Matching::bestTransformPlanes(const std::vector<Eigen::Vector4d>& plane
 }
 
 Vector7d
-Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1,
-                                     const std::vector<Eigen::Vector3d> &points2,
+Matching::bestTransformPointsAndDirs(const vectorVector3d &points1,
+                                     const vectorVector3d &points2,
                                      const std::vector<double> &pointsW,
-									 const std::vector<Eigen::Vector3d> &dirs1,
-                                     const std::vector<Eigen::Vector3d> &dirs2,
+									 const vectorVector3d &dirs1,
+                                     const vectorVector3d &dirs2,
                                      const std::vector<double> &dirsW,
 									 double sinValsThresh,
                                      bool compTrans,
@@ -1298,22 +1298,22 @@ Matching::bestTransformPointsAndDirs(const std::vector<Eigen::Vector3d> &points1
 	return retTransform;
 }
 
-Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3d> &points1,
-                                                const std::vector<Eigen::Vector3d> &points2,
+Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
+                                                const vectorVector3d &points2,
                                                 const std::vector<double> &pointsW,
-                                                const std::vector<Eigen::Vector3d>& virtPoints1,
-                                                const std::vector<Eigen::Vector3d>& virtPoints2,
-                                                const std::vector<double>& virtPointsW,
-                                                const std::vector<Eigen::Vector3d> &dirs1,
-                                                const std::vector<Eigen::Vector3d> &dirs2,
+                                                const vectorVector3d &virtPoints1,
+                                                const vectorVector3d &virtPoints2,
+                                                const std::vector<double> &virtPointsW,
+                                                const vectorVector3d &dirs1,
+                                                const vectorVector3d &dirs2,
                                                 const std::vector<double> &dirsW,
                                                 const std::vector<double> &dists1,
                                                 const std::vector<double> &dists2,
-                                                const std::vector<Eigen::Vector3d> &distDirs1,
+                                                const vectorVector3d &distDirs1,
                                                 const std::vector<double> &distsW,
-                                                const std::vector<Eigen::Vector3d> &distPts1,
-                                                const std::vector<Eigen::Vector3d> &distPts2,
-                                                const std::vector<Eigen::Vector3d> &distPtsDirs1,
+                                                const vectorVector3d &distPts1,
+                                                const vectorVector3d &distPts2,
+                                                const vectorVector3d &distPtsDirs1,
                                                 const std::vector<double> &distsPtsW,
                                                 double sinValsThresh,
                                                 bool &fullConstrRot,
@@ -1323,12 +1323,12 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
     fullConstrRot = true;
     fullConstrTrans = true;
 
-    vector<Eigen::Vector3d> mergedPoints1;
+    vectorVector3d mergedPoints1;
     mergedPoints1.reserve(points1.size() + virtPoints1.size());
     mergedPoints1.insert(mergedPoints1.end(), points1.begin(), points1.end());
     mergedPoints1.insert(mergedPoints1.end(), virtPoints1.begin(), virtPoints1.end());
 
-    vector<Eigen::Vector3d> mergedPoints2;
+    vectorVector3d mergedPoints2;
     mergedPoints2.reserve(points2.size() + virtPoints2.size());
     mergedPoints2.insert(mergedPoints2.end(), points2.begin(), points2.end());
     mergedPoints2.insert(mergedPoints2.end(), virtPoints2.begin(), virtPoints2.end());
@@ -1459,8 +1459,8 @@ Vector7d Matching::bestTransformPointsDirsDists(const std::vector<Eigen::Vector3
 
 double Matching::scoreTransformByProjection(const Vector7d& transform,
 											const std::vector<std::pair<int, int>> triplet,
-											const std::vector<ObjInstance>& objInstances1,
-											const std::vector<ObjInstance>& objInstances2,
+											const vectorObjInstance& objInstances1,
+											const vectorObjInstance& objInstances2,
 											std::vector<double>& intAreaPair,
                                             double intAreaThresh,
                                             double planeEqDiffThresh,
@@ -1525,8 +1525,8 @@ double Matching::scoreTransformByProjection(const Vector7d& transform,
 
 double Matching::scoreTransformByProjection(const Vector7d &transform,
                                             const vector<PotMatch> curSet,
-                                            const std::vector<ObjInstance> &objInstances1,
-                                            const std::vector<ObjInstance> &objInstances2,
+                                            const vectorObjInstance &objInstances1,
+                                            const vectorObjInstance &objInstances2,
                                             std::vector<double> &intAreaPlanes,
                                             std::vector<std::vector<double> > &intLenLines,
                                             double planeEqDiffThresh,
@@ -1755,8 +1755,8 @@ double Matching::checkLineSegIntersection(const LineSeg &lineSeg1,
     return intScore;
 }
 
-double Matching::evalPoint(Vector7d pt,
-							const std::vector<ProbDistKernel>& dist)
+double Matching::evalPoint(const Vector7d &pt,
+                           const std::vector<ProbDistKernel> &dist)
 {
 	double res = 0.0;
 	for(int k = 0; k < dist.size(); ++k){
@@ -1786,16 +1786,16 @@ double Matching::ProbDistKernel::eval(Vector7d pt) const
 }
 
 void Matching::intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull1,
-									const pcl::Vertices& poly1,
-									const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull2,
-									const pcl::Vertices& poly2,
-									const Eigen::Vector4d planeEq,
-									pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullRes,
-									pcl::Vertices& polyRes,
-									double& areaRes,
-									pcl::visualization::PCLVisualizer::Ptr viewer,
-									int viewPort1,
-									int viewPort2)
+                                    const pcl::Vertices &poly1,
+                                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull2,
+                                    const pcl::Vertices &poly2,
+                                    const Eigen::Vector4d &planeEq,
+                                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullRes,
+                                    pcl::Vertices &polyRes,
+                                    double &areaRes,
+                                    pcl::visualization::PCLVisualizer::Ptr viewer,
+                                    int viewPort1,
+                                    int viewPort2)
 {
 	static constexpr double eps = 1e-6;
 	areaRes = 0.0;
@@ -1841,9 +1841,9 @@ void Matching::intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr
 //	cout << "poly1.vertices = " << poly1.vertices << endl;
 //	cout << "chull2->size() = " << chull2->size() << endl;
 //	cout << "poly2.vertices = " << poly2.vertices << endl;
-
-	vector<Eigen::Vector2d> chull2d1;
-	vector<Eigen::Vector2d> chull2d2;
+    
+    vectorVector2d chull2d1;
+    vectorVector2d chull2d2;
 	for(int i = 0; i < poly1.vertices.size(); ++i){
 		Eigen::Vector3d chPt = chull1->at(poly1.vertices[i]).getVector3fMap().cast<double>();
 		Eigen::Vector2d projPt;
@@ -1870,7 +1870,7 @@ void Matching::intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr
 	int i2 = 0;
 	int adv1 = 0;
 	int adv2 = 0;
-	vector<Eigen::Vector2d> intChull;
+    vectorVector2d intChull;
 	do{
 		Eigen::Vector2d begPt1 = chull2d1[(i1 - 1 + chull2d1.size()) % chull2d1.size()];
 		Eigen::Vector2d endPt1 = chull2d1[i1 % chull2d1.size()];
@@ -2223,8 +2223,8 @@ double Matching::cross2d(const Eigen::Vector2d& v1,
 	return v1.x() * v2.y() - v2.x() * v1.y();
 }
 
-void Matching::makeCclockwise(std::vector<Eigen::Vector2d>& chull,
-								double eps)
+void Matching::makeCclockwise(vectorVector2d &chull,
+                              double eps)
 {
 //	cout << "chull.size() = " << chull.size() << endl;
 	bool isCclockwise = true;
@@ -2247,7 +2247,7 @@ void Matching::makeCclockwise(std::vector<Eigen::Vector2d>& chull,
 	// if not counter-clockwise then reverse
 	if(!isCclockwise){
 //		cout << "reversing chull" << endl;
-		vector<Eigen::Vector2d> tmp(chull.rbegin(), chull.rend());
+        vectorVector2d tmp(chull.rbegin(), chull.rend());
 		tmp.swap(chull);
 	}
 }

@@ -98,12 +98,12 @@ void PlaneSlam::run(){
 
 	// Map
 	cout << "Getting object instances from map" << endl;
-	vector<ObjInstance> mapObjInstances;
+    vectorObjInstance mapObjInstances;
     for(auto it = map.begin(); it != map.end(); ++it){
 		mapObjInstances.push_back(*it);
 	}
 
-	vector<ObjInstance> prevObjInstances;
+	vectorObjInstance prevObjInstances;
 	Vector7d prevPose;
 
 	Mat rgb, depth;
@@ -140,8 +140,8 @@ void PlaneSlam::run(){
     double scoreDiffThresh = (double)settings["planeSlam"]["scoreDiffThresh"];
     double fitThresh = (double)settings["planeSlam"]["fitThresh"];
 
-    vector<Vector7d> visGtPoses;
-    vector<Vector7d> visRecPoses;
+    vectorVector7d visGtPoses;
+    vectorVector7d visRecPoses;
     vector<RecCode> visRecCodes;
 
 	ofstream outputResGlobFile;
@@ -287,7 +287,7 @@ void PlaneSlam::run(){
 
 		if(!pointCloud->empty()){
 			pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
-			vector<ObjInstance> curObjInstances;
+			vectorObjInstance curObjInstances;
 
 			if(!loadRes && !visualizeSegmentation){
 //				PlaneSegmentation::segment(settings,
@@ -323,7 +323,7 @@ void PlaneSlam::run(){
                                            v2);
             }
 
-            vector<LineSeg> lineSegs;
+            vectorLineSeg lineSegs;
             
             bool stopFlag = stopEveryFrame;
             
@@ -365,7 +365,7 @@ void PlaneSlam::run(){
                 g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(accStartFramePose).inverse() * g2o::SE3Quat(pose);
                 Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
                 
-                vector<ObjInstance> curObjInstancesTrans = curObjInstances;
+                vectorObjInstance curObjInstancesTrans = curObjInstances;
                 for(ObjInstance &curObj : curObjInstancesTrans){
                     curObj.transform(accPoseIncr);
                     
@@ -667,8 +667,8 @@ void PlaneSlam::run(){
 }
 
 void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
-                                 const std::vector<ObjInstance> &objInstances1,
-                                 const std::vector<ObjInstance> &objInstances2,
+                                 const vectorObjInstance &objInstances1,
+                                 const vectorObjInstance &objInstances2,
                                  std::ifstream &inputResFile,
                                  std::ofstream &outputResFile,
                                  const Vector7d &gtTransform,
@@ -685,7 +685,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
                                  int viewPort2)
 {
     
-    vector<Vector7d> planesTrans;
+    vectorVector7d planesTrans;
     vector<double> planesTransScores;
     vector<double> planesTransFits;
     Matching::MatchType matchType = Matching::MatchType::Unknown;

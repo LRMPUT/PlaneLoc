@@ -10,10 +10,10 @@
 LineSeg::LineSeg() {}
 
 LineSeg::LineSeg(int iframeId,
-                 Eigen::Vector2d ipi1,
-                 Eigen::Vector2d ipi2,
-                 Eigen::Vector3d ip1,
-                 Eigen::Vector3d ip2)
+                 const Eigen::Vector2d &ipi1,
+                 const Eigen::Vector2d &ipi2,
+                 const Eigen::Vector3d &ip1,
+                 const Eigen::Vector3d &ip2)
     :   p1(ip1),
         p2(ip2)
 {
@@ -26,11 +26,11 @@ const std::vector<int> &LineSeg::getFrameIds() const {
     return frameIds;
 }
 
-const std::vector<Eigen::Vector2d> &LineSeg::getPis1() const {
+const vectorVector2d &LineSeg::getPis1() const {
     return pis1;
 }
 
-const std::vector<Eigen::Vector2d> &LineSeg::getPis2() const {
+const vectorVector2d &LineSeg::getPis2() const {
     return pis2;
 }
 

@@ -18,16 +18,16 @@ public:
     LineSeg();
     
     LineSeg(int iframeId,
-            Eigen::Vector2d ipi1,
-            Eigen::Vector2d ipi2,
-            Eigen::Vector3d ip1,
-            Eigen::Vector3d ip2);
+            const Eigen::Vector2d &ipi1,
+            const Eigen::Vector2d &ipi2,
+            const Eigen::Vector3d &ip1,
+            const Eigen::Vector3d &ip2);
 
     const std::vector<int> &getFrameIds() const;
 
-    const std::vector<Eigen::Vector2d> &getPis1() const;
+    const vectorVector2d &getPis1() const;
 
-    const std::vector<Eigen::Vector2d> &getPis2() const;
+    const vectorVector2d &getPis2() const;
 
     const Eigen::Vector3d &getP1() const;
 
@@ -44,11 +44,12 @@ public:
     LineSeg transformed(const Vector7d &transform) const;
     
     double eqDist(const LineSeg &ls);
-
+    
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     std::vector<int> frameIds;
 
-    std::vector<Eigen::Vector2d> pis1, pis2;
+    vectorVector2d pis1, pis2;
 
     Eigen::Vector3d p1, p2;
     

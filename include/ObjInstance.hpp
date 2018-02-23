@@ -67,7 +67,7 @@ public:
 	ObjInstance(int iid,
 				ObjType itype,
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
-				const std::vector<PlaneSeg>& isvs);
+				const vectorPlaneSeg& isvs);
 	
 	void merge(const ObjInstance &other);
 
@@ -83,7 +83,7 @@ public:
 		return points;
 	}
 
-	inline const std::vector<PlaneSeg>& getSvs() const {
+	inline const vectorPlaneSeg& getSvs() const {
 		return svs;
 	}
 
@@ -95,7 +95,7 @@ public:
         return normal;
     }
     
-    inline const std::vector<Eigen::Vector3d> getPrincComp() const {
+    inline const vectorVector3d getPrincComp() const {
         return princComp;
     }
 
@@ -115,7 +115,7 @@ public:
         return *hull;
 	}
     
-    inline const std::vector<LineSeg> &getLineSegs() const {
+    inline const vectorLineSeg &getLineSegs() const {
         return lineSegs;
     }
     
@@ -158,7 +158,7 @@ public:
         ObjInstance::trial = trial;
     }
     
-    void transform(Vector7d transform);
+    void transform(const Vector7d &transform);
     
     inline void addLineSeg(const LineSeg &newLineSeg){
         lineSegs.push_back(newLineSeg);
@@ -170,13 +170,13 @@ public:
     
     static double compHistDist(cv::Mat hist1, cv::Mat hist2);
     
-    static std::list<ObjInstance> mergeObjInstances(std::vector<std::vector<ObjInstance>>& objInstances,
+    static listObjInstance mergeObjInstances(std::vector<vectorObjInstance>& objInstances,
                                                       pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                                       int viewPort1 = -1,
                                                       int viewPort2 = -1);
     
     static void mergeObjInstances(Map &map,
-                                 std::vector<ObjInstance> &newObjInstances,
+                                 vectorObjInstance &newObjInstances,
                                  pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                  int viewPort1 = -1,
                                  int viewPort2 = -1);
@@ -185,6 +185,8 @@ public:
 //                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
 //                             int viewPort1 = -1,
 //                             int viewPort2 = -1);
+    
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     void correctOrient();
     
@@ -196,7 +198,7 @@ private:
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr points;
 
-	std::vector<PlaneSeg> svs;
+	vectorPlaneSeg svs;
 
 	Eigen::Vector4d paramRep;
 
@@ -205,7 +207,7 @@ private:
      */
 	Eigen::Vector4d normal;
 
-	std::vector<Eigen::Vector3d> princComp;
+	vectorVector3d princComp;
 
     std::vector<double> princCompLens;
 
@@ -217,7 +219,7 @@ private:
 
     std::shared_ptr<ConcaveHull> hull;
 	
-	std::vector<LineSeg> lineSegs;
+	vectorLineSeg lineSegs;
     
     EKFPlane ekf;
     

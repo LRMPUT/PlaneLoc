@@ -76,7 +76,7 @@ public:
         label = ilabel;
     }
     
-    void setSegNormal(Eigen::Vector3f isegNormal){
+    void setSegNormal(const Eigen::Vector3d &isegNormal){
         segNormal = isegNormal;
     }
     
@@ -84,7 +84,7 @@ public:
         PlaneSeg::origPlaneSegs = origPlaneSegs;
     }
     
-    void setSegCentroid(Eigen::Vector3f isegCentroid){
+    void setSegCentroid(const Eigen::Vector3d &isegCentroid){
         segCentroid = isegCentroid;
     }
 
@@ -112,7 +112,7 @@ public:
         return label;
     }
 
-    const Eigen::Vector3f &getSegNormal() const {
+    const Eigen::Vector3d &getSegNormal() const {
         return segNormal;
     }
     
@@ -124,15 +124,15 @@ public:
         return segCurv;
     }
 
-    const Eigen::Vector3f &getSegCentroid() const {
+    const Eigen::Vector3d &getSegCentroid() const {
         return segCentroid;
     }
     
-    const Eigen::Matrix3f &getSegCovar() const {
+    const Eigen::Matrix3d &getSegCovar() const {
         return segCovar;
     }
     
-    const std::vector<Eigen::Vector3f> &getEvecs() const {
+    const vectorVector3d &getEvecs() const {
         return evecs;
     }
     
@@ -160,7 +160,7 @@ public:
         return pt;
     }
 
-    const Eigen::Vector4f& getSegPlaneParams() const {
+    const Eigen::Vector4d& getSegPlaneParams() const {
         return segPlaneParams;
     }
 
@@ -193,10 +193,11 @@ public:
     
     void calcSegProp(bool filter = false);
     
-    void transform(Vector7d transform);
+    void transform(const Vector7d &transform);
     
     PlaneSeg merge(const PlaneSeg &planeSeg, UnionFind &sets);
-
+    
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     int id;
     int label;
@@ -204,12 +205,12 @@ private:
     pcl::PointCloud<pcl::Normal>::Ptr normals;
     std::vector<int> origPlaneSegs;
     
-    Eigen::Vector3f segNormal;
+    Eigen::Vector3d segNormal;
     double segNormalIntDiff;
-    Eigen::Vector4f segPlaneParams;
-    Eigen::Vector3f segCentroid;
-    Eigen::Matrix3f segCovar;
-    std::vector<Eigen::Vector3f> evecs;
+    Eigen::Vector4d segPlaneParams;
+    Eigen::Vector3d segCentroid;
+    Eigen::Matrix3d segCovar;
+    vectorVector3d evecs;
     std::vector<double> evals;
     float segCurv;
     bool normAlignConsistent;
