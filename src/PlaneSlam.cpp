@@ -190,6 +190,8 @@ void PlaneSlam::run(){
 //        }
 //        // loading
 //        {
+//            accMap = Map();
+//
 //            cout << "loading map from file" << endl;
 //            std::ifstream ifs("filename");
 //            boost::archive::text_iarchive ia(ifs);
@@ -376,10 +378,10 @@ void PlaneSlam::run(){
                 }
     
                 ObjInstance::mergeObjInstances(accMap,
-                                               curObjInstancesTrans/*,
+                                               curObjInstancesTrans,
                                                viewer,
                                                v1,
-                                               v2*/);
+                                               v2);
                 
 //                vector<vector<ObjInstance>> toMerge{accObjInstances};
 //                if(curFrameIdx < 160) {

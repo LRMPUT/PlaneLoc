@@ -317,17 +317,75 @@ void ObjInstance::mergeObjInstances(Map &map,
                                    int viewPort1,
                                    int viewPort2)
 {
+    static constexpr double shadingLevel = 0.01;
+    
     Vector7d transform;
     // identity
     transform << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
     
+    if(viewer){
+        viewer->removeAllPointClouds(viewPort1);
+        viewer->removeAllShapes(viewPort1);
+    
+        {
+            int pl = 0;
+            for (auto it = map.begin(); it != map.end(); ++it, ++pl) {
+                ObjInstance &mapObj = *it;
+                const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = mapObj.getPoints();
+            
+                viewer->addPointCloud(curPl, string("plane_ba_") + to_string(pl), viewPort1);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                         shadingLevel,
+                                                         string("plane_ba_") + to_string(pl),
+                                                         viewPort1);
+            }
+        }
+        {
+            int npl = 0;
+            for (ObjInstance &newObj : newObjInstances) {
+                const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = newObj.getPoints();
+            
+                viewer->addPointCloud(curPl, string("plane_nba_") + to_string(npl), viewPort2);
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                         shadingLevel,
+                                                         string("plane_nba_") + to_string(npl),
+                                                         viewPort2);
+            
+                ++npl;
+            }
+        }
+
+    }
+    
+    int npl = 0;
     for(ObjInstance &newObj : newObjInstances){
+    
+        if(viewer){
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                     0.5,
+                                                     string("plane_nba_") + to_string(npl),
+                                                     viewPort2);
+        
+        
+            newObj.getHull().display(viewer, viewPort2);
+        
+        }
         
         vector<list<ObjInstance>::iterator> matches;
-        for(auto it = map.begin(); it != map.end(); ++it) {
+        int pl = 0;
+        for(auto it = map.begin(); it != map.end(); ++it, ++pl) {
             ObjInstance &mapObj = *it;
     
-            
+            if(viewer){
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                         0.5,
+                                                         string("plane_ba_") + to_string(pl),
+                                                         viewPort1);
+        
+        
+                mapObj.getHull().display(viewer, viewPort1);
+        
+            }
         
             double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
             double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
@@ -379,6 +437,17 @@ void ObjInstance::mergeObjInstances(Map &map,
                     }
                 }
             }
+    
+            if(viewer){
+                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                         shadingLevel,
+                                                         string("plane_ba_") + to_string(pl),
+                                                         viewPort1);
+        
+        
+                mapObj.getHull().cleanDisplay(viewer, viewPort1);
+        
+            }
         }
         
         if(matches.size() == 0){
@@ -403,7 +472,21 @@ void ObjInstance::mergeObjInstances(Map &map,
             
             cout << "Multiple matches" << endl;
         }
+    
+        if(viewer){
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                     shadingLevel,
+                                                     string("plane_nba_") + to_string(npl),
+                                                     viewPort2);
+        
+        
+            newObj.getHull().cleanDisplay(viewer, viewPort2);
+        
+        }
+        
+        ++npl;
     }
+    
     
     map.executePendingMatches(6);
     map.decreasePendingEol(1);

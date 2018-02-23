@@ -299,7 +299,7 @@ namespace boost {
             int cols, rows;
             size_t elem_size, elem_type;
         
-            std::cout << "load cv mat" << std::endl;
+//            std::cout << "load cv mat" << std::endl;
         
             ar >> cols;
             ar >> rows;
