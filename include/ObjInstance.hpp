@@ -66,7 +66,7 @@ public:
      */
 	ObjInstance(int iid,
 				ObjType itype,
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
+				pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr ipoints,
 				const vectorPlaneSeg& isvs);
 	
 	void merge(const ObjInstance &other);

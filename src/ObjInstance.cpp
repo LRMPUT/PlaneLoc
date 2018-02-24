@@ -47,11 +47,11 @@ ObjInstance::ObjInstance() : id(-1) {}
 
 ObjInstance::ObjInstance(int iid,
 					ObjType itype,
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr ipoints,
+					pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr ipoints,
 					const vectorPlaneSeg& isvs)
 	: id(iid),
 	  type(itype),
-	  points(ipoints),
+	  points(new pcl::PointCloud<pcl::PointXYZRGB>(*ipoints)),
 	  svs(isvs),
       eolCnt(4),
       obsCnt(1),
@@ -106,7 +106,9 @@ ObjInstance::ObjInstance(int iid,
     // normalize paramRep
 	Misc::normalizeAndUnify(paramRep);
 
+//    cout << "points->size() = " << points->size() << endl;
     hull.reset(new ConcaveHull(points, normal));
+//    cout << "hull.getTotalArea() = " << hull->getTotalArea() << endl;
     
     compColorHist();
 }
@@ -401,10 +403,10 @@ void ObjInstance::mergeObjInstances(Map &map,
                 cv::Mat newHist = newObj.getColorHist();
 
                 double histDist = compHistDist(mapHist, newHist);
-                cout << "histDist = " << histDist << endl;
-                if (histDist < 3.5) {
+//                cout << "histDist = " << histDist << endl;
+                if (histDist < 4.5) {
                     double normDot = mapObj.getNormal().head<3>().dot(newObj.getNormal().head<3>());
-                    cout << "normDot = " << normDot << endl;
+//                    cout << "normDot = " << normDot << endl;
                     // if the observed face is the same
                     if (normDot > 0) {
                         double intArea = 0.0;
@@ -417,17 +419,17 @@ void ObjInstance::mergeObjInstances(Map &map,
                         double intScore = Matching::checkConvexHullIntersection(mapObj,
                                                                                 newObj,
                                                                                 transform,
-                                                                                intArea,
+                                                                                intArea/*,
                                                                                 viewer,
                                                                                 viewPort1,
-                                                                                viewPort2);
+                                                                                viewPort2*/);
                         if (viewer) {
                             mapObj.getHull().display(viewer, viewPort1);
                             newObj.getHull().display(viewer, viewPort2);
                         }
                 
-                        cout << "intScore = " << intScore << endl;
-                        cout << "intArea = " << intArea << endl;
+//                        cout << "intScore = " << intScore << endl;
+//                        cout << "intArea = " << intArea << endl;
                         // if intersection of convex hulls is big enough
                         if (intScore > 0.3) {
                             cout << "merging planes" << endl;

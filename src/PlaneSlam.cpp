@@ -113,7 +113,7 @@ void PlaneSlam::run(){
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudRead(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
 
 	static constexpr int frameRate = 30;
-	int framesToSkip = 850;
+	int framesToSkip = 0;
 	int framesSkipped = 0;
 	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose) >= 0))
 	{
@@ -173,7 +173,7 @@ void PlaneSlam::run(){
 //    vector<ObjInstance> accObjInstances;
     Map accMap;
     Vector7d accStartFramePose;
-    int accFrames = 50;
+    int accFrames = 1070;
  
 //	ofstream logFile("../output/log.out");
 	int curFrameIdx;
@@ -181,22 +181,7 @@ void PlaneSlam::run(){
 	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, pointCloudRead)) >= 0){
 		cout << "curFrameIdx = " << curFrameIdx << endl;
         
-//        // saving
-//        {
-//            cout << "saving map to file" << endl;
-//            std::ofstream ofs("filename");
-//            boost::archive::text_oarchive oa(ofs);
-//            oa << accMap;
-//        }
-//        // loading
-//        {
-//            accMap = Map();
-//
-//            cout << "loading map from file" << endl;
-//            std::ifstream ifs("filename");
-//            boost::archive::text_iarchive ia(ifs);
-//            ia >> accMap;
-//        }
+
         
 		int64_t timestamp = (int64_t)curFrameIdx * 1e6 / frameRate;
 		cout << "timestamp = " << timestamp << endl;
@@ -357,14 +342,16 @@ void PlaneSlam::run(){
                 cout << endl << "starting new accumulation" << endl << endl;
                 
                 accMap = Map();
-                accMap.addObjs(curObjInstances.begin(), curObjInstances.end());
+//                accMap.addObjs(curObjInstances.begin(), curObjInstances.end());
                 
                 accStartFramePose = pose;
             }
-            else{
+            
+            {
                 cout << endl << "merging curObjInstances" << endl << endl;
                 
-                g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(accStartFramePose).inverse() * g2o::SE3Quat(pose);
+//                g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(accStartFramePose).inverse() * g2o::SE3Quat(pose);
+                g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(pose);
                 Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
                 
                 vectorObjInstance curObjInstancesTrans = curObjInstances;
@@ -378,10 +365,10 @@ void PlaneSlam::run(){
                 }
     
                 ObjInstance::mergeObjInstances(accMap,
-                                               curObjInstancesTrans,
+                                               curObjInstancesTrans/*,
                                                viewer,
                                                v1,
-                                               v2);
+                                               v2*/);
                 
 //                vector<vector<ObjInstance>> toMerge{accObjInstances};
 //                if(curFrameIdx < 160) {
@@ -401,6 +388,14 @@ void PlaneSlam::run(){
             // if last frame in accumulation
             if(curFrameIdx % accFrames == accFrames - 1){
                 accMap.removeObjsObsThresh(6);
+    
+                // saving
+                {
+                    cout << "saving map to file" << endl;
+                    std::ofstream ofs("filename");
+                    boost::archive::text_oarchive oa(ofs);
+                    oa << accMap;
+                }
              }
 
             if(globalMatching && localize){
@@ -516,6 +511,23 @@ void PlaneSlam::run(){
             if(drawVis) {
                 cout << "visualization" << endl;
     
+//                // saving
+//                {
+//                    cout << "saving map to file" << endl;
+//                    std::ofstream ofs("filename");
+//                    boost::archive::text_oarchive oa(ofs);
+//                    oa << accMap;
+//                }
+//                // loading
+//                {
+//                    accMap = Map();
+//
+//                    cout << "loading map from file" << endl;
+//                    std::ifstream ifs("filename");
+//                    boost::archive::text_iarchive ia(ifs);
+//                    ia >> accMap;
+//                }
+    
                 viewer->removeAllPointClouds();
                 viewer->removeAllShapes();
                 viewer->addCoordinateSystem();
@@ -533,8 +545,12 @@ void PlaneSlam::run(){
                 }
                 
                 viewer->resetStoppedFlag();
-                viewer->initCameraParameters();
-                viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
+                static bool cameraInit = false;
+                if(!cameraInit) {
+                    viewer->initCameraParameters();
+                    viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
+                    cameraInit = true;
+                }
                 viewer->spinOnce(100);
                 while (stopFlag && !viewer->wasStopped()) {
                     viewer->spinOnce(100);
@@ -655,7 +671,7 @@ void PlaneSlam::run(){
 
         viewer->resetStoppedFlag();
         viewer->initCameraParameters();
-        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, -1.0, 0.0);
+        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
         viewer->spinOnce(100);
         while (!viewer->wasStopped()) {
             viewer->spinOnce(100);

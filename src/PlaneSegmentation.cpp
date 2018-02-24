@@ -29,6 +29,7 @@
 #include <chrono>
 #include <thread>
 #include <queue>
+#include <cmath>
 
 #include <pcl/features/normal_3d.h>
 #include <pcl/segmentation/supervoxel_clustering.h>
@@ -565,8 +566,8 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs,
     cv::imshow("rgb segments", segCol);
 }
 
-void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs,
-                                         const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &segs,
+void PlaneSegmentation::makeObjInstances(const vectorPlaneSeg &svs,
+                                         const vectorPlaneSeg &segs,
                                          UnionFind &sets,
                                          std::vector<int> &svLabels,
                                          pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,
@@ -582,27 +583,30 @@ void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg, Eigen::alig
     cout << "making obj instances" << endl;
     
     vector<vector<int> > planeCandidates(svs.size());
+    vector<int> planeCandidatesNpts(svs.size(), 0);
     vector<double> planeCandidatesAreaEst(svs.size(), 0.0);
     for(int sv = 0; sv < svs.size(); ++sv){
         int set = sets.findSet(sv);
 //            svLabels[sv] = set;
         planeCandidates[set].push_back(sv);
+        planeCandidatesNpts[set] += svs[sv].getPoints()->size();
         planeCandidatesAreaEst[set] += svs[sv].getAreaEst();
     }
     
     for(int pl = 0; pl < segs.size(); ++pl){
 //        cout << "planeCandidates[" << pl << "].size() = " << planeCandidates[pl].size() << endl;
-//        cout << "planeCandidatesAreaEst[" << pl << "] = " << planeCandidatesAreaEst[pl] << endl;
+//        cout << "planeCandidatesNpts[" << pl << "] = " << planeCandidatesNpts[pl] << endl;
+////        cout << "planeCandidatesAreaEst[" << pl << "] = " << planeCandidatesAreaEst[pl] << endl;
 //        cout << "planeSegs[" << pl << "].getSegCurv() = " << segs[pl].getSegCurv() << endl;
         
         if(planeCandidates[pl].size() > 0){
-            if(planeCandidatesAreaEst[pl] > areaThresh){
+            if(planeCandidatesNpts[pl] > 1500){
                 if(segs[pl].getSegCurv() < curvThresh){
 //                    cout << "Adding with lab = " << pl << endl;
                     int lab = pl;
                     
                     vectorPlaneSeg curSvs;
-                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
+//                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPoints(new pcl::PointCloud<pcl::PointXYZRGB>());
                     
                     for(int s = 0; s < planeCandidates[pl].size(); ++s){
                         curSvs.push_back(svs[planeCandidates[pl][s]]);
@@ -610,8 +614,9 @@ void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg, Eigen::alig
                     }
 //                        cout << "svLabels[pl] = " << svLabels[pl] << endl;
 //                        cout << "planeSegs[pl].getPoints()->size() = " << planeSegs[pl].getPoints()->size() << endl;
-                    
-                    *curPoints = *(segs[pl].getPoints());
+    
+                    pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr curPoints = segs[pl].getPoints();
+//                    *curPoints = *(segs[pl].getPoints());
                     for(int p = 0; p < curPoints->size(); ++p){
                         const pcl::PointXYZRGB &pcPt = curPoints->at(p);
                         pcl::PointXYZRGBL pt;
@@ -628,7 +633,12 @@ void PlaneSegmentation::makeObjInstances(const std::vector<PlaneSeg, Eigen::alig
                                               curPoints,
                                               curSvs);
                     {
-                        if(objInstances.back().getHull().getTotalArea() < areaThresh){
+//                        Eigen::Vector4d planeEq = objInstances.back().getNormal();
+//                        Eigen::Vector3d centroid = objInstances.back().getCentroid();
+                        // the area has to greater than threshold
+                        if(objInstances.back().getHull().getTotalArea() < areaThresh)
+                        {
+//                            cout << "removing, area = " << objInstances.back().getHull().getTotalArea() << endl;
                             // remove last element
                             objInstances.erase(objInstances.end() - 1);
                         }
@@ -648,7 +658,7 @@ PlaneSegmentation::segmentRgb(cv::Mat rgb, cv::Mat depth, float sigma, float k, 
     high_resolution_clock::time_point endComp;
     high_resolution_clock::time_point endMerging;
     
-    cv::Mat mask = (depth > 0.2);
+    cv::Mat mask = (depth > 0.2) & (depth < 4.0);
     
 //    cv::Mat imageR(rgb.rows, rgb.cols, CV_32FC1);
 //    cv::Mat imageG(rgb.rows, rgb.cols, CV_32FC1);

@@ -184,9 +184,9 @@ Eigen::Vector3d Misc::logMap(const Eigen::Quaterniond &quat)
     normalizeAndUnify(lquat);
 	double qvNorm = sqrt(lquat.x()*lquat.x() + lquat.y()*lquat.y() + lquat.z()*lquat.z());
 	if(qvNorm > 1e-6){
-		res[0] = quat.x()/qvNorm;
-		res[1] = quat.y()/qvNorm;
-		res[2] = quat.z()/qvNorm;
+		res[0] = lquat.x()/qvNorm;
+		res[1] = lquat.y()/qvNorm;
+		res[2] = lquat.z()/qvNorm;
 	}
 	else{
 		// 1/sqrt(3), so norm = 1

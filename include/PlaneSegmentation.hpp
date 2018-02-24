@@ -64,15 +64,15 @@ private:
     static void makeSupervoxels(const cv::FileStorage &fs,
                                    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pcNormals,
                                    bool segmentMap,
-                                   std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs);
+								vectorPlaneSeg &svs);
     
     static void makeSupervoxels(const cv::FileStorage &fs,
 								cv::Mat rgb,
 								cv::Mat depth,
 								std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs);
 	
-	static void makeObjInstances(const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &svs,
-								 const std::vector<PlaneSeg, Eigen::aligned_allocator<PlaneSeg>> &segs,
+	static void makeObjInstances(const vectorPlaneSeg &svs,
+								 const vectorPlaneSeg &segs,
 								 UnionFind &sets,
 								 std::vector<int> &svLabels,
 								 pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pcLab,

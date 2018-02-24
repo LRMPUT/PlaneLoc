@@ -42,10 +42,12 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
     proj.setModelCoefficients(mdlCoeff);
     proj.filter(*points3dProj);
     
+//    cout << "points3dProj->size() = " << points3dProj->size() << endl;
     pcl::VoxelGrid<pcl::PointXYZRGB> downsamp;
     downsamp.setInputCloud(points3dProj);
     downsamp.setLeafSize (0.01f, 0.01f, 0.01f);
     downsamp.filter(*points3dProj);
+//    cout << "filtered points3dProj->size() = " << points3dProj->size() << endl;
     
     plNormal = planeEq.head<3>();
     plD = -planeEq(3);
@@ -168,7 +170,7 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
                     double area = CGAL::to_double(poly.area());
 //                    cout << "area = " << area << endl;
 //                        cout << curSegments.size() << "/" << segments.size() << endl;
-                    if (abs(area) > 0.1) {
+                    if (abs(area) > 0.05) {
                         Polygon_2 polye;
                         for(int pt = 0; pt < poly.size(); ++pt){
                             polye.push_back(Point_2(poly[pt].x(), poly[pt].y()));

@@ -25,6 +25,9 @@
 #include <chrono>
 #include <thread>
 
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/string.hpp>
+
 #include <Eigen/Eigen>
 
 #include <pcl/io/ply_io.h>
@@ -36,6 +39,7 @@
 #include "PlaneSegmentation.hpp"
 #include "Exceptions.hpp"
 #include "Types.hpp"
+#include "Serialization.hpp"
 
 using namespace std;
 
@@ -85,56 +89,22 @@ Map::Map(const cv::FileStorage& settings)
 		vector<cv::String> mapFilepaths;
         settings["map"]["mapFiles"] >> mapFilepaths;
 
-        vector<vectorObjInstance> allObjInstances;
         for(int f = 0; f < mapFilepaths.size(); ++f) {
-            viewer->removeAllPointClouds();
-
-            pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudNormal(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
-
-            pcl::io::loadPLYFile<pcl::PointXYZRGBNormal>(mapFilepaths[f], *pointCloudNormal);
-            if (pointCloudNormal->empty()) {
-                throw PLANE_EXCEPTION(string("Could not read PLY file: ") + settings["map"]["mapFile"]);
+            Map curMap;
+        
+            std::ifstream ifs(mapFilepaths[f].c_str());
+            boost::archive::text_iarchive ia(ifs);
+            ia >> curMap;
+            
+            vectorObjInstance curObjInstances;
+            for(ObjInstance &obj : curMap){
+                curObjInstances.push_back(obj);
             }
-
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
-            pcl::copyPointCloud(*pointCloudNormal, *pointCloud);
-            originalPointCloud->insert(originalPointCloud->end(), pointCloud->begin(), pointCloud->end());
-
-//		Vector7d mapFileOffset;
-//		mapFileOffset << -0.868300, 0.602600, 1.562700, 0.821900, -0.391200, 0.161500, -0.381100;
-//		Eigen::Matrix4d transformMat = g2o::SE3Quat(mapFileOffset).inverse().to_homogeneous_matrix();
-//		pcl::transformPointCloud(*pointCloudNormal, *pointCloudNormal, transformMat);
-
-            pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
-//    		vector<ObjInstance> curObjInstances;
-            allObjInstances.push_back(vectorObjInstance());
-
-            PlaneSegmentation::segment(settings,
-                                  pointCloudNormal,
-                                  pointCloudLab,
-                                  allObjInstances.back(),
-                                  true/*,
-                                  viewer,
-                                  v1,
-                                  v2*/);
-
-//            objInstances.insert(objInstances.end(), curObjInstances.begin(), curObjInstances.end());
-
-
-//            viewer->resetStoppedFlag();
-//            viewer->initCameraParameters();
-//            viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-//            viewer->spinOnce(100);
-//            while (!viewer->wasStopped()) {
-//                viewer->spinOnce(100);
-//                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//            }
+            ObjInstance::mergeObjInstances(*this, curObjInstances);
+            
+            pendingMatchesSet.clear();
+            pendingObjInstances.clear();
         }
-
-        objInstances = ObjInstance::mergeObjInstances(allObjInstances/*,
-                                                      viewer,
-                                                      v1,
-                                                      v2*/);
 
         cout << "object instances in map: " << objInstances.size() << endl;
 
@@ -282,7 +252,7 @@ void Map::executePendingMatches(int eolThresh) {
     
         vector<list<ObjInstance>::iterator> mapObjIts;
         vector<list<ObjInstance>::iterator> pendingObjIts;
-        cout << "merging ids:" << endl;
+        cout << endl << endl << "merging ids:" << endl;
         for (auto rangeIt = range.first; rangeIt != range.second; ++rangeIt) {
             int curIdx = rangeIt->second;
             if(isPending[curIdx]){

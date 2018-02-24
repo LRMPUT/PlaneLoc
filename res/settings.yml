@@ -39,7 +39,7 @@ segmentation:
 
   stepThresh: 0.05
 
-  areaThresh: 0.1000
+  areaThresh: 0.0500
 
   normalThresh: 0.95
 
@@ -97,7 +97,7 @@ fileGrabber:
 #
 #    imageFrame: 0
 
-    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test5"
 
     readObjLabeling: 0
 

@@ -108,6 +108,7 @@ void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix3d &R) {
 //}
 
 void EKFPlane::update(const Eigen::Quaterniond &zq, int znpts) {
+//    cout << "updating" << endl;
     Eigen::Vector3d meanLogMap;
     meanLogMap << 0.0, 0.0, 0.0;
     int sumPoints = 0;
@@ -115,13 +116,17 @@ void EKFPlane::update(const Eigen::Quaterniond &zq, int znpts) {
         Eigen::Vector3d z = Misc::logMap(zq);
         meanLogMap += z * znpts;
         sumPoints += znpts;
+//        cout << "logMap(z) = " << z.transpose() << endl;
     }
     {
         Eigen::Vector3d xu = Misc::logMap(x);
         meanLogMap += xu * npts;
         sumPoints += npts;
+//        cout << "logMap(x) = " << xu.transpose() << endl;
     }
     meanLogMap /= sumPoints;
+    
+//    cout << "meanLogMap = " << meanLogMap.transpose() << endl;
     
     x = Misc::expMap(meanLogMap);
     npts = sumPoints;
