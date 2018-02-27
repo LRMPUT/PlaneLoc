@@ -52,17 +52,21 @@ public:
 	FileGrabber(const cv::FileStorage& settings);
 
 	int getFrame(cv::Mat& rgb,
-					cv::Mat& depth,
-					std::vector<FrameObjInstance>& objInstances,
-					std::vector<double>& accelData,
-					Vector7d& pose);
+                 cv::Mat& depth,
+                 std::vector<FrameObjInstance>& objInstances,
+                 std::vector<double>& accelData,
+                 Vector7d& pose,
+                 Vector7d &vo,
+                 bool &voCorr);
 
 	int getFrame(cv::Mat& rgb,
-					cv::Mat& depth,
-					std::vector<FrameObjInstance>& objInstances,
-					std::vector<double>& accelData,
-					Vector7d& pose,
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloud);
+                 cv::Mat& depth,
+                 std::vector<FrameObjInstance>& objInstances,
+                 std::vector<double>& accelData,
+                 Vector7d& pose,
+                 Vector7d &vo,
+                 bool &voCorr,
+			     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloud);
 private:
 
 	std::vector<boost::filesystem::path> rgbPaths;
@@ -84,6 +88,12 @@ private:
 	std::vector<std::vector<double>> accelDataAll;
 
 	std::vector<Vector7d> groundtruthAll;
+	
+	std::vector<Vector7d> voAll;
+    
+    std::vector<bool> voCorrAll;
+    
+    Vector7d voOffset;
 
 	float depthScale;
 

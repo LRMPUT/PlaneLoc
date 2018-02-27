@@ -3,6 +3,9 @@
 //
 
 #include <iostream>
+
+#include <Eigen/Dense>
+
 #include <EKFPlane.hpp>
 
 #include "Types.hpp"
@@ -109,37 +112,66 @@ void EKFPlane::update(const Eigen::Quaterniond &zq, const Eigen::Matrix3d &R) {
 
 void EKFPlane::update(const Eigen::Quaterniond &zq, int znpts) {
 //    cout << "updating" << endl;
-    Eigen::Vector3d meanLogMap;
-    meanLogMap << 0.0, 0.0, 0.0;
-    int sumPoints = 0;
-    {
-        Eigen::Vector3d z = Misc::logMap(zq);
-        meanLogMap += z * znpts;
-        sumPoints += znpts;
-//        cout << "logMap(z) = " << z.transpose() << endl;
-    }
-    {
-        Eigen::Vector3d xu = Misc::logMap(x);
-        meanLogMap += xu * npts;
-        sumPoints += npts;
-//        cout << "logMap(x) = " << xu.transpose() << endl;
-    }
-    meanLogMap /= sumPoints;
+    // innovation
+    Eigen::Vector3d v = Misc::logMap(zq * x.inverse());
+    x = Misc::expMap((double)znpts/(znpts + npts) * v) * x;
     
+//    Eigen::Vector3d meanLogMap;
+//    meanLogMap << 0.0, 0.0, 0.0;
+//    int sumPoints = 0;
+//    {
+//        Eigen::Vector3d z = Misc::logMap(zq);
+//        meanLogMap += z * znpts;
+//        sumPoints += znpts;
+//        cout << "z = " << zq.coeffs().transpose() << endl;
+//        cout << "logMap(z) = " << z.transpose() << endl;
+//    }
+//    {
+//        Eigen::Vector3d xu = Misc::logMap(x);
+//        meanLogMap += xu * npts;
+//        sumPoints += npts;
+//        cout << "x = " << x.coeffs().transpose() << endl;
+//        cout << "logMap(x) = " << xu.transpose() << endl;
+//    }
+//    meanLogMap /= sumPoints;
+//
 //    cout << "meanLogMap = " << meanLogMap.transpose() << endl;
     
-    x = Misc::expMap(meanLogMap);
-    npts = sumPoints;
+    
+    npts += znpts;
 }
 
 double EKFPlane::distance(const Eigen::Quaterniond &xcq) const {
 //    Eigen::Matrix3d inf = P.inverse();
 //    cout << "P = " << P << endl;
 //    cout << "inf = " << inf << endl;
-    Eigen::Vector3d e = Misc::logMap(xcq * x.inverse());
+//    Eigen::Vector3d e = Misc::logMap(xcq * x.inverse());
+//    cout << "x = " << x.coeffs().transpose() << endl;
+//    cout << "xcq = " << xcq.coeffs().transpose() << endl;
+//    cout << "diff = " << (xcq * x.inverse()).coeffs().transpose() << endl;
     
 //    return e.transpose() * inf * e;
-    return e.transpose() * e;
+//    return e.transpose() * e;
+    
+    Eigen::Vector4d plEq = x.coeffs();
+    plEq /= plEq.head<3>().norm();
+    if(plEq(3) < 0){
+        plEq = -plEq;
+    }
+    Eigen::Vector4d plEqc = xcq.coeffs();
+    plEqc /= plEqc.head<3>().norm();
+    if(plEqc(3) < 0){
+        plEqc = -plEqc;
+    }
+    double dd = plEq(3) - plEqc(3);
+    dd = dd * dd;
+    double da = acos(plEq.head<3>().dot(plEqc.head<3>()));
+    da = da * da;
+    
+    double drange = 4;
+    double arange = M_PI;
+    
+    return (dd * arange + da * drange)/(drange + arange);
 }
 
 void EKFPlane::compPlaneEqAndCovar(const Eigen::MatrixXd &pts,
@@ -184,6 +216,7 @@ void EKFPlane::compPlaneEqAndCovar(const Eigen::MatrixXd &pts,
         evecs.col(i) = evd.eigenvectors().col(2 - i);
         evals(i) = evd.eigenvalues()(2 - i);
     }
+    cout << "evals = " << (evals.array()/demeanPts.cols()).sqrt() << endl;
     
     // the smallest eigenvalue corresponds to the eigenvector that is normal to the plane
     double varD = evals(2) / demeanPts.cols();

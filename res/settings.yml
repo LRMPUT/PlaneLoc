@@ -105,6 +105,21 @@ fileGrabber:
 
     readPose: 1
 
+    readVO: 1
+
+#    # test2
+#    voOffset: -2.50604 -0.0102974 -2.19215 0.998808 0.00037156 0.0435399 0.0220464
+
+    # test5
+    voOffset:
+      - -3.37964
+      - 0.667332
+      - -1.15169
+      - 0.118325
+      - 0.0675564
+      - -0.990661
+      - 0.0051312
+
     depthScale: 1000
 
     imageFrame: 0
@@ -183,7 +198,7 @@ planeSlam:
 
   visualizeMatching: 1
 
-  stopEveryFrame: 0
+  stopEveryFrame: 1
 
   stopWrongFrame: 0
 

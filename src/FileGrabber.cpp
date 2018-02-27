@@ -27,6 +27,7 @@
 #include <algorithm>
 
 #include <pcl/io/ply_io.h>
+#include <g2o/types/slam3d/se3quat.h>
 
 #include "Exceptions.hpp"
 #include "Misc.hpp"
@@ -171,6 +172,44 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 			}
 		}
 	}
+    
+    vector<double> voOffsetVals;
+    settings["fileGrabber"]["voOffset"] >> voOffsetVals;
+    for(int v = 0; v < voOffsetVals.size(); ++v){
+        voOffset(v) = voOffsetVals[v];
+    }
+    
+	if((int)settings["fileGrabber"]["readVO"]){
+		cout << "reading VO data" << endl;
+		boost::filesystem::path voFilePath = datasetDirPath / boost::filesystem::path("vo.txt");
+		if(!boost::filesystem::exists(voFilePath)){
+			throw PLANE_EXCEPTION(string("No VO file ") + boost::filesystem::absolute(voFilePath).c_str());
+		}
+		ifstream voFile(voFilePath.c_str());
+		while(!voFile.fail() && !voFile.eof()){
+			Vector7d curVo;
+			// timestamp
+			double tstamp;
+			voFile >> tstamp;
+			for(int i = 0; i < 7; ++i){
+				voFile >> curVo[i];
+			}
+			if(!voFile.fail()){
+//				cout << curVo << endl;
+                g2o::SE3Quat curVoOffset = g2o::SE3Quat(voOffset) * g2o::SE3Quat(curVo);
+                
+				voAll.push_back(curVoOffset.toVector());
+                if(tstamp >= 0){
+                    voCorrAll.push_back(true);
+                }
+                else{
+                    voCorrAll.push_back(false);
+                }
+			}
+		}
+	}
+ 
+ 
 	if(!rgbPaths.empty()){
 		cout << "setting nextFrameIdx" << endl;
 		nextFrameIdx = 0;
@@ -178,10 +217,12 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 }
 
 int FileGrabber::getFrame(cv::Mat& rgb,
-					cv::Mat& depth,
-					std::vector<FrameObjInstance>& objInstances,
-					std::vector<double>& accelData,
-					Vector7d& pose)
+                          cv::Mat& depth,
+                          std::vector<FrameObjInstance>& objInstances,
+                          std::vector<double>& accelData,
+                          Vector7d& pose,
+                          Vector7d &vo,
+                          bool &voCorr)
 {
 	int curFrameIdx = nextFrameIdx;
 	if(curFrameIdx >= 0){
@@ -221,7 +262,13 @@ int FileGrabber::getFrame(cv::Mat& rgb,
 		if(!groundtruthAll.empty()){
 			pose = groundtruthAll[curFrameIdx];
 		}
-
+        if(!voAll.empty()){
+            vo = voAll[curFrameIdx];
+        }
+        if(!voCorrAll.empty()){
+            voCorr = voCorrAll[curFrameIdx];
+        }
+        
 		++nextFrameIdx;
 		if(nextFrameIdx >= rgbPaths.size()){
 			//end of sequence
@@ -232,14 +279,15 @@ int FileGrabber::getFrame(cv::Mat& rgb,
 }
 
 int FileGrabber::getFrame(cv::Mat& rgb,
-					cv::Mat& depth,
-					std::vector<FrameObjInstance>& objInstances,
-					std::vector<double>& accelData,
-					Vector7d& pose,
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloud)
+                          cv::Mat& depth,
+                          std::vector<FrameObjInstance>& objInstances,
+                          std::vector<double>& accelData,
+                          Vector7d& pose,
+                          Vector7d &vo,
+                          bool &voCorr,
+					      pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloud)
 {
 	if(nextFrameIdx >= 0){
-		cout << "loading cloud" << endl;
 		pointCloud->clear();
 		if(cloudAvailable[nextFrameIdx]){
 			pcl::io::loadPLYFile(string(cloudPaths[nextFrameIdx].c_str()), *pointCloud);
@@ -250,5 +298,7 @@ int FileGrabber::getFrame(cv::Mat& rgb,
 					depth,
 					objInstances,
 					accelData,
-					pose);
+					pose,
+                    vo,
+                    voCorr);
 }

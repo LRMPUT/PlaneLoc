@@ -21,6 +21,8 @@
     SOFTWARE.
 */
 
+#include <cmath>
+
 #include "Misc.hpp"
 
 #include <g2o/types/slam3d/se3quat.h>
@@ -192,7 +194,7 @@ Eigen::Vector3d Misc::logMap(const Eigen::Quaterniond &quat)
 		// 1/sqrt(3), so norm = 1
 		res[0] = 0.57735026919;
 		res[1] = 0.57735026919;
-		res[2] = 0.57735026919;;
+		res[2] = 0.57735026919;
 	}
 	double acosQw = acos(lquat.w());
 	res *= 2.0*acosQw;

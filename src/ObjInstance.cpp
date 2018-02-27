@@ -58,21 +58,22 @@ ObjInstance::ObjInstance(int iid,
       trial(false)
 {
     {
-        Eigen::MatrixXd pts(3, points->size());
+        Eigen::MatrixXd pts(4, points->size());
         for(int i = 0; i < points->size(); ++i){
-            pts.col(i) = points->at(i).getVector3fMap().cast<double>();
+            pts.col(i) = points->at(i).getVector4fMap().cast<double>();
         }
-        
-        Eigen::Quaterniond q;
-        Eigen::Matrix4d covar;
-        EKFPlane::compPlaneEqAndCovar(pts, q, covar);
-//        Eigen::Vector3d om = Misc::logMap(quat);
-//        cout << "q = " << quat.coeffs().transpose() << endl;
-//        cout << "om = " << om.transpose() << endl;
-//        cout << "covar = " << covarQuat << endl;
-    
-//        ekf.init(q, covar);
-        ekf.init(q, points->size());
+
+        planeEstimator.init(pts);
+//        Eigen::Quaterniond q;
+//        Eigen::Matrix4d covar;
+//        EKFPlane::compPlaneEqAndCovar(pts, q, covar);
+////        Eigen::Vector3d om = Misc::logMap(quat);
+////        cout << "q = " << quat.coeffs().transpose() << endl;
+////        cout << "om = " << om.transpose() << endl;
+////        cout << "covar = " << covarQuat << endl;
+//
+////        ekf.init(q, covar);
+//        ekf.init(q, points->size());
     }
     pcl::PCA<pcl::PointXYZRGB> pca;
     pca.setInputCloud(points);
@@ -115,12 +116,18 @@ ObjInstance::ObjInstance(int iid,
 
 void ObjInstance::merge(const ObjInstance &other) {
     
-    ekf.update(other.getEkf().getX(), other.getPoints()->size());
+//    ekf.update(other.getEkf().getX(), other.getPoints()->size());
     
-    const Eigen::Quaterniond &q = ekf.getX();
-    Eigen::Vector4d newPlaneEq = q.coeffs();
-    double nNorm = newPlaneEq.head<3>().norm();
-    newPlaneEq /= nNorm;
+    
+//    const Eigen::Quaterniond &q = ekf.getX();
+//    Eigen::Vector4d newPlaneEq = q.coeffs();
+//    double nNorm = newPlaneEq.head<3>().norm();
+//    newPlaneEq /= nNorm;
+    
+    planeEstimator.update(other.getPlaneEstimator().getCentroid(),
+                          other.getPlaneEstimator().getCovar(),
+                          other.getPlaneEstimator().getNpts());
+    Eigen::Vector4d newPlaneEq = planeEstimator.getPlaneEq();
     
     pcl::ModelCoefficients::Ptr mdlCoeff (new pcl::ModelCoefficients);
     mdlCoeff->values.resize(4);
@@ -203,28 +210,30 @@ void ObjInstance::transform(const Vector7d &transform) {
     // std::vector<LineSeg> lineSegs;
     // TODO
     
-    // EKFPlane ekf;
-    // TODO valid only for NOT merged planes (ones where points haven't been projected onto plane)
-    {
-        Eigen::MatrixXd pts(3, points->size());
-        for(int i = 0; i < points->size(); ++i){
-            pts.col(i) = points->at(i).getVector3fMap().cast<double>();
-        }
-        
-        Eigen::Quaterniond q;
-        Eigen::Matrix4d covar;
-        EKFPlane::compPlaneEqAndCovar(pts, q, covar);
-//        Eigen::Vector3d om = Misc::logMap(q);
-//        cout << "q = " << q.coeffs().transpose() << endl;
-//        cout << "om = " << om.transpose() << endl;
-//        cout << "covar = " << covar << endl;
-        
-//        Eigen::Vector4d planeEq = q.coeffs();
-//        planeEq /= planeEq.head<3>().norm();
-//        cout << "planeEq = " << planeEq.transpose() << endl;
-        
-        ekf.init(q, points->size());
-    }
+//    // EKFPlane ekf;
+//    // TODO valid only for NOT merged planes (ones where points haven't been projected onto plane)
+//    {
+//        Eigen::MatrixXd pts(3, points->size());
+//        for(int i = 0; i < points->size(); ++i){
+//            pts.col(i) = points->at(i).getVector3fMap().cast<double>();
+//        }
+//
+//        Eigen::Quaterniond q;
+//        Eigen::Matrix4d covar;
+//        EKFPlane::compPlaneEqAndCovar(pts, q, covar);
+////        Eigen::Vector3d om = Misc::logMap(q);
+////        cout << "q = " << q.coeffs().transpose() << endl;
+////        cout << "om = " << om.transpose() << endl;
+////        cout << "covar = " << covar << endl;
+//
+////        Eigen::Vector4d planeEq = q.coeffs();
+////        planeEq /= planeEq.head<3>().norm();
+////        cout << "planeEq = " << planeEq.transpose() << endl;
+//
+//        ekf.init(q, points->size());
+//    }
+    // PlaneEstimator planeEstimator;
+    planeEstimator.transform(transform);
 }
 
 void ObjInstance::correctOrient() {
@@ -326,12 +335,14 @@ void ObjInstance::mergeObjInstances(Map &map,
     transform << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0;
     
     if(viewer){
-        viewer->removeAllPointClouds(viewPort1);
-        viewer->removeAllShapes(viewPort1);
+        viewer->removeAllPointClouds();
+        viewer->removeAllShapes();
     
         {
             int pl = 0;
             for (auto it = map.begin(); it != map.end(); ++it, ++pl) {
+                cout << "adding plane " << pl << endl;
+                
                 ObjInstance &mapObj = *it;
                 const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = mapObj.getPoints();
             
@@ -359,9 +370,12 @@ void ObjInstance::mergeObjInstances(Map &map,
 
     }
     
+    vectorObjInstance addedObjs;
+    
     int npl = 0;
     for(ObjInstance &newObj : newObjInstances){
-    
+        cout << "npl = " << npl << endl;
+        
         if(viewer){
             viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
                                                      0.5,
@@ -376,6 +390,7 @@ void ObjInstance::mergeObjInstances(Map &map,
         vector<list<ObjInstance>::iterator> matches;
         int pl = 0;
         for(auto it = map.begin(); it != map.end(); ++it, ++pl) {
+            cout << "pl = " << pl << endl;
             ObjInstance &mapObj = *it;
     
             if(viewer){
@@ -389,22 +404,23 @@ void ObjInstance::mergeObjInstances(Map &map,
         
             }
         
-            double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
-            double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
+            double dist = mapObj.getPlaneEstimator().distance(newObj.getPlaneEstimator());
+//            double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
+//            double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
 //            cout << "dist1 = " << dist1 << endl;
 //            cout << "dist2 = " << dist2 << endl;
 
 //            double diff = Matching::planeEqDiffLogMap(mapObj, newObj, transform);
 //                    cout << "diff = " << diff << endl;
             // if plane equation is similar
-            if (dist1 < 0.05 || dist2 < 0.05) {
+            if (dist < 0.05) {
     
                 cv::Mat mapHist = mapObj.getColorHist();
                 cv::Mat newHist = newObj.getColorHist();
 
                 double histDist = compHistDist(mapHist, newHist);
 //                cout << "histDist = " << histDist << endl;
-                if (histDist < 4.5) {
+                if (histDist < 2.5) {
                     double normDot = mapObj.getNormal().head<3>().dot(newObj.getNormal().head<3>());
 //                    cout << "normDot = " << normDot << endl;
                     // if the observed face is the same
@@ -441,6 +457,20 @@ void ObjInstance::mergeObjInstances(Map &map,
             }
     
             if(viewer){
+                viewer->resetStoppedFlag();
+
+                static bool cameraInit = false;
+                
+                if(!cameraInit) {
+                    viewer->initCameraParameters();
+                    viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+                    cameraInit = true;
+                }
+                while (!viewer->wasStopped()) {
+                    viewer->spinOnce(100);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                }
+                
                 viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
                                                          shadingLevel,
                                                          string("plane_ba_") + to_string(pl),
@@ -453,7 +483,7 @@ void ObjInstance::mergeObjInstances(Map &map,
         }
         
         if(matches.size() == 0){
-            map.addObj(newObj);
+            addedObjs.push_back(newObj);
         }
         else if(matches.size() == 1){
             ObjInstance &mapObj = *matches.front();
@@ -489,6 +519,7 @@ void ObjInstance::mergeObjInstances(Map &map,
         ++npl;
     }
     
+    map.addObjs(addedObjs.begin(), addedObjs.end());
     
     map.executePendingMatches(6);
     map.decreasePendingEol(1);
@@ -633,15 +664,15 @@ listObjInstance ObjInstance::mergeObjInstances(std::vector<vectorObjInstance>& o
 //                        }
                     }
 
-                    double dist1 = curObj.getEkf().distance(compObj.getEkf().getX());
-                    double dist2 = compObj.getEkf().distance(curObj.getEkf().getX());
-                    cout << "dist1 = " << dist1 << endl;
-                    cout << "dist2 = " << dist2 << endl;
+//                    double dist1 = curObj.getEkf().distance(compObj.getEkf().getX());
+//                    double dist2 = compObj.getEkf().distance(curObj.getEkf().getX());
+//                    cout << "dist1 = " << dist1 << endl;
+//                    cout << "dist2 = " << dist2 << endl;
                     
                     double diff = Matching::planeEqDiffLogMap(curObj, compObj, transform);
 //                    cout << "diff = " << diff << endl;
                     // if plane equation is similar
-                    if(dist1 < 50 || dist2 < 50){
+                    if(diff < 0.05){
                         double normDot = curObjNormal.dot(compObjNormal);
                         cout << "normDot = " << normDot << endl;
                         // if the observed face is the same

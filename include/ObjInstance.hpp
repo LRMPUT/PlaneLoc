@@ -43,9 +43,10 @@ class ObjInstance;
 #include "PlaneSeg.hpp"
 #include "LineSeg.hpp"
 #include "ConcaveHull.hpp"
-#include "EKFPlane.hpp"
+//#include "EKFPlane.hpp"
 #include "Map.hpp"
 #include "Serialization.hpp"
+#include "PlaneEstimator.hpp"
 
 // only planes in a current version
 class ObjInstance{
@@ -126,10 +127,14 @@ public:
 //        covar = covarQuat;
 //    }
     
-    inline const EKFPlane &getEkf() const {
-        return ekf;
+//    inline const EKFPlane &getEkf() const {
+//        return ekf;
+//    }
+
+    inline const PlaneEstimator &getPlaneEstimator() const {
+        return planeEstimator;
     }
-    
+
     int getEolCnt() const {
         return eolCnt;
     }
@@ -221,8 +226,9 @@ private:
 	
 	vectorLineSeg lineSegs;
     
-    EKFPlane ekf;
-    
+//    EKFPlane ekf;
+    PlaneEstimator planeEstimator;
+
     int eolCnt;
     
     int obsCnt;
@@ -247,7 +253,8 @@ private:
         ar & colorHist;
         ar & hull;
         ar & lineSegs;
-        ar & ekf;
+//        ar & ekf;
+        ar & planeEstimator;
         ar & eolCnt;
         ar & obsCnt;
         ar & trial;

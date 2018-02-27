@@ -110,12 +110,14 @@ void PlaneSlam::run(){
 	std::vector<FileGrabber::FrameObjInstance> objInstances;
 	std::vector<double> accelData;
 	Vector7d pose;
+    Vector7d voPose;
+    bool voCorr = false;
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudRead(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
 
 	static constexpr int frameRate = 30;
 	int framesToSkip = 0;
 	int framesSkipped = 0;
-	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose) >= 0))
+	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr) >= 0))
 	{
         ++framesSkipped;
 	}
@@ -178,7 +180,7 @@ void PlaneSlam::run(){
 //	ofstream logFile("../output/log.out");
 	int curFrameIdx;
     cout << "Starting the loop" << endl;
-	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, pointCloudRead)) >= 0){
+	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr, pointCloudRead)) >= 0){
 		cout << "curFrameIdx = " << curFrameIdx << endl;
         
 
@@ -354,6 +356,8 @@ void PlaneSlam::run(){
                 g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(pose);
                 Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
                 
+//                cout << "accPoseIncr = " << accPoseIncr.transpose() << endl;
+                
                 vectorObjInstance curObjInstancesTrans = curObjInstances;
                 for(ObjInstance &curObj : curObjInstancesTrans){
                     curObj.transform(accPoseIncr);
@@ -364,11 +368,17 @@ void PlaneSlam::run(){
 //                    accObjInstances.back().transform(accPoseIncr);
                 }
     
-                ObjInstance::mergeObjInstances(accMap,
-                                               curObjInstancesTrans/*,
-                                               viewer,
-                                               v1,
-                                               v2*/);
+                if(curFrameIdx > 0) {
+                    ObjInstance::mergeObjInstances(accMap,
+                                                   curObjInstancesTrans,
+                                                   viewer,
+                                                   v1,
+                                                   v2);
+                }
+                else{
+                    ObjInstance::mergeObjInstances(accMap,
+                                                   curObjInstancesTrans);
+                }
                 
 //                vector<vector<ObjInstance>> toMerge{accObjInstances};
 //                if(curFrameIdx < 160) {
