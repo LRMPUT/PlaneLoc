@@ -562,8 +562,8 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs,
     
     cv::Mat segCol = Misc::colorIdsWithLabels(rgbSegments);
     
-    cv::imshow("original", rgb);
-    cv::imshow("rgb segments", segCol);
+//    cv::imshow("original", rgb);
+//    cv::imshow("rgb segments", segCol);
 }
 
 void PlaneSegmentation::makeObjInstances(const vectorPlaneSeg &svs,

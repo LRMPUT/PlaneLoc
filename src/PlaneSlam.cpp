@@ -368,7 +368,7 @@ void PlaneSlam::run(){
 //                    accObjInstances.back().transform(accPoseIncr);
                 }
     
-                if(curFrameIdx > 0) {
+                if(curFrameIdx > 1200) {
                     ObjInstance::mergeObjInstances(accMap,
                                                    curObjInstancesTrans,
                                                    viewer,

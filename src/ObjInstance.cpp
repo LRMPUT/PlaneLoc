@@ -75,29 +75,29 @@ ObjInstance::ObjInstance(int iid,
 ////        ekf.init(q, covar);
 //        ekf.init(q, points->size());
     }
-    pcl::PCA<pcl::PointXYZRGB> pca;
-    pca.setInputCloud(points);
+//    pcl::PCA<pcl::PointXYZRGB> pca;
+//    pca.setInputCloud(points);
+//
+//    Eigen::Matrix3f evecs = pca.getEigenVectors();
+//    Eigen::Vector3f evals = pca.getEigenValues();
+//    Eigen::Vector4f pcaMean = pca.getMean();
     
-    Eigen::Matrix3f evecs = pca.getEigenVectors();
-    Eigen::Vector3f evals = pca.getEigenValues();
-    Eigen::Vector4f pcaMean = pca.getMean();
-    
-    Eigen::Vector3f ev0 = evecs.block<3, 1>(0, 0);
-    Eigen::Vector3f ev1 = evecs.block<3, 1>(0, 1);
-    Eigen::Vector3f ev2 = evecs.block<3, 1>(0, 2);
+    Eigen::Vector3d ev0 = planeEstimator.getEvecs().block<3, 1>(0, 0);
+    Eigen::Vector3d ev1 = planeEstimator.getEvecs().block<3, 1>(0, 1);
+    Eigen::Vector3d ev2 = planeEstimator.getEvecs().block<3, 1>(0, 2);
     
     // shorter side of the plane is the second largest eigenvalue
-    shorterComp = sqrt(evals(1)/points->size());
+    shorterComp = sqrt(planeEstimator.getEvals()(1)/points->size());
     
-    // the eigenvector for the smallest eigenvalue is the normal vector
-    paramRep.head<3>() = ev2.cast<double>();
-    // distance is the dot product of normal and point lying on the plane
-    paramRep(3) = -ev2.dot(pcaMean.head<3>());
+    paramRep = planeEstimator.getPlaneEq();
     
-    princComp = vectorVector3d{ev0.cast<double>(), ev1.cast<double>(), ev2.cast<double>()};
-    princCompLens = vector<double>{evals(0), evals(1), evals(2)};
+    princComp = vectorVector3d{ev0, ev1, ev2};
+    princCompLens = vector<double>{planeEstimator.getEvals()(0),
+                                   planeEstimator.getEvals()(1),
+                                   planeEstimator.getEvals()(2)};
     
-    curv = evals(2) / (evals(0) + evals(1) + evals(2));
+    curv = planeEstimator.getEvals()(2) /
+            (planeEstimator.getEvals()(0) + planeEstimator.getEvals()(1) + planeEstimator.getEvals()(2));
     
     // normal including distance from origin
     normal = paramRep;
@@ -123,7 +123,6 @@ void ObjInstance::merge(const ObjInstance &other) {
 //    Eigen::Vector4d newPlaneEq = q.coeffs();
 //    double nNorm = newPlaneEq.head<3>().norm();
 //    newPlaneEq /= nNorm;
-    
     planeEstimator.update(other.getPlaneEstimator().getCentroid(),
                           other.getPlaneEstimator().getCovar(),
                           other.getPlaneEstimator().getNpts());
@@ -374,7 +373,7 @@ void ObjInstance::mergeObjInstances(Map &map,
     
     int npl = 0;
     for(ObjInstance &newObj : newObjInstances){
-        cout << "npl = " << npl << endl;
+//        cout << "npl = " << npl << endl;
         
         if(viewer){
             viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
@@ -390,7 +389,7 @@ void ObjInstance::mergeObjInstances(Map &map,
         vector<list<ObjInstance>::iterator> matches;
         int pl = 0;
         for(auto it = map.begin(); it != map.end(); ++it, ++pl) {
-            cout << "pl = " << pl << endl;
+//            cout << "pl = " << pl << endl;
             ObjInstance &mapObj = *it;
     
             if(viewer){
@@ -403,28 +402,30 @@ void ObjInstance::mergeObjInstances(Map &map,
                 mapObj.getHull().display(viewer, viewPort1);
         
             }
-        
-            double dist = mapObj.getPlaneEstimator().distance(newObj.getPlaneEstimator());
-//            double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
-//            double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
-//            cout << "dist1 = " << dist1 << endl;
-//            cout << "dist2 = " << dist2 << endl;
-
-//            double diff = Matching::planeEqDiffLogMap(mapObj, newObj, transform);
-//                    cout << "diff = " << diff << endl;
-            // if plane equation is similar
-            if (dist < 0.05) {
+            double normDot = mapObj.getNormal().head<3>().dot(newObj.getNormal().head<3>());
+//            cout << "normDot = " << normDot << endl;
+            // if the faces are roughly oriented in the same direction
+            if (normDot > 0.707) {
+                
+                double dist1 = mapObj.getPlaneEstimator().distance(newObj.getPlaneEstimator());
+                double dist2 = newObj.getPlaneEstimator().distance(mapObj.getPlaneEstimator());
+    //            double dist1 = mapObj.getEkf().distance(newObj.getEkf().getX());
+    //            double dist2 = newObj.getEkf().distance(mapObj.getEkf().getX());
+//                cout << "dist1 = " << dist1 << endl;
+//                cout << "dist2 = " << dist2 << endl;
     
-                cv::Mat mapHist = mapObj.getColorHist();
-                cv::Mat newHist = newObj.getColorHist();
-
-                double histDist = compHistDist(mapHist, newHist);
-//                cout << "histDist = " << histDist << endl;
-                if (histDist < 2.5) {
-                    double normDot = mapObj.getNormal().head<3>().dot(newObj.getNormal().head<3>());
-//                    cout << "normDot = " << normDot << endl;
-                    // if the observed face is the same
-                    if (normDot > 0) {
+    //            double diff = Matching::planeEqDiffLogMap(mapObj, newObj, transform);
+    //                    cout << "diff = " << diff << endl;
+                // if plane equation is similar
+                if (dist1 < 0.01 && dist2 < 0.01) {
+        
+                    cv::Mat mapHist = mapObj.getColorHist();
+                    cv::Mat newHist = newObj.getColorHist();
+    
+                    double histDist = compHistDist(mapHist, newHist);
+//                    cout << "histDist = " << histDist << endl;
+                    if (histDist < 2.5) {
+                    
                         double intArea = 0.0;
                 
                         if (viewer) {
@@ -435,10 +436,10 @@ void ObjInstance::mergeObjInstances(Map &map,
                         double intScore = Matching::checkConvexHullIntersection(mapObj,
                                                                                 newObj,
                                                                                 transform,
-                                                                                intArea/*,
+                                                                                intArea,
                                                                                 viewer,
                                                                                 viewPort1,
-                                                                                viewPort2*/);
+                                                                                viewPort2);
                         if (viewer) {
                             mapObj.getHull().display(viewer, viewPort1);
                             newObj.getHull().display(viewer, viewPort2);

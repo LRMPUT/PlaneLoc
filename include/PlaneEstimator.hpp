@@ -74,6 +74,16 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     
+    static void updateCentroidAndCovar(const Eigen::Vector3d &centroid1,
+                                      const Eigen::Matrix3d &covar1,
+                                      const int &npts1,
+                                      const Eigen::Vector3d &centroid2,
+                                      const Eigen::Matrix3d &covar2,
+                                      const int &npts2,
+                                      Eigen::Vector3d &ocentroid,
+                                      Eigen::Matrix3d &ocovar,
+                                      int &onpts);
+    
     Eigen::Vector3d centroid;
     
     Eigen::Matrix3d covar;

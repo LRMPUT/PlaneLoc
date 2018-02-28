@@ -298,8 +298,14 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
 //            cout << point3dTo2d(it->getVector3fMap().cast<double>()) << endl;
 //            cout << point2dTo3d(point3dTo2d(it->getVector3fMap().cast<double>())).transpose() << endl;
         }
+//        cout << "polyProj.is_counterclockwise_oriented() = " << polyProj.is_counterclockwise_oriented() << endl;
+//        cout << "polyProj.is_simple() = " << polyProj.is_simple() << endl;
         otherPolygonsProj.push_back(polyProj);
     }
+//    for(const Polygon_2 &poly : polygons){
+//        cout << "poly.is_counterclockwise_oriented() = " << poly.is_counterclockwise_oriented() << endl;
+//        cout << "poly.is_simple() = " << poly.is_simple() << endl;
+//    }
     
 //    for(int p = 0; p < polygons.size(); ++p){
 //        cout << "current" << endl;
@@ -312,11 +318,22 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
     vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> resPolygons3d;
     {
         list<Polygon_holes_2> inter;
-        CGAL::intersection(polygons.begin(), polygons.end(),
-                           otherPolygonsProj.begin(), otherPolygonsProj.end(),
-                           back_inserter(inter));
+        for(const Polygon_2 &poly : polygons){
+            for(const Polygon_2 &otherPoly : otherPolygonsProj){
+                CGAL::intersection(poly,
+                                   otherPoly,
+                                   back_inserter(inter));
+            }
+        }
+//        cout << "polygons.size() = " << polygons.size() << endl;
+//        cout << "otherPolygonsProj.size() = " << otherPolygonsProj.size() << endl;
+//        CGAL::intersection(polygons.begin(), polygons.end(),
+//                           otherPolygonsProj.begin(), otherPolygonsProj.end(),
+//                           back_inserter(inter));
+//        cout << "inter.size() = " << inter.size() << endl;
         for(Polygon_holes_2 &pi : inter){
-            if(pi.outer_boundary().area() > areaThresh){
+//            cout << "pi.outer_boundary().area() = " << pi.outer_boundary().area() << endl;
+            if(abs(pi.outer_boundary().area()) > areaThresh){
 //                    Polygon_2 resPoly;
 //                    const Polygon_2e &curPolyInter = pi.outer_boundary();
 //                    cout << "curPolyInter.area() = " << CGAL::to_double(curPolyInter.area()) << endl;
