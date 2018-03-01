@@ -402,6 +402,8 @@ void ConcaveHull::display(pcl::visualization::PCLVisualizer::Ptr viewer,
 //    planeEq(3) = -plD;
 //    cout << "ConcaveHull::display, planeEq = " << planeEq.transpose() << endl;
     
+    string idStr = to_string(reinterpret_cast<size_t>(this));
+    
     for(int poly = 0; poly < polygons3d.size(); ++poly) {
         pcl::Vertices chullVertices;
         chullVertices.vertices.resize(polygons3d[poly]->size());
@@ -415,56 +417,58 @@ void ConcaveHull::display(pcl::visualization::PCLVisualizer::Ptr viewer,
         
         viewer->addPolygonMesh<pcl::PointXYZRGB>(polygons3d[poly],
                                                  vector<pcl::Vertices>{chullVertices},
-                                                 string("polygon_") + to_string(reinterpret_cast<size_t>(this)) +
+                                                 string("polygon_") + idStr +
                                                  "_" + to_string(poly),
                                                  vp);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
                                                  r,
                                                  g,
                                                  b,
-                                                 string("polygon_") + to_string(reinterpret_cast<size_t>(this)) +
+                                                 string("polygon_") + idStr +
                                                  "_" + to_string(poly),
                                                  vp);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
                                                  0.5,
-                                                 string("polygon_") + to_string(reinterpret_cast<size_t>(this)) +
+                                                 string("polygon_") + idStr +
                                                  "_" + to_string(poly),
                                                  vp);
         viewer->addPolygon<pcl::PointXYZRGB>(chullPoints,
                                              1.0,
                                              0.0,
                                              0.0,
-                                             string("polyline_") + to_string(reinterpret_cast<size_t>(this)) +
+                                             string("polyline_") + idStr +
                                              "_" + to_string(poly),
                                              vp);
         viewer->addPointCloud(chullPoints,
-                              string("polygon_pc_") + to_string(reinterpret_cast<size_t>(this)) +
+                              string("polygon_pc_") + idStr +
                               "_" + to_string(poly),
                               vp);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
                                                  0.0, 0.0, 1.0,
                                                  string("polygon_pc_") +
-                                                 to_string(reinterpret_cast<size_t>(this)) +
+                                                 idStr +
                                                  "_" + to_string(poly),
                                                  vp);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                  4,
                                                  string("polygon_pc_") +
-                                                 to_string(reinterpret_cast<size_t>(this)) +
+                                                 idStr +
                                                  "_" + to_string(poly),
                                                  vp);
     }
 }
 
 void ConcaveHull::cleanDisplay(pcl::visualization::PCLVisualizer::Ptr viewer, int vp) const {
+    string idStr = to_string(reinterpret_cast<size_t>(this));
+    
     for(int poly = 0; poly < polygons3d.size(); ++poly) {
-        viewer->removePolygonMesh(string("polygon_") + to_string(reinterpret_cast<size_t>(this)) +
+        viewer->removePolygonMesh(string("polygon_") + idStr +
                                   "_" + to_string(poly),
                                   vp);
-        viewer->removeShape(string("polyline_") + to_string(reinterpret_cast<size_t>(this)) +
+        viewer->removeShape(string("polyline_") + idStr +
                             "_" + to_string(poly),
                             vp);
-        viewer->removePointCloud(string("polygon_pc_") + to_string(reinterpret_cast<size_t>(this)) +
+        viewer->removePointCloud(string("polygon_pc_") + idStr +
                                  "_" + to_string(poly),
                                  vp);
     }

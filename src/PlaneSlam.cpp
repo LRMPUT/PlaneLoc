@@ -369,15 +369,13 @@ void PlaneSlam::run(){
                 }
     
                 if(curFrameIdx > 1200) {
-                    ObjInstance::mergeObjInstances(accMap,
-                                                   curObjInstancesTrans,
-                                                   viewer,
-                                                   v1,
-                                                   v2);
+                    accMap.mergeNewObjInstances(curObjInstancesTrans,
+                                               viewer,
+                                               v1,
+                                               v2);
                 }
                 else{
-                    ObjInstance::mergeObjInstances(accMap,
-                                                   curObjInstancesTrans);
+                    accMap.mergeNewObjInstances(curObjInstancesTrans);
                 }
                 
 //                vector<vector<ObjInstance>> toMerge{accObjInstances};
@@ -397,7 +395,7 @@ void PlaneSlam::run(){
             
             // if last frame in accumulation
             if(curFrameIdx % accFrames == accFrames - 1){
-                accMap.removeObjsObsThresh(6);
+                accMap.removeObjsEolThresh(8);
     
                 // saving
                 {
@@ -521,22 +519,22 @@ void PlaneSlam::run(){
             if(drawVis) {
                 cout << "visualization" << endl;
     
-//                // saving
-//                {
-//                    cout << "saving map to file" << endl;
-//                    std::ofstream ofs("filename");
-//                    boost::archive::text_oarchive oa(ofs);
-//                    oa << accMap;
-//                }
-//                // loading
-//                {
-//                    accMap = Map();
-//
-//                    cout << "loading map from file" << endl;
-//                    std::ifstream ifs("filename");
-//                    boost::archive::text_iarchive ia(ifs);
-//                    ia >> accMap;
-//                }
+                // saving
+                {
+                    cout << "saving map to file" << endl;
+                    std::ofstream ofs("filename");
+                    boost::archive::text_oarchive oa(ofs);
+                    oa << accMap;
+                }
+                // loading
+                {
+                    accMap = Map();
+
+                    cout << "loading map from file" << endl;
+                    std::ifstream ifs("filename");
+                    boost::archive::text_iarchive ia(ifs);
+                    ia >> accMap;
+                }
     
                 viewer->removeAllPointClouds();
                 viewer->removeAllShapes();

@@ -31,9 +31,9 @@ class Map;
 #include <set>
 #include <memory>
 
+#include <boost/serialization/split_member.hpp>
 #include <boost/serialization/list.hpp>
-
-//#include <opencv2/opencv.hpp>
+#include <boost/serialization/set.hpp>
 
 #include "ObjInstance.hpp"
 #include "Serialization.hpp"
@@ -43,34 +43,76 @@ struct PendingMatch {
     
     int eol;
     
-    std::vector<listObjInstance::iterator> objInstanceIts;
+    std::vector<int> objInstanceIds;
     
-    std::vector<listObjInstance::iterator> pendingObjInstanceIts;
+    std::vector<int> pendingObjInstanceIds;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & matchedIds;
+        ar & eol;
+        ar & objInstanceIds;
+        ar & pendingObjInstanceIds;
+    }
 };
 
 struct PendingMatchKey{
     std::set<int> matchedIds;
     
     std::shared_ptr<PendingMatch> pmatch;
+    
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & matchedIds;
+        ar & pmatch;
+    }
 };
 
 bool operator<(const PendingMatchKey &lhs, const PendingMatchKey &rhs);
 
 class Map{
 public:
+    struct Settings{
+        int eolObjInstInit;
+        
+        int eolObjInstIncr;
+        
+        int eolObjInstDecr;
+        
+        int eolObjInstThresh;
+        
+        int eolPendingInit;
+        
+        int eolPendingIncr;
+        
+        int eolPendingDecr;
+        
+        int eolPendingThresh;
+    
+        template<class Archive>
+        void serialize(Archive & ar, const unsigned int version)
+        {
+            ar & eolObjInstInit;
+            ar & eolObjInstIncr;
+            ar & eolObjInstDecr;
+            ar & eolObjInstThresh;
+            ar & eolPendingInit;
+            ar & eolPendingIncr;
+            ar & eolPendingDecr;
+            ar & eolPendingThresh;
+        }
+    };
+    
 	Map();
 	
-	Map(const cv::FileStorage& settings);
+	Map(const cv::FileStorage& fs);
 
-	inline void addObj(ObjInstance& obj){
-		objInstances.push_back(obj);
-	}
+	void addObj(ObjInstance& obj);
     
-    inline void addObjs(vectorObjInstance::iterator beg,
-                        vectorObjInstance::iterator end)
-    {
-        objInstances.insert(objInstances.end(), beg, end);
-    }
+    void addObjs(vectorObjInstance::iterator beg,
+                 vectorObjInstance::iterator end);
     
     inline listObjInstance::iterator removeObj(listObjInstance::iterator it){
 		return objInstances.erase(it);
@@ -92,10 +134,17 @@ public:
         return objInstances.end();
     }
     
+    void mergeNewObjInstances(vectorObjInstance &newObjInstances,
+                               pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                               int viewPort1 = -1,
+                               int viewPort2 = -1);
+    
+    void mergeMapObjInstances(pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                              int viewPort1 = -1,
+                              int viewPort2 = -1);
     
     void addPendingObj(ObjInstance &obj,
                            const std::set<int> &matchedIds,
-                           const std::vector<listObjInstance::iterator> &objInstancesIts,
                            int eolAdd);
     
 //    void addPendingObjs(std::vector<ObjInstance>::iterator beg,
@@ -120,6 +169,8 @@ public:
     
     void removeObjsEol();
     
+    void removeObjsEolThresh(int eolThresh);
+    
     void removeObjsObsThresh(int obsThresh);
     
 //	inline listObjInstance::iterator pbegin(){
@@ -142,28 +193,49 @@ private:
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr getColorPointCloud();
 
+    void recalculateIdToIter();
 
 	listObjInstance objInstances;
     
-//    std::map<int, listObjInstance::iterator> idToIter;
+    std::map<int, listObjInstance::iterator> objInstIdToIter;
     
     listObjInstance pendingObjInstances;
     
     std::set<PendingMatchKey> pendingMatchesSet;
     
+    std::map<int, listObjInstance::iterator> pendingIdToIter;
 //    std::list<PendingMatch> pendingMatches;
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr originalPointCloud;
     
+    Settings settings;
+    
     friend class boost::serialization::access;
+    
+    template<class Archive>
+    void save(Archive & ar, const unsigned int version) const {
+        ar << objInstances;
+        ar << pendingObjInstances;
+        ar << pendingMatchesSet;
+        ar << originalPointCloud;
+        ar << settings;
+    }
+    
+    template<class Archive>
+    void load(Archive & ar, const unsigned int version) {
+        ar >> objInstances;
+        ar >> pendingObjInstances;
+        ar >> pendingMatchesSet;
+        ar >> originalPointCloud;
+        ar >> settings;
+        
+        recalculateIdToIter();
+    }
     
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-        ar & objInstances;
-//        ar & pendingObjInstances;
-//        ar & pendingMatchesSet;
-        ar & originalPointCloud;
+        boost::serialization::split_member(ar, *this, version);
     }
 };
 

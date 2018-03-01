@@ -43,8 +43,6 @@ class ObjInstance;
 #include "PlaneSeg.hpp"
 #include "LineSeg.hpp"
 #include "ConcaveHull.hpp"
-//#include "EKFPlane.hpp"
-#include "Map.hpp"
 #include "Serialization.hpp"
 #include "PlaneEstimator.hpp"
 
@@ -68,7 +66,8 @@ public:
 	ObjInstance(int iid,
 				ObjType itype,
 				pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr ipoints,
-				const vectorPlaneSeg& isvs);
+				const vectorPlaneSeg& isvs,
+                int ieol = 4);
 	
 	void merge(const ObjInstance &other);
 
@@ -143,6 +142,10 @@ public:
         ObjInstance::eolCnt = eolCnt;
     }
     
+    void increaseEolCnt(int eolAdd){
+        ObjInstance::eolCnt += eolAdd;
+    }
+    
     void decreaseEolCnt(int eolSub){
         ObjInstance::eolCnt -= eolSub;
     }
@@ -173,23 +176,20 @@ public:
         return colorHist;
     }
     
+    bool isMatching(const ObjInstance &other,
+                    pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                    int viewPort1 = -1,
+                    int viewPort2 = -1) const;
+    
     static double compHistDist(cv::Mat hist1, cv::Mat hist2);
+   
     
-    static listObjInstance mergeObjInstances(std::vector<vectorObjInstance>& objInstances,
-                                                      pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                                                      int viewPort1 = -1,
-                                                      int viewPort2 = -1);
+    void display(pcl::visualization::PCLVisualizer::Ptr viewer,
+                 int vp,
+                 double shading = 1.0) const ;
     
-    static void mergeObjInstances(Map &map,
-                                 vectorObjInstance &newObjInstances,
-                                 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                                 int viewPort1 = -1,
-                                 int viewPort2 = -1);
-
-//	static ObjInstance merge(const std::vector<const ObjInstance*>& objInstances,
-//                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-//                             int viewPort1 = -1,
-//                             int viewPort2 = -1);
+    void cleanDisplay(pcl::visualization::PCLVisualizer::Ptr viewer,
+                      int vp) const;
     
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
