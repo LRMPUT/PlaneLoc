@@ -367,30 +367,28 @@ void PlaneSlam::run(){
 //                    accObjInstances.push_back(curObj);
 //                    accObjInstances.back().transform(accPoseIncr);
                 }
-    
-                if(curFrameIdx > 1200) {
-                    accMap.mergeNewObjInstances(curObjInstancesTrans,
-                                               viewer,
-                                               v1,
-                                               v2);
-                }
-                else{
-                    accMap.mergeNewObjInstances(curObjInstancesTrans);
+                
+                // every 5th frame
+                int mergeNewFrameSkip = 5;
+                int mergeMapFrameSkip = 50;
+                if((curFrameIdx % accFrames) % mergeNewFrameSkip == mergeNewFrameSkip - 1) {
+                    cout << "Merging new" << endl;
+                    if (curFrameIdx > 1200) {
+                        accMap.mergeNewObjInstances(curObjInstancesTrans,
+                                                    viewer,
+                                                    v1,
+                                                    v2);
+                    } else {
+                        accMap.mergeNewObjInstances(curObjInstancesTrans);
+                    }
                 }
                 
-//                vector<vector<ObjInstance>> toMerge{accObjInstances};
-//                if(curFrameIdx < 160) {
-//                    accObjInstances = ObjInstance::mergeObjInstances(toMerge/*,
-//                                                                 viewer,
-//                                                                 v1,
-//                                                                 v2*/);
-//                }
-//                else{
-//                    accObjInstances = ObjInstance::mergeObjInstances(toMerge,
-//                                                                 viewer,
-//                                                                 v1,
-//                                                                 v2);
-//                }
+                if((curFrameIdx % accFrames) % mergeMapFrameSkip == mergeMapFrameSkip - 1) {
+                    cout << "Merging map" << endl;
+                    accMap.mergeMapObjInstances(/*viewer,
+                                                  v1,
+                                                  v2*/);
+                }
             }
             
             // if last frame in accumulation
@@ -519,22 +517,22 @@ void PlaneSlam::run(){
             if(drawVis) {
                 cout << "visualization" << endl;
     
-                // saving
-                {
-                    cout << "saving map to file" << endl;
-                    std::ofstream ofs("filename");
-                    boost::archive::text_oarchive oa(ofs);
-                    oa << accMap;
-                }
-                // loading
-                {
-                    accMap = Map();
-
-                    cout << "loading map from file" << endl;
-                    std::ifstream ifs("filename");
-                    boost::archive::text_iarchive ia(ifs);
-                    ia >> accMap;
-                }
+//                // saving
+//                {
+//                    cout << "saving map to file" << endl;
+//                    std::ofstream ofs("filename");
+//                    boost::archive::text_oarchive oa(ofs);
+//                    oa << accMap;
+//                }
+//                // loading
+//                {
+//                    accMap = Map();
+//
+//                    cout << "loading map from file" << endl;
+//                    std::ifstream ifs("filename");
+//                    boost::archive::text_iarchive ia(ifs);
+//                    ia >> accMap;
+//                }
     
                 viewer->removeAllPointClouds();
                 viewer->removeAllShapes();

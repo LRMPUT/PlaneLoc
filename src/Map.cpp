@@ -106,6 +106,7 @@ Map::Map(const cv::FileStorage& fs)
 		vector<cv::String> mapFilepaths;
         fs["map"]["mapFiles"] >> mapFilepaths;
 
+        static constexpr int idShift = 10000000;
         for(int f = 0; f < mapFilepaths.size(); ++f) {
             Map curMap;
         
@@ -113,15 +114,15 @@ Map::Map(const cv::FileStorage& fs)
             boost::archive::text_iarchive ia(ifs);
             ia >> curMap;
             
+            curMap.shiftIds((f + 1)*idShift);
+            
             vectorObjInstance curObjInstances;
             for(ObjInstance &obj : curMap){
                 curObjInstances.push_back(obj);
             }
             mergeNewObjInstances(curObjInstances);
-            
-            pendingMatchesSet.clear();
-            pendingIdToIter.clear();
-            pendingObjInstances.clear();
+    
+            clearPending();
         }
 
         cout << "object instances in map: " << objInstances.size() << endl;
@@ -450,6 +451,12 @@ void Map::removePendingObjsEol() {
     }
 }
 
+void Map::clearPending(){
+    pendingMatchesSet.clear();
+    pendingIdToIter.clear();
+    pendingObjInstances.clear();
+}
+
 std::vector<PendingMatchKey> Map::getPendingMatches(int eolThresh) {
     vector<PendingMatchKey> retPendingMatches;
     for(auto it = pendingMatchesSet.begin(); it != pendingMatchesSet.end(); ++it){
@@ -620,6 +627,33 @@ void Map::removeObjsObsThresh(int obsThresh) {
         }
     }
 }
+
+void Map::shiftIds(int startId) {
+//    map<int, int> oldIdToNewId;
+    for(auto it = objInstances.begin(); it != objInstances.end(); ++it){
+        int oldId = it->getId();
+        int newId = startId + oldId;
+        
+        objInstIdToIter[newId] = objInstIdToIter.at(oldId);
+        objInstIdToIter.erase(oldId);
+        
+        it->setId(newId);
+//        oldIdToNewId[oldId] = newId;
+    }
+    for(auto it = pendingObjInstances.begin(); it != pendingObjInstances.end(); ++it){
+        int oldId = it->getId();
+        int newId = startId + oldId;
+    
+        pendingIdToIter[newId] = pendingIdToIter.at(oldId);
+        pendingIdToIter.erase(oldId);
+    
+        it->setId(newId);
+//        oldIdToNewId[oldId] = newId;
+    }
+    
+    clearPending();
+}
+
 
 pcl::PointCloud<pcl::PointXYZL>::Ptr Map::getLabeledPointCloud()
 {

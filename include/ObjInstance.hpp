@@ -74,6 +74,10 @@ public:
 	inline int getId() const {
 		return id;
 	}
+    
+    inline void setId(int nid){
+        id = nid;
+    }
 
 	inline ObjType getType() const {
 		return type;

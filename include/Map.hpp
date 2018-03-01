@@ -153,6 +153,8 @@ public:
         
     void removePendingObjsEol();
     
+    void clearPending();
+    
     std::vector<PendingMatchKey> getPendingMatches(int eolThresh);
     
     void executePendingMatches(int eolThresh);
@@ -173,17 +175,7 @@ public:
     
     void removeObjsObsThresh(int obsThresh);
     
-//	inline listObjInstance::iterator pbegin(){
-//		return pendingObjInstances.begin();
-//	}
-//
-//	inline listObjInstance::iterator pend(){
-//		return pendingObjInstances.end();
-//	}
-//
-//    inline std::set<PendingMatch> &getPendingMatches(){
-//        return pendingMatches;
-//    }
+    void shiftIds(int startId);
 	
     inline pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr getOriginalPointCloud(){
         return originalPointCloud;
