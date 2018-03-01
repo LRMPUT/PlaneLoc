@@ -28,12 +28,15 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/string.hpp>
 
-#include <Eigen/Eigen>
+#include <opencv2/imgproc.hpp>
+
+#include <Eigen/Dense>
 
 #include <pcl/io/ply_io.h>
 #include <pcl/common/transforms.h>
 
 #include <g2o/types/slam3d/se3quat.h>
+#include <Misc.hpp>
 
 #include "Map.hpp"
 #include "PlaneSegmentation.hpp"
@@ -650,10 +653,62 @@ void Map::shiftIds(int startId) {
         it->setId(newId);
 //        oldIdToNewId[oldId] = newId;
     }
-    
+ 
+    // for now just clearing pending objects
     clearPending();
 }
 
+std::vector<int> Map::getVisibleObjs(Vector7d pose, cv::Mat cameraMatrix, int rows, int cols) {
+    g2o::SE3Quat poseSE3Quat(pose);
+    Eigen::Matrix4d poseMat = poseSE3Quat.to_homogeneous_matrix();
+    Eigen::Matrix4d poseInvMat = poseSE3Quat.inverse().to_homogeneous_matrix();
+    Eigen::Matrix3d R = poseMat.block<3, 3>(0, 0);
+    Eigen::Vector3d t = poseMat.block<3, 1>(0, 3);
+    Eigen::Vector3d zAxis = R.col(2);
+    
+    vector<vector<vector<pair<double, int>>>> projPlanes(rows,
+                                                         vector<vector<pair<double, int>>>(cols,
+                                                                       vector<pair<double, int>>()));
+    
+    cv::Mat projPoly(rows, cols, CV_8UC1);
+    for(auto it = objInstances.begin(); it != objInstances.end(); ++it){
+        // TODO condition for observing the right face of the plane
+        
+        projPoly.setTo(0);
+        vector<cv::Point*> polyCont;
+        vector<int> polyContNpts;
+        const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d = it->getHull().getPolygons3d();
+        for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d : polygons3d){
+            polyCont.push_back(new cv::Point[poly3d->size()]);
+            polyContNpts.push_back(poly3d->size());
+            
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3dPose(new pcl::PointCloud<pcl::PointXYZRGB>());
+            // transform to camera frame
+            pcl::transformPointCloud(*poly3d, *poly3dPose, poseInvMat);
+            
+            cv::Mat pointsReproj = Misc::reprojectTo2D(poly3dPose, cameraMatrix);
+            
+            int corrPointCnt = 0;
+            for(int pt = 0; pt < pointsReproj.cols; ++pt){
+                int u = std::round(pointsReproj.at<cv::Vec3f>(pt)[0]);
+                int v = std::round(pointsReproj.at<cv::Vec3f>(pt)[1]);
+                float d = pointsReproj.at<cv::Vec3f>(pt)[2];
+        
+                if(u >= 0 && u < cols && v >= 0 && v < rows && d > 0){
+                    ++corrPointCnt;
+                }
+                polyCont.back()[pt] = cv::Point(u, v);
+            }
+        }
+        cv::fillPoly(projPoly,
+                     (const cv::Point**)polyCont.data(),
+                     polyContNpts.data(),
+                     polyCont.size(),
+                     cv::Scalar(255));
+    }
+    
+    return vector<int>();
+}
 
 pcl::PointCloud<pcl::PointXYZL>::Ptr Map::getLabeledPointCloud()
 {
@@ -691,4 +746,6 @@ void Map::recalculateIdToIter() {
         pendingIdToIter[it->getId()] = it;
     }
 }
+
+
 

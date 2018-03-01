@@ -176,6 +176,8 @@ public:
     void removeObjsObsThresh(int obsThresh);
     
     void shiftIds(int startId);
+    
+    std::vector<int> getVisibleObjs(Vector7d pose, cv::Mat cameraMatrix, int rows, int cols);
 	
     inline pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr getOriginalPointCloud(){
         return originalPointCloud;
