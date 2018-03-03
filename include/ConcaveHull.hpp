@@ -85,6 +85,9 @@ public:
     ConcaveHull intersect(const ConcaveHull &other,
                           double areaThresh = 0.05) const;
     
+    ConcaveHull intersect(const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &otherPolygons3d,
+                          double areaThresh = 0.05) const;
+    
     ConcaveHull transform(const Vector7d &transform) const;
     
     double minDistance(const ConcaveHull &other) const;

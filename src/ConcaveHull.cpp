@@ -287,6 +287,14 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
                                    double areaThresh) const
 {
     const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &otherPolygons3d = other.getPolygons3d();
+    
+    return intersect(otherPolygons3d, areaThresh);
+}
+
+ConcaveHull
+ConcaveHull::intersect(const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &otherPolygons3d,
+                       double areaThresh) const
+{
     vector<Polygon_2> otherPolygonsProj;
     // project points onto plane of this hull
     for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d : otherPolygons3d){
@@ -306,7 +314,7 @@ ConcaveHull ConcaveHull::intersect(const ConcaveHull &other,
 //        cout << "poly.is_counterclockwise_oriented() = " << poly.is_counterclockwise_oriented() << endl;
 //        cout << "poly.is_simple() = " << poly.is_simple() << endl;
 //    }
-    
+
 //    for(int p = 0; p < polygons.size(); ++p){
 //        cout << "current" << endl;
 //        for(int i = 0; i < polygons[p].size(); ++i){
@@ -505,6 +513,8 @@ ConcaveHull::Point_2ie ConcaveHull::point3dTo2die(const Eigen::Vector3d &point3d
 Eigen::Vector3d ConcaveHull::point2dTo3d(const ConcaveHull::Point_2 &point2d) const {
     return origin + CGAL::to_double(point2d.x()) * xAxis + CGAL::to_double(point2d.y()) * yAxis;
 }
+
+
 
 
 

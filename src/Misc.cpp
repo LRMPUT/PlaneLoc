@@ -115,6 +115,51 @@ Eigen::Vector3d Misc::projectPointOnPlane(const Eigen::Vector2d &pt, const Eigen
     }
 }
 
+bool Misc::projectImagePointsOntoPlane(const vectorVector2d &pts,
+                                       vectorVector3d &pts3d,
+                                       const cv::Mat &cameraMatrix,
+                                       const Eigen::Vector4d &planeEq)
+{
+    float fx = cameraMatrix.at<float>(0, 0);
+    float fy = cameraMatrix.at<float>(1, 1);
+    float cx = cameraMatrix.at<float>(0, 2);
+    float cy = cameraMatrix.at<float>(1, 2);
+    
+    // camera center in homogeneous cooridinates
+    Eigen::Vector4d C;
+    C << 0, 0, 0, 1;
+    
+    double den = planeEq.transpose() * C;
+    
+    // plane through camera center
+    if(abs(den) < 1e-6){
+        return false;
+    }
+    else{
+        // pseudoinverse of the camera matrix P
+        Eigen::Matrix<double, 4, 3> Ppinv;
+        Ppinv <<    1/fx,   0, -cx/fx,
+                    0,   1/fy, -cy/fy,
+                    0,      0,      1,
+                    0,      0,      0;
+        
+        Eigen::Matrix<double, 1, 3> pPpinv = planeEq.transpose() * Ppinv;
+        
+        for(const Eigen::Vector2d &pt2d : pts) {
+            // point in homogeneous cooridinates
+            Eigen::Vector3d pt;
+            pt << pt2d(0), pt2d(1), 1;
+            
+            double lambda = - (pPpinv * pt)(0) / den;
+            Eigen::Vector4d pt3d = Ppinv * pt + lambda * C;
+            // adding point in inhomogeneous coordinates
+            pts3d.push_back(pt3d.head<3>()/pt3d(3));
+        }
+        return true;
+    }
+}
+
+
 bool Misc::nextChoice(std::vector<int>& choice, int N)
 {
 	int chidx = choice.size() - 1;

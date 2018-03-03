@@ -63,6 +63,11 @@ public:
 
     static Eigen::Vector3d projectPointOnPlane(const Eigen::Vector2d &pt, const Eigen::Vector4d &plane, cv::Mat cameraMatrix);
 
+	static bool projectImagePointsOntoPlane(const vectorVector2d &pts,
+										   vectorVector3d &pts3d,
+										   const cv::Mat &cameraMatrix,
+										   const Eigen::Vector4d &planeEq);
+	
 	static bool nextChoice(std::vector<int>& choice, int N);
 
 	static Eigen::Quaterniond planeEqToQuat(const Eigen::Vector4d &planeEq);

@@ -666,6 +666,12 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose, cv::Mat cameraMatrix, int ro
     Eigen::Vector3d t = poseMat.block<3, 1>(0, 3);
     Eigen::Vector3d zAxis = R.col(2);
     
+    vectorVector2d imageCorners;
+    imageCorners.push_back((Eigen::Vector2d() << 0, 0).finished());
+    imageCorners.push_back((Eigen::Vector2d() << cols - 1, 0).finished());
+    imageCorners.push_back((Eigen::Vector2d() << cols - 1, rows - 1).finished());
+    imageCorners.push_back((Eigen::Vector2d() << 0, rows - 1).finished());
+    
     vector<vector<vector<pair<double, int>>>> projPlanes(rows,
                                                          vector<vector<pair<double, int>>>(cols,
                                                                        vector<pair<double, int>>()));
@@ -677,34 +683,57 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose, cv::Mat cameraMatrix, int ro
         projPoly.setTo(0);
         vector<cv::Point*> polyCont;
         vector<int> polyContNpts;
-        const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d = it->getHull().getPolygons3d();
-        for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d : polygons3d){
-            polyCont.push_back(new cv::Point[poly3d->size()]);
-            polyContNpts.push_back(poly3d->size());
-            
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3dPose(new pcl::PointCloud<pcl::PointXYZRGB>());
-            // transform to camera frame
-            pcl::transformPointCloud(*poly3d, *poly3dPose, poseInvMat);
-            
-            cv::Mat pointsReproj = Misc::reprojectTo2D(poly3dPose, cameraMatrix);
-            
-            int corrPointCnt = 0;
-            for(int pt = 0; pt < pointsReproj.cols; ++pt){
-                int u = std::round(pointsReproj.at<cv::Vec3f>(pt)[0]);
-                int v = std::round(pointsReproj.at<cv::Vec3f>(pt)[1]);
-                float d = pointsReproj.at<cv::Vec3f>(pt)[2];
         
-                if(u >= 0 && u < cols && v >= 0 && v < rows && d > 0){
-                    ++corrPointCnt;
-                }
-                polyCont.back()[pt] = cv::Point(u, v);
+        vectorVector3d imageCorners3d;
+        bool valid = Misc::projectImagePointsOntoPlane(imageCorners,
+                                                       imageCorners3d,
+                                                       cameraMatrix,
+                                                       it->getNormal());
+        
+        if(valid) {
+    
+            ConcaveHull hull = it->getHull();
+            hull.transform(poseSE3Quat.inverse().toVector());
+            
+            vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> imagePolygons3d;
+            imagePolygons3d.emplace_back(new pcl::PointCloud<pcl::PointXYZRGB>());
+            for(Eigen::Vector3d imCor3d : imageCorners3d) {
+                pcl::PointXYZRGB pt;
+                pt.getVector3fMap() = imCor3d.cast<float>();
+                imagePolygons3d.back()->push_back(pt);
             }
+    
+            ConcaveHull hullInt = hull.intersect(imagePolygons3d);
+    
+            const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d = hullInt.getPolygons3d();
+            for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d : polygons3d) {
+                polyCont.push_back(new cv::Point[poly3d->size()]);
+                polyContNpts.push_back(poly3d->size());
+        
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3dPose(new pcl::PointCloud<pcl::PointXYZRGB>());
+                // transform to camera frame
+                pcl::transformPointCloud(*poly3d, *poly3dPose, poseInvMat);
+        
+                cv::Mat pointsReproj = Misc::reprojectTo2D(poly3dPose, cameraMatrix);
+        
+                int corrPointCnt = 0;
+                for (int pt = 0; pt < pointsReproj.cols; ++pt) {
+                    int u = std::round(pointsReproj.at<cv::Vec3f>(pt)[0]);
+                    int v = std::round(pointsReproj.at<cv::Vec3f>(pt)[1]);
+                    float d = pointsReproj.at<cv::Vec3f>(pt)[2];
+            
+                    if (u >= 0 && u < cols && v >= 0 && v < rows && d > 0) {
+                        ++corrPointCnt;
+                    }
+                    polyCont.back()[pt] = cv::Point(u, v);
+                }
+            }
+            cv::fillPoly(projPoly,
+                         (const cv::Point **) polyCont.data(),
+                         polyContNpts.data(),
+                         polyCont.size(),
+                         cv::Scalar(255));
         }
-        cv::fillPoly(projPoly,
-                     (const cv::Point**)polyCont.data(),
-                     polyContNpts.data(),
-                     polyCont.size(),
-                     cv::Scalar(255));
     }
     
     return vector<int>();
