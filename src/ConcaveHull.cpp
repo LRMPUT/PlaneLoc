@@ -379,6 +379,68 @@ ConcaveHull::intersect(const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>
                        yAxis);
 }
 
+ConcaveHull
+ConcaveHull::clipToCameraFrustum(const cv::Mat K, int rows, int cols, double minZ)
+{
+    vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clippedPolygons3d;
+    for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPoly3d : polygons3d){
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr curClipped(new pcl::PointCloud<pcl::PointXYZRGB>());
+        
+        for(int pt = 0; pt < curPoly3d->size(); ++pt){
+            int prevPtIdx = (pt + curPoly3d->size() - 1) % curPoly3d->size();
+            const pcl::PointXYZRGB &curPt = curPoly3d->at(pt);
+            const pcl::PointXYZRGB &prevPt = curPoly3d->at(prevPtIdx);
+            
+            // always add current point if is valid
+            if(curPt.z >= minZ){
+                curClipped->push_back(curPt);
+            }
+            
+            // if entering or leaving valid region, add point on a border
+            if(curPt.z >= minZ && prevPt.z < minZ ||
+               curPt.z < minZ && prevPt.z >= minZ)
+            {
+                double dprev = abs(prevPt.z - minZ);
+                double dcur = abs(curPt.z - minZ);
+                
+                // both points are close to boundary
+                if(dprev + dcur < 1e-6){
+                    curClipped->push_back(curPt);
+                }
+                else {
+                    double s = dprev / (dprev + dcur);
+    
+                    pcl::PointXYZRGB clipPt = prevPt;
+                    clipPt.x += s*(curPt.x - prevPt.x);
+                    clipPt.y += s*(curPt.y - prevPt.y);
+                    clipPt.z += s*(curPt.z - prevPt.z);
+                    
+                    curClipped->push_back(clipPt);
+                }
+            }
+        }
+        if(curClipped->size() > 2){
+            clippedPolygons3d.push_back(curClipped);
+        }
+    }
+    
+    vector<Polygon_2> clippedPolygons;
+    for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr clipPoly3d : clippedPolygons3d){
+        clippedPolygons.push_back(Polygon_2());
+        for(int pt = 0; pt < clipPoly3d->size(); ++pt){
+            clippedPolygons.back().push_back(point3dTo2d(clipPoly3d->at(pt).getVector3fMap().cast<double>()));
+        }
+    }
+    
+    return ConcaveHull(clippedPolygons,
+                      clippedPolygons3d,
+                      plNormal,
+                      plD,
+                      origin,
+                      xAxis,
+                      yAxis);
+}
+
 double ConcaveHull::minDistance(const ConcaveHull &other) const {
     double minDist = std::numeric_limits<double>::max();
     
@@ -513,6 +575,7 @@ ConcaveHull::Point_2ie ConcaveHull::point3dTo2die(const Eigen::Vector3d &point3d
 Eigen::Vector3d ConcaveHull::point2dTo3d(const ConcaveHull::Point_2 &point2d) const {
     return origin + CGAL::to_double(point2d.x()) * xAxis + CGAL::to_double(point2d.y()) * yAxis;
 }
+
 
 
 

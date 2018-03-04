@@ -658,85 +658,229 @@ void Map::shiftIds(int startId) {
     clearPending();
 }
 
-std::vector<int> Map::getVisibleObjs(Vector7d pose, cv::Mat cameraMatrix, int rows, int cols) {
+std::vector<int> Map::getVisibleObjs(Vector7d pose,
+                                     cv::Mat cameraMatrix,
+                                     int rows,
+                                     int cols,
+                                     pcl::visualization::PCLVisualizer::Ptr viewer,
+                                     int viewPort1,
+                                     int viewPort2)
+{
+    static constexpr double shadingLevel = 1.0/8;
+    
     g2o::SE3Quat poseSE3Quat(pose);
     Eigen::Matrix4d poseMat = poseSE3Quat.to_homogeneous_matrix();
     Eigen::Matrix4d poseInvMat = poseSE3Quat.inverse().to_homogeneous_matrix();
+    Eigen::Matrix4d poseMatt = poseSE3Quat.to_homogeneous_matrix().transpose();
     Eigen::Matrix3d R = poseMat.block<3, 3>(0, 0);
     Eigen::Vector3d t = poseMat.block<3, 1>(0, 3);
-    Eigen::Vector3d zAxis = R.col(2);
     
-    vectorVector2d imageCorners;
-    imageCorners.push_back((Eigen::Vector2d() << 0, 0).finished());
-    imageCorners.push_back((Eigen::Vector2d() << cols - 1, 0).finished());
-    imageCorners.push_back((Eigen::Vector2d() << cols - 1, rows - 1).finished());
-    imageCorners.push_back((Eigen::Vector2d() << 0, rows - 1).finished());
+//    vectorVector2d imageCorners;
+//    imageCorners.push_back((Eigen::Vector2d() << 0, 0).finished());
+//    imageCorners.push_back((Eigen::Vector2d() << cols - 1, 0).finished());
+//    imageCorners.push_back((Eigen::Vector2d() << cols - 1, rows - 1).finished());
+//    imageCorners.push_back((Eigen::Vector2d() << 0, rows - 1).finished());
+    
+    if(viewer){
+        viewer->removeAllPointClouds();
+        viewer->removeAllShapes();
+        
+        for (auto it = objInstances.begin(); it != objInstances.end(); ++it) {
+            it->display(viewer, viewPort1, shadingLevel);
+        }
+        viewer->addCoordinateSystem();
+        Eigen::Affine3f trans = Eigen::Affine3f::Identity();
+        trans.matrix() = poseMat.cast<float>();
+        viewer->addCoordinateSystem(0.5, trans, "camera_coord");
+    }
+    
+    vector<int> visible;
     
     vector<vector<vector<pair<double, int>>>> projPlanes(rows,
                                                          vector<vector<pair<double, int>>>(cols,
                                                                        vector<pair<double, int>>()));
     
     cv::Mat projPoly(rows, cols, CV_8UC1);
-    for(auto it = objInstances.begin(); it != objInstances.end(); ++it){
+    for(auto it = objInstances.begin(); it != objInstances.end(); ++it) {
+        cout << "id = " << it->getId() << endl;
+    
+        Eigen::Vector4d planeEqCamera = poseMatt * it->getNormal();
+        cout << "planeEqCamera = " << planeEqCamera.transpose() << endl;
+    
+        if (viewer) {
+            it->cleanDisplay(viewer, viewPort1);
+            it->display(viewer, viewPort1);
+        }
+        
         // TODO condition for observing the right face of the plane
+        Eigen::Vector3d normal = planeEqCamera.head<3>();
+        double d = -planeEqCamera(3);
+        Eigen::Vector3d zAxis;
+        zAxis << 0, 0, 1;
         
-        projPoly.setTo(0);
-        vector<cv::Point*> polyCont;
-        vector<int> polyContNpts;
+        cout << "normal.dot(zAxis) = " << normal.dot(zAxis) << endl;
+        cout << "d = " << d << endl;
+        if (normal.dot(zAxis) < 0 && d < 0) {
+//        vectorVector3d imageCorners3d;
+//        bool valid = Misc::projectImagePointsOntoPlane(imageCorners,
+//                                                       imageCorners3d,
+//                                                       cameraMatrix,
+//                                                       planeEqCamera);
         
-        vectorVector3d imageCorners3d;
-        bool valid = Misc::projectImagePointsOntoPlane(imageCorners,
-                                                       imageCorners3d,
-                                                       cameraMatrix,
-                                                       it->getNormal());
+            projPoly.setTo(0);
+            vector<cv::Point *> polyCont;
+            vector<int> polyContNpts;
         
-        if(valid) {
-    
-            ConcaveHull hull = it->getHull();
-            hull.transform(poseSE3Quat.inverse().toVector());
-            
-            vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> imagePolygons3d;
-            imagePolygons3d.emplace_back(new pcl::PointCloud<pcl::PointXYZRGB>());
-            for(Eigen::Vector3d imCor3d : imageCorners3d) {
-                pcl::PointXYZRGB pt;
-                pt.getVector3fMap() = imCor3d.cast<float>();
-                imagePolygons3d.back()->push_back(pt);
+            ConcaveHull hull = it->getHull().transform(poseSE3Quat.inverse().toVector());
+        
+//            if (viewer) {
+//                hull.display(viewer, viewPort1);
+//            }
+//
+//            hull.transform(poseSE3Quat.inverse().toVector());
+        
+            ConcaveHull hullClip = hull.clipToCameraFrustum(cameraMatrix, rows, cols, 0.2);
+        
+            ConcaveHull hullClipMap = hullClip.transform(poseSE3Quat.toVector());
+            if (viewer) {
+                hullClipMap.display(viewer, viewPort1, 1.0, 0.0, 0.0);
             }
-    
-            ConcaveHull hullInt = hull.intersect(imagePolygons3d);
-    
-            const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d = hullInt.getPolygons3d();
+        
+            const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d = hullClip.getPolygons3d();
+            cout << "polygons3d.size() = " << polygons3d.size() << endl;
             for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d : polygons3d) {
                 polyCont.push_back(new cv::Point[poly3d->size()]);
                 polyContNpts.push_back(poly3d->size());
-        
-                pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3dPose(new pcl::PointCloud<pcl::PointXYZRGB>());
-                // transform to camera frame
-                pcl::transformPointCloud(*poly3d, *poly3dPose, poseInvMat);
-        
-                cv::Mat pointsReproj = Misc::reprojectTo2D(poly3dPose, cameraMatrix);
-        
+
+//                pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3dPose(new pcl::PointCloud<pcl::PointXYZRGB>());
+//                // transform to camera frame
+//                pcl::transformPointCloud(*poly3d, *poly3dPose, poseInvMat);
+            
+                cv::Mat pointsReproj = Misc::reprojectTo2D(poly3d, cameraMatrix);
+                for (int pt = 0; pt < poly3d->size(); ++pt) {
+                    cout << poly3d->at(pt).getVector3fMap().transpose() << endl;
+                }
+                cout << "cameraMatrix = " << cameraMatrix << endl;
+                cout << "pointsReproj = " << pointsReproj << endl;
+                
                 int corrPointCnt = 0;
                 for (int pt = 0; pt < pointsReproj.cols; ++pt) {
                     int u = std::round(pointsReproj.at<cv::Vec3f>(pt)[0]);
                     int v = std::round(pointsReproj.at<cv::Vec3f>(pt)[1]);
                     float d = pointsReproj.at<cv::Vec3f>(pt)[2];
-            
+                
                     if (u >= 0 && u < cols && v >= 0 && v < rows && d > 0) {
                         ++corrPointCnt;
                     }
                     polyCont.back()[pt] = cv::Point(u, v);
                 }
+                cout << "corrPointCnt = " << corrPointCnt << endl;
+                if (corrPointCnt == 0) {
+                    delete[] polyCont.back();
+                    polyCont.erase(polyCont.end() - 1);
+                    polyContNpts.erase(polyContNpts.end() - 1);
+                }
             }
-            cv::fillPoly(projPoly,
-                         (const cv::Point **) polyCont.data(),
-                         polyContNpts.data(),
-                         polyCont.size(),
-                         cv::Scalar(255));
+            if (polyCont.size() > 0) {
+                cv::fillPoly(projPoly,
+                             (const cv::Point **) polyCont.data(),
+                             polyContNpts.data(),
+                             polyCont.size(),
+                             cv::Scalar(255));
+            
+                if (viewer) {
+                    cv::imshow("proj_poly", projPoly);
+                }
+            
+                vectorVector2d polyImagePts;
+                for (int r = 0; r < rows; ++r) {
+                    for (int c = 0; c < cols; ++c) {
+                        if (projPoly.at<uint8_t>(r, c) > 0) {
+                            polyImagePts.push_back((Eigen::Vector2d() << c, r).finished());
+                        }
+                    }
+                }
+                vectorVector3d polyPlanePts;
+                Misc::projectImagePointsOntoPlane(polyImagePts,
+                                                  polyPlanePts,
+                                                  cameraMatrix,
+                                                  planeEqCamera);
+                for (int pt = 0; pt < polyImagePts.size(); ++pt) {
+                    int x = std::round(polyImagePts[pt](0));
+                    int y = std::round(polyImagePts[pt](1));
+                    // depth is z coordinate
+                    double d = polyPlanePts[pt](2);
+                
+                    projPlanes[y][x].push_back(make_pair(d, it->getId()));
+                }
+            }
+        
+            for (int p = 0; p < polyCont.size(); ++p) {
+                delete[] polyCont[p];
+            }
+        
+            if (viewer) {
+                static bool cameraInit = false;
+    
+                if (!cameraInit) {
+                    viewer->initCameraParameters();
+                    viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+                    cameraInit = true;
+                }
+                viewer->resetStoppedFlag();
+                while (!viewer->wasStopped()) {
+                    viewer->spinOnce(50);
+                    cv::waitKey(50);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                }
+                
+                hull.cleanDisplay(viewer, viewPort1);
+                hullClipMap.cleanDisplay(viewer, viewPort1);
+            }
+        }
+        if (viewer) {
+            it->cleanDisplay(viewer, viewPort1);
+            it->display(viewer, viewPort1, shadingLevel);
         }
     }
     
-    return vector<int>();
+    map<int, int> idToCnt;
+    for(int r = 0; r < rows; ++r) {
+        for (int c = 0; c < cols; ++c) {
+            vector<pair<double, int>> &curPlanes = projPlanes[r][c];
+            sort(curPlanes.begin(), curPlanes.end());
+            
+            if(!curPlanes.empty()){
+                double minD = curPlanes.front().first;
+                
+                for(const pair<double, int> &curPair : curPlanes){
+                    if(abs(minD - curPair.first) < 0.2){
+                        int id = curPair.second;
+                        if(idToCnt.count(id) > 0){
+                            idToCnt.at(id) += 1;
+                        }
+                        else{
+                            idToCnt[id] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for(const pair<int, int> &curCnt : idToCnt){
+        cout << "curCnt " << curCnt.first << " = " << curCnt.second << endl;
+        if(curCnt.second > 1500){
+            visible.push_back(curCnt.first);
+        }
+    }
+    
+    if(viewer){
+        for (auto it = objInstances.begin(); it != objInstances.end(); ++it) {
+            it->cleanDisplay(viewer, viewPort1);
+        }
+    }
+    
+    return visible;
 }
 
 pcl::PointCloud<pcl::PointXYZL>::Ptr Map::getLabeledPointCloud()

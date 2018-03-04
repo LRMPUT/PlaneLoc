@@ -177,7 +177,13 @@ public:
     
     void shiftIds(int startId);
     
-    std::vector<int> getVisibleObjs(Vector7d pose, cv::Mat cameraMatrix, int rows, int cols);
+    std::vector<int> getVisibleObjs(Vector7d pose,
+                                    cv::Mat cameraMatrix,
+                                    int rows,
+                                    int cols,
+                                    pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+                                    int viewPort1 = -1,
+                                    int viewPort2 = -1);
 	
     inline pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr getOriginalPointCloud(){
         return originalPointCloud;

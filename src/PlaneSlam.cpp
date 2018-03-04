@@ -372,6 +372,15 @@ void PlaneSlam::run(){
                 int mergeNewFrameSkip = 5;
                 int mergeMapFrameSkip = 50;
                 if((curFrameIdx % accFrames) % mergeNewFrameSkip == mergeNewFrameSkip - 1) {
+                    cout << "Getting visible" << endl;
+                    vector<int> visible = accMap.getVisibleObjs(pose,
+                                                                cameraParams,
+                                                                rgb.rows,
+                                                                rgb.cols,
+                                                                viewer,
+                                                                v1,
+                                                                v2);
+                    
                     cout << "Merging new" << endl;
                     if (curFrameIdx > 1200) {
                         accMap.mergeNewObjInstances(curObjInstancesTrans,
