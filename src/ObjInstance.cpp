@@ -117,14 +117,14 @@ bool ObjInstance::isMatching(const ObjInstance &other,
         //            double diff = Matching::planeEqDiffLogMap(mapObj, newObj, transform);
         //                    cout << "diff = " << diff << endl;
         // if plane equation is similar
-        if (dist1 < 0.01 && dist2 < 0.01) {
+        if (dist1 < 0.02 && dist2 < 0.02) {
             
             cv::Mat mapHist = colorHist;
             cv::Mat newHist = other.getColorHist();
             
             double histDist = compHistDist(mapHist, newHist);
 //                    cout << "histDist = " << histDist << endl;
-            if (histDist < 2.5) {
+            if (histDist < 4.5) {
                 
                 double intArea = 0.0;
                 

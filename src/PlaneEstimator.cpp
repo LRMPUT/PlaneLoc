@@ -50,6 +50,13 @@ PlaneEstimator::init(const Eigen::Vector3d &icentroid, const Eigen::Matrix3d &ic
 
 void
 PlaneEstimator::update(const Eigen::Vector3d &ucentroid, const Eigen::Matrix3d &ucovar, int unpts) {
+//    cout << "centroid = " << centroid.transpose() << endl;
+//    cout << "covar = " << covar << endl;
+//    cout << "npts = " << npts << endl;
+//    cout << "ucentroid = " << ucentroid.transpose() << endl;
+//    cout << "ucovar = " << ucovar << endl;
+//    cout << "unpts = " << unpts << endl;
+    
     updateCentroidAndCovar(centroid,
                            covar,
                            npts,
@@ -60,12 +67,19 @@ PlaneEstimator::update(const Eigen::Vector3d &ucentroid, const Eigen::Matrix3d &
                            covar,
                            npts);
     
-    static constexpr int ptsLimit = 100000;
+//    cout << "centroid = " << centroid.transpose() << endl;
+//    cout << "covar = " << covar << endl;
+//    cout << "npts = " << npts << endl;
+    
+    static constexpr int ptsLimit = 500000;
     if(npts > ptsLimit){
         double scale = (double)npts/ptsLimit;
         covar /= scale;
         npts = ptsLimit;
     }
+//    cout << "centroid = " << centroid.transpose() << endl;
+//    cout << "covar = " << covar << endl;
+//    cout << "npts = " << npts << endl;
     
     compPlaneParams(centroid,
                     covar,
@@ -190,6 +204,9 @@ void PlaneEstimator::updateCentroidAndCovar(const Eigen::Vector3d &centroid1,
 {
     ocentroid = (npts1 * centroid1 + npts2 * centroid2)/(npts1 + npts2);
     Eigen::Vector3d centrDiff = centroid1 - centroid2;
-    ocovar = covar1 + covar2 + (npts1 * npts2)/(npts1 + npts2)*(centrDiff * centrDiff.transpose());
-    onpts += npts1 + npts2;
+    double fact = ((double)npts1 * npts2)/(npts1 + npts2);
+//    cout << "(npts1 * npts2)/(npts1 + npts2) = " << fact << endl;
+//    cout << "(centrDiff * centrDiff.transpose()) = " << (centrDiff * centrDiff.transpose()) << endl;
+    ocovar = covar1 + covar2 + fact*(centrDiff * centrDiff.transpose());
+    onpts = npts1 + npts2;
 }

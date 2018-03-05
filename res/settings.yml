@@ -97,7 +97,7 @@ fileGrabber:
 #
 #    imageFrame: 0
 
-    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test5"
+    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test7"
 
     readObjLabeling: 0
 

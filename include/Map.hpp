@@ -30,6 +30,7 @@ class Map;
 #include <list>
 #include <set>
 #include <memory>
+#include <map>
 
 #include <boost/serialization/split_member.hpp>
 #include <boost/serialization/list.hpp>
@@ -135,6 +136,7 @@ public:
     }
     
     void mergeNewObjInstances(vectorObjInstance &newObjInstances,
+                              const std::map<int, int> &idToCnt = std::map<int, int>(),
                                pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
                                int viewPort1 = -1,
                                int viewPort2 = -1);
@@ -177,7 +179,7 @@ public:
     
     void shiftIds(int startId);
     
-    std::vector<int> getVisibleObjs(Vector7d pose,
+    std::map<int, int> getVisibleObjs(Vector7d pose,
                                     cv::Mat cameraMatrix,
                                     int rows,
                                     int cols,

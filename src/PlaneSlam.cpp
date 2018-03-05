@@ -25,6 +25,7 @@
 #include <memory>
 #include <chrono>
 #include <thread>
+#include <map>
 
 #include <boost/filesystem.hpp>
 #include <boost/archive/text_oarchive.hpp>
@@ -175,8 +176,10 @@ void PlaneSlam::run(){
 //    vector<ObjInstance> accObjInstances;
     Map accMap;
     Vector7d accStartFramePose;
-    int accFrames = 1070;
- 
+    int accFrames = 1457;
+    
+    int processNewFrameSkip = 5;
+    
 //	ofstream logFile("../output/log.out");
 	int curFrameIdx;
     cout << "Starting the loop" << endl;
@@ -187,81 +190,82 @@ void PlaneSlam::run(){
         
 		int64_t timestamp = (int64_t)curFrameIdx * 1e6 / frameRate;
 		cout << "timestamp = " << timestamp << endl;
-
-		g2o::SE3Quat poseSE3Quat(pose);
-		poseSE3Quat = gtOffsetSE3Quat.inverse() * poseSE3Quat;
-		pose = poseSE3Quat.toVector();
-
-		viewer->removeAllPointClouds();
-		viewer->removeAllShapes();
         
-        bool localize = true;
-
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud;
-        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudNormals;
-		if(framesFromPly){
-			pointCloudNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>(*pointCloudRead));
-            pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
-            for(int p = 0; p < pointCloudNormals->size(); ++p){
-                pcl::PointXYZRGB pt;
-                pt.x = pointCloudNormals->at(p).x;
-                pt.y = pointCloudNormals->at(p).y;
-                pt.z = pointCloudNormals->at(p).z;
-                pt.r = pointCloudNormals->at(p).r;
-                pt.g = pointCloudNormals->at(p).g;
-                pt.b = pointCloudNormals->at(p).b;
-                pointCloud->push_back(pt);
-            }
-		}
-		else{
-            pointCloudNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>(rgb.cols, rgb.rows));
-			pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>(rgb.cols, rgb.rows));
-
-			Mat xyz = Misc::projectTo3D(depth, cameraParams);
-
-			for(int row = 0; row < rgb.rows; ++row){
-				for(int col = 0; col < rgb.cols; ++col){
-					pcl::PointXYZRGB p;
+        if((curFrameIdx % accFrames) % processNewFrameSkip == processNewFrameSkip - 1) {
+            g2o::SE3Quat poseSE3Quat(pose);
+            poseSE3Quat = gtOffsetSE3Quat.inverse() * poseSE3Quat;
+            pose = poseSE3Quat.toVector();
+    
+            viewer->removeAllPointClouds();
+            viewer->removeAllShapes();
+    
+            bool localize = true;
+    
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud;
+            pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudNormals;
+            if (framesFromPly) {
+                pointCloudNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>(*pointCloudRead));
+                pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+                for (int p = 0; p < pointCloudNormals->size(); ++p) {
+                    pcl::PointXYZRGB pt;
+                    pt.x = pointCloudNormals->at(p).x;
+                    pt.y = pointCloudNormals->at(p).y;
+                    pt.z = pointCloudNormals->at(p).z;
+                    pt.r = pointCloudNormals->at(p).r;
+                    pt.g = pointCloudNormals->at(p).g;
+                    pt.b = pointCloudNormals->at(p).b;
+                    pointCloud->push_back(pt);
+                }
+            } else {
+                pointCloudNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>(rgb.cols,
+                                                                                    rgb.rows));
+                pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>(rgb.cols, rgb.rows));
+        
+                Mat xyz = Misc::projectTo3D(depth, cameraParams);
+        
+                for (int row = 0; row < rgb.rows; ++row) {
+                    for (int col = 0; col < rgb.cols; ++col) {
+                        pcl::PointXYZRGB p;
 //					((uint8_t)rgb.at<Vec3b>(row, col)[0],
 //										(uint8_t)rgb.at<Vec3b>(row, col)[1],
 //										(uint8_t)rgb.at<Vec3b>(row, col)[2]);
-					p.x = xyz.at<Vec3f>(row, col)[0];
-					p.y = xyz.at<Vec3f>(row, col)[1];
-					p.z = xyz.at<Vec3f>(row, col)[2];
-					p.r = (uint8_t)rgb.at<Vec3b>(row, col)[0];
-					p.g = (uint8_t)rgb.at<Vec3b>(row, col)[1];
-					p.b = (uint8_t)rgb.at<Vec3b>(row, col)[2];
-	//					cout << "Point at (" << xyz.at<Vec3f>(row, col)[0] << ", " <<
-	//											xyz.at<Vec3f>(row, col)[1] << ", " <<
-	//											xyz.at<Vec3f>(row, col)[2] << "), rgb = (" <<
-	//											(int)rgb.at<Vec3b>(row, col)[0] << ", " <<
-	//											(int)rgb.at<Vec3b>(row, col)[1] << ", " <<
-	//											(int)rgb.at<Vec3b>(row, col)[2] << ") " << endl;
-					pointCloud->at(col, row) = p;
-                    pointCloudNormals->at(col, row).x = p.x;
-                    pointCloudNormals->at(col, row).y = p.y;
-                    pointCloudNormals->at(col, row).z = p.z;
-                    pointCloudNormals->at(col, row).r = p.r;
-                    pointCloudNormals->at(col, row).g = p.g;
-                    pointCloudNormals->at(col, row).b = p.b;
-				}
-			}
-            
-            // Create the normal estimation class, and pass the input dataset to it
-            pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::PointXYZRGBNormal> ne;
-            ne.setNormalEstimationMethod(ne.COVARIANCE_MATRIX);
-            ne.setMaxDepthChangeFactor(0.02f);
-            ne.setNormalSmoothingSize(20.0f);
-            ne.setInputCloud(pointCloud);
-            ne.setViewPoint(0.0, 0.0, 0.0);
-            
-            ne.compute(*pointCloudNormals);
-            cout << "pointCloudNormals->size() = " << pointCloudNormals->size() << endl;
-
-		}
-        if(drawVis) {
+                        p.x = xyz.at<Vec3f>(row, col)[0];
+                        p.y = xyz.at<Vec3f>(row, col)[1];
+                        p.z = xyz.at<Vec3f>(row, col)[2];
+                        p.r = (uint8_t) rgb.at<Vec3b>(row, col)[0];
+                        p.g = (uint8_t) rgb.at<Vec3b>(row, col)[1];
+                        p.b = (uint8_t) rgb.at<Vec3b>(row, col)[2];
+                        //					cout << "Point at (" << xyz.at<Vec3f>(row, col)[0] << ", " <<
+                        //											xyz.at<Vec3f>(row, col)[1] << ", " <<
+                        //											xyz.at<Vec3f>(row, col)[2] << "), rgb = (" <<
+                        //											(int)rgb.at<Vec3b>(row, col)[0] << ", " <<
+                        //											(int)rgb.at<Vec3b>(row, col)[1] << ", " <<
+                        //											(int)rgb.at<Vec3b>(row, col)[2] << ") " << endl;
+                        pointCloud->at(col, row) = p;
+                        pointCloudNormals->at(col, row).x = p.x;
+                        pointCloudNormals->at(col, row).y = p.y;
+                        pointCloudNormals->at(col, row).z = p.z;
+                        pointCloudNormals->at(col, row).r = p.r;
+                        pointCloudNormals->at(col, row).g = p.g;
+                        pointCloudNormals->at(col, row).b = p.b;
+                    }
+                }
+        
+                // Create the normal estimation class, and pass the input dataset to it
+                pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::PointXYZRGBNormal> ne;
+                ne.setNormalEstimationMethod(ne.COVARIANCE_MATRIX);
+                ne.setMaxDepthChangeFactor(0.02f);
+                ne.setNormalSmoothingSize(20.0f);
+                ne.setInputCloud(pointCloud);
+                ne.setViewPoint(0.0, 0.0, 0.0);
+        
+                ne.compute(*pointCloudNormals);
+                cout << "pointCloudNormals->size() = " << pointCloudNormals->size() << endl;
+        
+            }
+            if (drawVis) {
 //		    viewer->addPointCloud(pointCloud, "cloud", v1);
-    
+
 //            cout << endl << "whole cloud" << endl << endl;
 //            viewer->resetStoppedFlag();
 //            viewer->initCameraParameters();
@@ -272,27 +276,26 @@ void PlaneSlam::run(){
 //                std::this_thread::sleep_for(std::chrono::milliseconds(50));
 //            }
 //            viewer->close();
-        }
-
-		if(!pointCloud->empty()){
-			pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
-			vectorObjInstance curObjInstances;
-
-			if(!loadRes && !visualizeSegmentation){
+            }
+    
+            if (!pointCloud->empty()) {
+                pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
+                vectorObjInstance curObjInstances;
+        
+                if (!loadRes && !visualizeSegmentation) {
 //				PlaneSegmentation::segment(settings,
 //									pointCloudNormals,
 //									pointCloudLab,
 //									curObjInstances,
 //									false);
-                
-                PlaneSegmentation::segment(settings,
-                                           rgb,
-                                           depth,
-                                           pointCloudLab,
-                                           curObjInstances);
-                
-			}
-            else if(visualizeSegmentation){
+            
+                    PlaneSegmentation::segment(settings,
+                                               rgb,
+                                               depth,
+                                               pointCloudLab,
+                                               curObjInstances);
+            
+                } else if (visualizeSegmentation) {
 //                PlaneSegmentation::segment(settings,
 //                                      pointCloudNormals,
 //                                      pointCloudLab,
@@ -301,231 +304,230 @@ void PlaneSlam::run(){
 //                                      viewer,
 //                                      v1,
 //                                      v2);
-                
-                PlaneSegmentation::segment(settings,
-                                           rgb,
-                                           depth,
-                                           pointCloudLab,
-                                           curObjInstances,
-                                           viewer,
-                                           v1,
-                                           v2);
-            }
-
-            vectorLineSeg lineSegs;
             
-            bool stopFlag = stopEveryFrame;
+                    PlaneSegmentation::segment(settings,
+                                               rgb,
+                                               depth,
+                                               pointCloudLab,
+                                               curObjInstances,
+                                               viewer,
+                                               v1,
+                                               v2);
+                }
+        
+                vectorLineSeg lineSegs;
+        
+                bool stopFlag = stopEveryFrame;
+        
+                if (useLines) {
+                    viewer->addPointCloud(pointCloud, "cloud_raw", v2);
             
-            if(useLines){
-                viewer->addPointCloud(pointCloud, "cloud_raw", v2);
-                
-                LineDet::detectLineSegments(settings,
-                                            rgb,
-                                            depth,
-                                            curObjInstances,
-                                            cameraParams,
-                                            lineSegs,
-                                            viewer,
-                                            v1,
-                                            v2);
-            }
+                    LineDet::detectLineSegments(settings,
+                                                rgb,
+                                                depth,
+                                                curObjInstances,
+                                                cameraParams,
+                                                lineSegs,
+                                                viewer,
+                                                v1,
+                                                v2);
+                }
+        
+                // if not the last frame for accumulation
+                if (curFrameIdx % accFrames != accFrames - 1) {
+                    localize = false;
+                }
+        
+                if (curFrameIdx % accFrames == accFrames - 1) {
+                    stopFlag = true;
+                }
+        
+                // if current frame starts accumulation
+                if (curFrameIdx % accFrames == 0) {
+                    cout << endl << "starting new accumulation" << endl << endl;
             
-            // if not the last frame for accumulation
-            if(curFrameIdx % accFrames != accFrames - 1){
-                localize = false;
-            }
-            
-            if(curFrameIdx % accFrames == accFrames - 1){
-                stopFlag = true;
-            }
-            
-            // if current frame starts accumulation
-            if(curFrameIdx % accFrames == 0) {
-                cout << endl << "starting new accumulation" << endl << endl;
-                
-                accMap = Map();
+                    accMap = Map();
 //                accMap.addObjs(curObjInstances.begin(), curObjInstances.end());
-                
-                accStartFramePose = pose;
-            }
             
-            {
-                cout << endl << "merging curObjInstances" << endl << endl;
-                
+                    accStartFramePose = pose;
+                }
+        
+                std::map<int, int> idToCnt;
+                {
+                    cout << endl << "merging curObjInstances" << endl << endl;
+
 //                g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(accStartFramePose).inverse() * g2o::SE3Quat(pose);
-                g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(pose);
-                Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
-                
+                    g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(pose);
+                    Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
+
 //                cout << "accPoseIncr = " << accPoseIncr.transpose() << endl;
-                
-                vectorObjInstance curObjInstancesTrans = curObjInstances;
-                for(ObjInstance &curObj : curObjInstancesTrans){
-                    curObj.transform(accPoseIncr);
-                    
+            
+                    vectorObjInstance curObjInstancesTrans = curObjInstances;
+                    for (ObjInstance &curObj : curObjInstancesTrans) {
+                        curObj.transform(accPoseIncr);
+
 //                    accMap.addObj(curObj);
 
 //                    accObjInstances.push_back(curObj);
 //                    accObjInstances.back().transform(accPoseIncr);
-                }
-                
-                // every 5th frame
-                int mergeNewFrameSkip = 5;
-                int mergeMapFrameSkip = 50;
-                if((curFrameIdx % accFrames) % mergeNewFrameSkip == mergeNewFrameSkip - 1) {
+                    }
+            
+                    // every 5th frame
+                    int mergeMapFrameSkip = 50;
+//                    if ((curFrameIdx % accFrames) % mergeNewFrameSkip == mergeNewFrameSkip - 1) {
                     cout << "Getting visible" << endl;
-                    vector<int> visible = accMap.getVisibleObjs(pose,
-                                                                cameraParams,
-                                                                rgb.rows,
-                                                                rgb.cols,
-                                                                viewer,
-                                                                v1,
-                                                                v2);
-                    
+                    idToCnt = accMap.getVisibleObjs(pose,
+                                                    cameraParams,
+                                                    rgb.rows,
+                                                    rgb.cols/*,
+                                                viewer,
+                                                v1,
+                                                v2*/);
+            
                     cout << "Merging new" << endl;
-                    if (curFrameIdx > 1200) {
+                    if (curFrameIdx >= 1500) {
                         accMap.mergeNewObjInstances(curObjInstancesTrans,
+                                                    idToCnt,
                                                     viewer,
                                                     v1,
                                                     v2);
                     } else {
-                        accMap.mergeNewObjInstances(curObjInstancesTrans);
+                        accMap.mergeNewObjInstances(curObjInstancesTrans,
+                                                    idToCnt);
                     }
-                }
-                
-                if((curFrameIdx % accFrames) % mergeMapFrameSkip == mergeMapFrameSkip - 1) {
-                    cout << "Merging map" << endl;
-                    accMap.mergeMapObjInstances(/*viewer,
+//                    }
+            
+                    if ((curFrameIdx % accFrames) % mergeMapFrameSkip == mergeMapFrameSkip - 1) {
+                        cout << "Merging map" << endl;
+                        accMap.mergeMapObjInstances(/*viewer,
                                                   v1,
                                                   v2*/);
+                    }
                 }
-            }
+        
+                // if last frame in accumulation
+                if (curFrameIdx % accFrames == accFrames - 1) {
+                    accMap.removeObjsEolThresh(6);
             
-            // if last frame in accumulation
-            if(curFrameIdx % accFrames == accFrames - 1){
-                accMap.removeObjsEolThresh(8);
-    
-                // saving
-                {
-                    cout << "saving map to file" << endl;
-                    std::ofstream ofs("filename");
-                    boost::archive::text_oarchive oa(ofs);
-                    oa << accMap;
+                    // saving
+                    {
+                        cout << "saving map to file" << endl;
+                        std::ofstream ofs("filename");
+                        boost::archive::text_oarchive oa(ofs);
+                        oa << accMap;
+                    }
                 }
-             }
-
-            if(globalMatching && localize){
-                RecCode curRecCode;
-                g2o::SE3Quat gtTransSE3Quat = g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
-                Vector7d predTrans;
-                double linDist, angDist;
-    
-                pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
-                int curViewPort1 = -1;
-                int curViewPort2 = -1;
-                if(visualizeMatching){
-                    curViewer = viewer;
-                    curViewPort1 = v1;
-                    curViewPort2 = v2;
-                }
-    
-                evaluateMatching(settings,
-                                 curObjInstances,
-                                 mapObjInstances,
-                                 inputResIncrFile,
-                                 outputResIncrFile,
-                                 pose,
-                                 scoreThresh,
-                                 scoreDiffThresh,
-                                 fitThresh,
-                                 poseDiffThresh,
-                                 predTrans,
-                                 curRecCode,
-                                 linDist,
-                                 angDist,
-                                 curViewer,
-                                 curViewPort1,
-                                 curViewPort2);
-                
-                visRecCodes.push_back(curRecCode);
-                visGtPoses.push_back(pose);
-                visRecPoses.push_back(predTrans);
-                
-                if(curRecCode == RecCode::Corr) {
-                    ++corrCnt;
-                }
-                else if(curRecCode == RecCode::Incorr) {
-                    ++incorrCnt;
-                }
-                else {
-                    ++unkCnt;
-                }
-                
-                if(curRecCode != RecCode::Unk) {
-                    meanDist += linDist;
-                    meanAngDist += angDist;
-                    ++meanCnt;
-                }
-            }
+        
+                if (globalMatching && localize) {
+                    RecCode curRecCode;
+                    g2o::SE3Quat gtTransSE3Quat =
+                            g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
+                    Vector7d predTrans;
+                    double linDist, angDist;
             
-            if(incrementalMatching && !prevObjInstances.empty() && localize){
-                RecCode curRecCode;
-                g2o::SE3Quat gtTransSE3Quat = g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
-                Vector7d predTrans;
-                double linDist, angDist;
-    
-                pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
-                int curViewPort1 = -1;
-                int curViewPort2 = -1;
-                if(visualizeMatching){
-                    curViewer = viewer;
-                    curViewPort1 = v1;
-                    curViewPort2 = v2;
-                }
-                
-                evaluateMatching(settings,
-                                 curObjInstances,
-                                 prevObjInstances,
-                                 inputResIncrFile,
-                                 outputResIncrFile,
-                                 gtTransSE3Quat.toVector(),
-                                 scoreThresh,
-                                 scoreDiffThresh,
-                                 fitThresh,
-                                 poseDiffThresh,
-                                 predTrans,
-                                 curRecCode,
-                                 linDist,
-                                 angDist,
-                                 curViewer,
-                                 curViewPort1,
-                                 curViewPort2);
-    
-                visRecCodes.push_back(curRecCode);
-                visGtPoses.push_back(pose);
-                visRecPoses.push_back(predTrans);
-    
-                if(curRecCode == RecCode::Corr) {
-                    ++corrCnt;
-                }
-                else if(curRecCode == RecCode::Incorr) {
-                    ++incorrCnt;
-                }
-                else {
-                    ++unkCnt;
-                }
-    
-                if(curRecCode != RecCode::Unk) {
-                    meanDist += linDist;
-                    meanAngDist += angDist;
-                    ++meanCnt;
-                }
-            }
+                    pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
+                    int curViewPort1 = -1;
+                    int curViewPort2 = -1;
+                    if (visualizeMatching) {
+                        curViewer = viewer;
+                        curViewPort1 = v1;
+                        curViewPort2 = v2;
+                    }
             
+                    evaluateMatching(settings,
+                                     curObjInstances,
+                                     mapObjInstances,
+                                     inputResIncrFile,
+                                     outputResIncrFile,
+                                     pose,
+                                     scoreThresh,
+                                     scoreDiffThresh,
+                                     fitThresh,
+                                     poseDiffThresh,
+                                     predTrans,
+                                     curRecCode,
+                                     linDist,
+                                     angDist,
+                                     curViewer,
+                                     curViewPort1,
+                                     curViewPort2);
+            
+                    visRecCodes.push_back(curRecCode);
+                    visGtPoses.push_back(pose);
+                    visRecPoses.push_back(predTrans);
+            
+                    if (curRecCode == RecCode::Corr) {
+                        ++corrCnt;
+                    } else if (curRecCode == RecCode::Incorr) {
+                        ++incorrCnt;
+                    } else {
+                        ++unkCnt;
+                    }
+            
+                    if (curRecCode != RecCode::Unk) {
+                        meanDist += linDist;
+                        meanAngDist += angDist;
+                        ++meanCnt;
+                    }
+                }
+        
+                if (incrementalMatching && !prevObjInstances.empty() && localize) {
+                    RecCode curRecCode;
+                    g2o::SE3Quat gtTransSE3Quat =
+                            g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
+                    Vector7d predTrans;
+                    double linDist, angDist;
+            
+                    pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
+                    int curViewPort1 = -1;
+                    int curViewPort2 = -1;
+                    if (visualizeMatching) {
+                        curViewer = viewer;
+                        curViewPort1 = v1;
+                        curViewPort2 = v2;
+                    }
+            
+                    evaluateMatching(settings,
+                                     curObjInstances,
+                                     prevObjInstances,
+                                     inputResIncrFile,
+                                     outputResIncrFile,
+                                     gtTransSE3Quat.toVector(),
+                                     scoreThresh,
+                                     scoreDiffThresh,
+                                     fitThresh,
+                                     poseDiffThresh,
+                                     predTrans,
+                                     curRecCode,
+                                     linDist,
+                                     angDist,
+                                     curViewer,
+                                     curViewPort1,
+                                     curViewPort2);
+            
+                    visRecCodes.push_back(curRecCode);
+                    visGtPoses.push_back(pose);
+                    visRecPoses.push_back(predTrans);
+            
+                    if (curRecCode == RecCode::Corr) {
+                        ++corrCnt;
+                    } else if (curRecCode == RecCode::Incorr) {
+                        ++incorrCnt;
+                    } else {
+                        ++unkCnt;
+                    }
+            
+                    if (curRecCode != RecCode::Unk) {
+                        meanDist += linDist;
+                        meanAngDist += angDist;
+                        ++meanCnt;
+                    }
+                }
+        
+        
+                if (drawVis) {
+                    cout << "visualization" << endl;
 
-
-            if(drawVis) {
-                cout << "visualization" << endl;
-    
 //                // saving
 //                {
 //                    cout << "saving map to file" << endl;
@@ -542,45 +544,72 @@ void PlaneSlam::run(){
 //                    boost::archive::text_iarchive ia(ifs);
 //                    ia >> accMap;
 //                }
-    
-                viewer->removeAllPointClouds();
-                viewer->removeAllShapes();
-                viewer->addCoordinateSystem();
-                int o = 0;
-                for(auto it = accMap.begin(); it != accMap.end(); ++it, ++o){
-                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = it->getPoints();
-                    viewer->addPointCloud(curPc, "cloud_" + to_string(o), v1);
-    
-                    int colIdx = (o % (sizeof(colors)/sizeof(uint8_t)/3));
-                    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> colHan(curPc,
-                                                                                              colors[colIdx][0],
-                                                                                              colors[colIdx][1],
-                                                                                              colors[colIdx][2]);
-                    viewer->addPointCloud(curPc, colHan, "cloud_col_" + to_string(o), v2);
-                }
-                
-                viewer->resetStoppedFlag();
-                static bool cameraInit = false;
-                if(!cameraInit) {
-                    viewer->initCameraParameters();
-                    viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
-                    cameraInit = true;
-                }
-                viewer->spinOnce(100);
-                while (stopFlag && !viewer->wasStopped()) {
-                    viewer->spinOnce(100);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                }
-                viewer->close();
-            }
             
-			prevObjInstances.swap(curObjInstances);
-		}
-
-		++frameCnt;
-		prevPose = pose;
-
-		cout << "end processing frame" << endl;
+                    viewer->removeAllPointClouds();
+                    viewer->removeAllShapes();
+                    viewer->removeAllCoordinateSystems();
+            
+                    viewer->addCoordinateSystem();
+            
+                    Eigen::Affine3f trans = Eigen::Affine3f::Identity();
+                    trans.matrix() = poseSE3Quat.to_homogeneous_matrix().cast<float>();
+                    viewer->addCoordinateSystem(0.5, trans, "camera_coord");
+            
+                    int o = 0;
+                    for (auto it = accMap.begin(); it != accMap.end(); ++it, ++o) {
+                        const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = it->getPoints();
+                        viewer->addPointCloud(curPc, "cloud_" + to_string(o), v1);
+                
+                        it->display(viewer, v1, 2.0 / 8);
+                
+                        if (!idToCnt.empty()) {
+                            int cnt = 0;
+                            if (idToCnt.count(it->getId()) > 0) {
+                                cnt = idToCnt.at(it->getId());
+                            }
+                            Eigen::Vector3d cent = it->getPlaneEstimator().getCentroid();
+                            viewer->addText3D("id: " + to_string(it->getId()) +
+                                              ", cnt: " + to_string(cnt) +
+                                              ", eol: " + to_string(it->getEolCnt()),
+                                              pcl::PointXYZ(cent(0), cent(1), cent(2)),
+                                              0.05,
+                                              1.0, 1.0, 1.0,
+                                              string("plane_text_ba_") + to_string(it->getId()),
+                                              v1);
+                        }
+                
+                        int colIdx = (o % (sizeof(colors) / sizeof(uint8_t) / 3));
+                        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> colHan(
+                                curPc,
+                                colors[colIdx][0],
+                                colors[colIdx][1],
+                                colors[colIdx][2]);
+                        viewer->addPointCloud(curPc, colHan, "cloud_col_" + to_string(o), v2);
+                    }
+            
+                    viewer->resetStoppedFlag();
+                    static bool cameraInit = false;
+                    if (!cameraInit) {
+                        viewer->initCameraParameters();
+                        viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, 1.0, 0.0);
+                        cameraInit = true;
+                    }
+                    viewer->spinOnce(100);
+                    while (stopFlag && !viewer->wasStopped()) {
+                        viewer->spinOnce(100);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    }
+                    viewer->close();
+                }
+        
+                prevObjInstances.swap(curObjInstances);
+            }
+    
+            ++frameCnt;
+            prevPose = pose;
+    
+            cout << "end processing frame" << endl;
+        }
 	}
 
 	cout << "corrCnt = " << corrCnt << endl;

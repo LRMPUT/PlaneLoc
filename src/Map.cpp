@@ -44,6 +44,7 @@
 #include "Types.hpp"
 #include "Serialization.hpp"
 
+
 using namespace std;
 
 
@@ -168,11 +169,14 @@ void Map::addObjs(vectorObjInstance::iterator beg, vectorObjInstance::iterator e
 
 
 void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
+                               const std::map<int, int> &idToCnt,
                                pcl::visualization::PCLVisualizer::Ptr viewer,
                                int viewPort1,
                                int viewPort2)
 {
-    static constexpr double shadingLevel = 0.01;
+    static constexpr double shadingLevel = 1.0/8;
+    
+    static const int cntThreshMerge = 1000;
     
     if(viewer){
         viewer->removeAllPointClouds();
@@ -191,6 +195,22 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
                                                          shadingLevel,
                                                          string("plane_ba_") + to_string(pl),
                                                          viewPort1);
+                
+                if(!idToCnt.empty()){
+                    int cnt = 0;
+                    if(idToCnt.count(mapObj.getId()) > 0){
+                        cnt = idToCnt.at(mapObj.getId());
+                    }
+                    Eigen::Vector3d cent = mapObj.getPlaneEstimator().getCentroid();
+                    viewer->addText3D("id: " + to_string(mapObj.getId()) +
+                                              ", cnt: " + to_string(cnt) +
+                                              ", eol: " + to_string(mapObj.getEolCnt()),
+                                      pcl::PointXYZ(cent(0), cent(1), cent(2)),
+                                      0.05,
+                                      1.0, 1.0, 1.0,
+                                      string("plane_text_ba_") + to_string(pl),
+                                      viewPort1);
+                }
             }
         }
         {
@@ -218,7 +238,7 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
         
         if(viewer){
             viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                     0.5,
+                                                     7.0/8,
                                                      string("plane_nba_") + to_string(npl),
                                                      viewPort2);
             
@@ -232,52 +252,53 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
         for(auto it = objInstances.begin(); it != objInstances.end(); ++it, ++pl) {
 //            cout << "pl = " << pl << endl;
             ObjInstance &mapObj = *it;
-            
-            if(viewer){
-                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                         0.5,
-                                                         string("plane_ba_") + to_string(pl),
-                                                         viewPort1);
-                
-                
-                mapObj.getHull().display(viewer, viewPort1);
-                
-            }
-            
-            if(mapObj.isMatching(newObj/*,
+    
+            if(idToCnt.empty() || (idToCnt.count(mapObj.getId()) > 0 && idToCnt.at(mapObj.getId()) > cntThreshMerge)) {
+                if (viewer) {
+                    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                             7.0/8,
+                                                             string("plane_ba_") + to_string(pl),
+                                                             viewPort1);
+        
+        
+                    mapObj.getHull().display(viewer, viewPort1);
+        
+                }
+    
+                if (mapObj.isMatching(newObj/*,
                                  viewer,
                                  viewPort1,
-                                 viewPort2*/))
-            {
-                cout << "Merging planes" << endl;
-                
-                matches.push_back(it);
-            }
-            
-            
-            if(viewer){
-                viewer->resetStoppedFlag();
-                
-                static bool cameraInit = false;
-                
-                if(!cameraInit) {
-                    viewer->initCameraParameters();
-                    viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-                    cameraInit = true;
+                                 viewPort2*/)) {
+                    cout << "Merging planes" << endl;
+        
+                    matches.push_back(it);
                 }
-                while (!viewer->wasStopped()) {
-                    viewer->spinOnce(100);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    
+    
+                if (viewer) {
+                    viewer->resetStoppedFlag();
+        
+                    static bool cameraInit = false;
+        
+                    if (!cameraInit) {
+                        viewer->initCameraParameters();
+                        viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+                        cameraInit = true;
+                    }
+                    while (!viewer->wasStopped()) {
+                        viewer->spinOnce(100);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    }
+        
+                    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                             shadingLevel,
+                                                             string("plane_ba_") + to_string(pl),
+                                                             viewPort1);
+        
+        
+                    mapObj.getHull().cleanDisplay(viewer, viewPort1);
+        
                 }
-                
-                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-                                                         shadingLevel,
-                                                         string("plane_ba_") + to_string(pl),
-                                                         viewPort1);
-                
-                
-                mapObj.getHull().cleanDisplay(viewer, viewPort1);
-                
             }
         }
         
@@ -326,7 +347,16 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
     decreasePendingEol( settings.eolPendingDecr);
     removePendingObjsEol();
     
-    decreaseObjEol(settings.eolObjInstDecr);
+    if(idToCnt.empty()){
+        decreaseObjEol(settings.eolObjInstDecr);
+    }
+    else {
+        for (ObjInstance &obj : objInstances) {
+            if (idToCnt.count(obj.getId()) > 0 && idToCnt.at(obj.getId()) > cntThreshMerge) {
+                obj.decreaseEolCnt(settings.eolObjInstDecr);
+            }
+        }
+    }
     removeObjsEol();
 }
 
@@ -658,7 +688,7 @@ void Map::shiftIds(int startId) {
     clearPending();
 }
 
-std::vector<int> Map::getVisibleObjs(Vector7d pose,
+std::map<int, int> Map::getVisibleObjs(Vector7d pose,
                                      cv::Mat cameraMatrix,
                                      int rows,
                                      int cols,
@@ -694,40 +724,37 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
         viewer->addCoordinateSystem(0.5, trans, "camera_coord");
     }
     
-    vector<int> visible;
-    
     vector<vector<vector<pair<double, int>>>> projPlanes(rows,
                                                          vector<vector<pair<double, int>>>(cols,
                                                                        vector<pair<double, int>>()));
     
     cv::Mat projPoly(rows, cols, CV_8UC1);
     for(auto it = objInstances.begin(); it != objInstances.end(); ++it) {
-        cout << "id = " << it->getId() << endl;
+//        cout << "id = " << it->getId() << endl;
     
         Eigen::Vector4d planeEqCamera = poseMatt * it->getNormal();
-        cout << "planeEqCamera = " << planeEqCamera.transpose() << endl;
+//        cout << "planeEqCamera = " << planeEqCamera.transpose() << endl;
     
         if (viewer) {
             it->cleanDisplay(viewer, viewPort1);
             it->display(viewer, viewPort1);
         }
         
-        // TODO condition for observing the right face of the plane
+        // condition for observing the right face of the plane
         Eigen::Vector3d normal = planeEqCamera.head<3>();
         double d = -planeEqCamera(3);
-        Eigen::Vector3d zAxis;
-        zAxis << 0, 0, 1;
+//        Eigen::Vector3d zAxis;
+//        zAxis << 0, 0, 1;
         
-        cout << "normal.dot(zAxis) = " << normal.dot(zAxis) << endl;
-        cout << "d = " << d << endl;
-        if (normal.dot(zAxis) < 0 && d < 0) {
+//        cout << "normal.dot(zAxis) = " << normal.dot(zAxis) << endl;
+//        cout << "d = " << d << endl;
+        if (d < 0) {
 //        vectorVector3d imageCorners3d;
 //        bool valid = Misc::projectImagePointsOntoPlane(imageCorners,
 //                                                       imageCorners3d,
 //                                                       cameraMatrix,
 //                                                       planeEqCamera);
-        
-            projPoly.setTo(0);
+
             vector<cv::Point *> polyCont;
             vector<int> polyContNpts;
         
@@ -747,7 +774,7 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
             }
         
             const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d = hullClip.getPolygons3d();
-            cout << "polygons3d.size() = " << polygons3d.size() << endl;
+//            cout << "polygons3d.size() = " << polygons3d.size() << endl;
             for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr poly3d : polygons3d) {
                 polyCont.push_back(new cv::Point[poly3d->size()]);
                 polyContNpts.push_back(poly3d->size());
@@ -757,11 +784,11 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
 //                pcl::transformPointCloud(*poly3d, *poly3dPose, poseInvMat);
             
                 cv::Mat pointsReproj = Misc::reprojectTo2D(poly3d, cameraMatrix);
-                for (int pt = 0; pt < poly3d->size(); ++pt) {
-                    cout << poly3d->at(pt).getVector3fMap().transpose() << endl;
-                }
-                cout << "cameraMatrix = " << cameraMatrix << endl;
-                cout << "pointsReproj = " << pointsReproj << endl;
+//                for (int pt = 0; pt < poly3d->size(); ++pt) {
+//                    cout << poly3d->at(pt).getVector3fMap().transpose() << endl;
+//                }
+//                cout << "cameraMatrix = " << cameraMatrix << endl;
+//                cout << "pointsReproj = " << pointsReproj << endl;
                 
                 int corrPointCnt = 0;
                 for (int pt = 0; pt < pointsReproj.cols; ++pt) {
@@ -774,7 +801,7 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
                     }
                     polyCont.back()[pt] = cv::Point(u, v);
                 }
-                cout << "corrPointCnt = " << corrPointCnt << endl;
+//                cout << "corrPointCnt = " << corrPointCnt << endl;
                 if (corrPointCnt == 0) {
                     delete[] polyCont.back();
                     polyCont.erase(polyCont.end() - 1);
@@ -782,6 +809,8 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
                 }
             }
             if (polyCont.size() > 0) {
+                projPoly.setTo(0);
+                
                 cv::fillPoly(projPoly,
                              (const cv::Point **) polyCont.data(),
                              polyContNpts.data(),
@@ -854,7 +883,7 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
                 double minD = curPlanes.front().first;
                 
                 for(const pair<double, int> &curPair : curPlanes){
-                    if(abs(minD - curPair.first) < 0.2){
+                    if(abs(minD - curPair.first) < 0.2 && curPair.first < 4.0){
                         int id = curPair.second;
                         if(idToCnt.count(id) > 0){
                             idToCnt.at(id) += 1;
@@ -867,12 +896,9 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
             }
         }
     }
-    for(const pair<int, int> &curCnt : idToCnt){
-        cout << "curCnt " << curCnt.first << " = " << curCnt.second << endl;
-        if(curCnt.second > 1500){
-            visible.push_back(curCnt.first);
-        }
-    }
+//    for(const pair<int, int> &curCnt : idToCnt){
+//        cout << "curCnt " << curCnt.first << " = " << curCnt.second << endl;
+//    }
     
     if(viewer){
         for (auto it = objInstances.begin(); it != objInstances.end(); ++it) {
@@ -880,7 +906,7 @@ std::vector<int> Map::getVisibleObjs(Vector7d pose,
         }
     }
     
-    return visible;
+    return idToCnt;
 }
 
 pcl::PointCloud<pcl::PointXYZL>::Ptr Map::getLabeledPointCloud()
