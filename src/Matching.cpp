@@ -72,7 +72,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
     double lineEqDiffThresh = (double)fs["matching"]["lineEqDiffThresh"];
     double intLenThresh = (double)fs["matching"]["intLenThresh"];
 
-    double shadingLevel = 0.005;
+    double shadingLevel = 1.0/8;
 
     chrono::high_resolution_clock::time_point startTime = chrono::high_resolution_clock::now();
 
@@ -114,13 +114,22 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 
 		viewer->initCameraParameters();
 		viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+        
+//        viewer->spinOnce(100);
+//        while (!viewer->wasStopped()) {
+//            viewer->spinOnce(100);
+//            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//        }
 	}
 
     vector<PotMatch> potMatches = findPotMatches(mapObjInstances,
                                                  frameObjInstances,
                                                  planeAppThresh,
                                                  lineAppThresh,
-                                                 lineToLineAngThresh);
+                                                 lineToLineAngThresh,
+                                                 viewer,
+                                                 viewPort1,
+                                                 viewPort2);
     
 
 	cout << "potMatches.size() = " << potMatches.size() << endl;
@@ -148,7 +157,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 	std::vector<ValidTransform> transforms;
 
 	for(int s = 0; s < potSets.size(); ++s){
-//		cout << "s = " << s << endl;
+		cout << "s = " << s << endl;
         
         vectorVector3d pointsMap;
         vectorVector4d planesMap;
@@ -207,7 +216,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                            retDistPtsFrame,
                                            retDistPtsDirsFrame);
         
-		Vector7d curTransform;
+//		Vector7d curTransform;
 		bool fullConstrRot, fullConstrTrans;
         
         
@@ -232,13 +241,16 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                                                         fullConstrRot,
                                                                         fullConstrTrans);
 
+        cout << "transformComp = " << transformComp.transpose() << endl;
+        cout << "fullConstrRot = " << fullConstrRot << endl;
+        cout << "fullConstrTrans = " << fullConstrTrans << endl;
 
 		bool isAdded = false;
 		if(fullConstrRot && fullConstrTrans){
             vector<double> intAreaPlanes;
             vector<vector<double> > intLenLines;
             
-            double score = scoreTransformByProjection(curTransform,
+            double score = scoreTransformByProjection(transformComp,
                                                       potSets[s],
                                                       mapObjInstances,
                                                       frameObjInstances,
@@ -256,77 +268,54 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 				for(int ch = 0; ch < potSets[s].size(); ++ch){
 					appDiffs.push_back(potSets[s][ch].planeAppDiff);
 				}
-				transforms.emplace_back(curTransform,
+				transforms.emplace_back(transformComp,
 										potSets[s],
                                         intAreaPlanes,
                                         intLenLines);
 				isAdded = true;
 			}
             
-//			vector<double> intAreas;
-//			double score = scoreTransformByProjection(curTransform,
-//                                                      triplets[s],
-//                                                      mapObjInstances,
-//                                                      frameObjInstances,
-//                                                      intAreas,
-//                                                      intAreaThresh,
-//                                                      planeEqDiffThresh,
-//													  viewer,
-//													  viewPort1,
-//													  viewPort2);
-//			if(score > scoreThresh){
-//				vector<double> appDiffs;
-//				for(int p = 0; p < triplets[s].size(); ++p){
-//					appDiffs.push_back(pairToAppDiff.at(triplets[s][p]));
-//				}
-//				transforms.emplace_back(curTransform,
-//										0.0,
-//										triplets[s],
-//										intAreas,
-//										appDiffs);
-//				isAdded = true;
-//			}
 		}
 
-//		if(viewer && isAdded){
-//			for(int p = 0; p < triplets[s].size(); ++p){
-//				int om = triplets[s][p].first;
-//				int of = triplets[s][p].second;
-//
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														1.0,
-//														string("plane1_") + to_string(om),
-//														viewPort1);
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														1.0,
-//														string("plane2_") + to_string(of),
-//														viewPort2);
-//			}
-//
-//			// time for watching
-//			viewer->resetStoppedFlag();
-//
-////			viewer->initCameraParameters();
-////			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-//			while (!viewer->wasStopped()){
-//				viewer->spinOnce (100);
-//				std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//			}
-//
-//			for(int p = 0; p < triplets[s].size(); ++p){
-//				int om = triplets[s][p].first;
-//				int of = triplets[s][p].second;
-//
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														shadingLevel,
-//														string("plane1_") + to_string(om),
-//														viewPort1);
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														shadingLevel,
-//														string("plane2_") + to_string(of),
-//														viewPort2);
-//			}
-//		}
+		if(viewer && isAdded){
+			for(int p = 0; p < triplets[s].size(); ++p){
+				int om = triplets[s][p].first;
+				int of = triplets[s][p].second;
+
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														1.0,
+														string("plane1_") + to_string(om),
+														viewPort1);
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														1.0,
+														string("plane2_") + to_string(of),
+														viewPort2);
+			}
+
+			// time for watching
+			viewer->resetStoppedFlag();
+
+//			viewer->initCameraParameters();
+//			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+			while (!viewer->wasStopped()){
+				viewer->spinOnce (100);
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			}
+
+			for(int p = 0; p < triplets[s].size(); ++p){
+				int om = triplets[s][p].first;
+				int of = triplets[s][p].second;
+
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														shadingLevel,
+														string("plane1_") + to_string(om),
+														viewPort1);
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														shadingLevel,
+														string("plane2_") + to_string(of),
+														viewPort2);
+			}
+		}
 	}
 
     chrono::high_resolution_clock::time_point endTransformTime = chrono::high_resolution_clock::now();
@@ -717,8 +706,8 @@ bool Matching::checkPlaneToLineAng(const vectorVector4d &planes1,
     return isConsistent;
 }
 
-vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &frameObjInstances,
-                                                    const vectorObjInstance &mapObjInstances,
+vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &mapObjInstances,
+                                                    const vectorObjInstance &frameObjInstances,
                                                     double planeAppThresh,
                                                     double lineAppThresh,
                                                     double lineToLineAngThresh,
@@ -786,6 +775,7 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &fra
                         }
                     }
                     if(addFlag){
+//                        cout << "adding potential match between " << om << " and " << of << endl;
                         potMatches.emplace_back(om,
                                                 linesMap,
                                                 of,
@@ -834,8 +824,8 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &fra
 }
 
 vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMatch> potMatches,
-                                                         const vectorObjInstance &frameObjInstances,
                                                          const vectorObjInstance &mapObjInstances,
+                                                         const vectorObjInstance &frameObjInstances,
                                                          double planeDistThresh,
                                                          double lineToLineAngThresh,
                                                          double planeToPlaneAngThresh,
@@ -1352,7 +1342,9 @@ Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
 //    cout << "fullConstrRot = " << fullConstrRot << endl;
 //    cout << "fullConstrTrans = " << fullConstrTrans << endl;
 //    cout << "retTransform = " << retTransform.transpose() << endl;
-
+//
+//    cout << "dists1 = " << dists1 << endl;
+//    cout << "dists2 = " << dists2 << endl;
     {
         int numEq;
         Eigen::Matrix4d Wrt, Qr;
@@ -1381,6 +1373,8 @@ Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
                 Eigen::Vector3d n1 = distDirs1[d];
                 double d1 = dists1[d];
                 double d2 = dists2[d];
+//                cout << "d1 = " << d1 << endl;
+//                cout << "d2 = " << d2 << endl;
 
 //			cout << "Adding to A" << endl;
                 A.block<1, 3>(d, 0) = n1;
@@ -1424,15 +1418,15 @@ Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
 //            cout << "A = " << A << endl;
 //            cout << "b = " << b << endl;
             Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
-//        lu.setThreshold(sinValsThresh);
+            lu.setThreshold(0.1);
 
-//		cout << "A.transpose();" << endl;
-//        Eigen::MatrixXd At = A.transpose();
-//		cout << "(At * A)" << endl;
-//        Eigen::MatrixXd AtAinv = (At * A).inverse();
-//		cout << "AtAinv * At * b" << endl;
+//            cout << "A.transpose();" << endl;
+//            Eigen::MatrixXd At = A.transpose();
+//            cout << "(At * A)" << endl;
+//            Eigen::MatrixXd AtAinv = (At * A).inverse();
+//            cout << "AtAinv * At * b" << endl;
 //            Eigen::Vector3d t = AtAinv * At * b;
-//		cout << "trans = " << trans << endl;
+//		    cout << "trans = " << trans << endl;
 //            cout << "lu.rank() = " << lu.rank() << endl;
             if (lu.rank() >= 3) {
                 fullConstrTrans = true;
@@ -1553,12 +1547,23 @@ double Matching::scoreTransformByProjection(const Vector7d &transform,
         const ObjInstance& obj1 = objInstances1[curSet[ch].plane1];
         const ObjInstance& obj2 = objInstances2[curSet[ch].plane2];
         
+        PlaneEstimator obj1PlaneEst = obj1.getPlaneEstimator();
+        obj1PlaneEst.transform(g2o::SE3Quat(transform).inverse().toVector());
+        const PlaneEstimator &obj2PlaneEst = obj2.getPlaneEstimator();
         
-        double diffPlaneEq = planeEqDiffLogMap(obj1, obj2, transform);
+        double diffPlaneEq1 = obj1PlaneEst.distance(obj2PlaneEst);
+        double diffPlaneEq2 = obj2PlaneEst.distance(obj1PlaneEst);
         
-        if(diffPlaneEq > planeEqDiffThresh){
+        if(diffPlaneEq1 > planeEqDiffThresh ||
+           diffPlaneEq2 > planeEqDiffThresh)
+        {
             curValid = false;
         }
+//        double diffPlaneEq = planeEqDiffLogMap(obj1, obj2, transform);
+//
+//        if(diffPlaneEq > planeEqDiffThresh){
+//            curValid = false;
+//        }
         
         if(curValid){
             // test line segments equations
@@ -1784,474 +1789,3 @@ double Matching::ProbDistKernel::eval(Vector7d pt) const
 	double res = weight * exp(-diff.transpose() * infMat * diff);
 	return res;
 }
-
-void Matching::intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull1,
-                                    const pcl::Vertices &poly1,
-                                    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull2,
-                                    const pcl::Vertices &poly2,
-                                    const Eigen::Vector4d &planeEq,
-                                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullRes,
-                                    pcl::Vertices &polyRes,
-                                    double &areaRes,
-                                    pcl::visualization::PCLVisualizer::Ptr viewer,
-                                    int viewPort1,
-                                    int viewPort2)
-{
-	static constexpr double eps = 1e-6;
-	areaRes = 0.0;
-
-	if(poly1.vertices.size() < 3 || poly2.vertices.size() < 3){
-		return;
-	}
-
-	Eigen::Vector3d plNormal = planeEq.head<3>();
-	double plNormalNorm = plNormal.norm();
-	double plD = planeEq(3) / plNormalNorm;
-	plNormal /= plNormalNorm;
-
-	// point on plane nearest to origin
-	Eigen::Vector3d origin = plNormal * (-plD);
-	Eigen::Vector3d xAxis, yAxis;
-	//if normal vector is not parallel to global x axis
-	if(plNormal.cross(Eigen::Vector3d(1.0, 0.0, 0.0)).norm() > 1e-2){
-		// plane x axis as a cross product - always perpendicular to normal vector
-		xAxis = plNormal.cross(Eigen::Vector3d(1.0, 0.0, 0.0));
-		xAxis.normalize();
-		yAxis = plNormal.cross(xAxis);
-	}
-	else{
-		xAxis = plNormal.cross(Eigen::Vector3d(0.0, 1.0, 0.0));
-		xAxis.normalize();
-		yAxis = plNormal.cross(xAxis);
-	}
-
-	if(viewer){
-		Eigen::Affine3f trans = Eigen::Affine3f::Identity();
-		trans.matrix().block<3, 1>(0, 3) = origin.cast<float>();
-		trans.matrix().block<3, 1>(0, 0) = xAxis.cast<float>();
-		trans.matrix().block<3, 1>(0, 1) = yAxis.cast<float>();
-		trans.matrix().block<3, 1>(0, 2) = plNormal.cast<float>();
-		//		trans.fromPositionOrientationScale(, rot, 1.0);
-		viewer->addCoordinateSystem(0.5, trans, "plane coord", viewPort2);
-
-		viewer->initCameraParameters();
-		viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-	}
-//	cout << "chull1->size() = " << chull1->size() << endl;
-//	cout << "poly1.vertices = " << poly1.vertices << endl;
-//	cout << "chull2->size() = " << chull2->size() << endl;
-//	cout << "poly2.vertices = " << poly2.vertices << endl;
-    
-    vectorVector2d chull2d1;
-    vectorVector2d chull2d2;
-	for(int i = 0; i < poly1.vertices.size(); ++i){
-		Eigen::Vector3d chPt = chull1->at(poly1.vertices[i]).getVector3fMap().cast<double>();
-		Eigen::Vector2d projPt;
-		projPt.x() = (chPt - origin).dot(xAxis);
-		projPt.y() = (chPt - origin).dot(yAxis);
-		chull2d1.push_back(projPt);
-	}
-	makeCclockwise(chull2d1);
-	for(int i = 0; i < poly2.vertices.size(); ++i){
-		Eigen::Vector3d chPt = chull2->at(poly2.vertices[i]).getVector3fMap().cast<double>();
-		Eigen::Vector2d projPt;
-		projPt.x() = (chPt - origin).dot(xAxis);
-		projPt.y() = (chPt - origin).dot(yAxis);
-		chull2d2.push_back(projPt);
-	}
-	makeCclockwise(chull2d2);
-
-	bool isFirstPoint = true;
-	bool isAlwaysCross1H2Pos = true;
-	bool isAlwaysCross2H1Pos = true;
-
-	Inside insideFlag = Inside::Unknown;
-	int i1 = 0;
-	int i2 = 0;
-	int adv1 = 0;
-	int adv2 = 0;
-    vectorVector2d intChull;
-	do{
-		Eigen::Vector2d begPt1 = chull2d1[(i1 - 1 + chull2d1.size()) % chull2d1.size()];
-		Eigen::Vector2d endPt1 = chull2d1[i1 % chull2d1.size()];
-		Eigen::Vector2d begPt2 = chull2d2[(i2 - 1 + chull2d2.size()) % chull2d2.size()];
-		Eigen::Vector2d endPt2 = chull2d2[i2 % chull2d2.size()];
-
-		Eigen::Vector2d edge1 = endPt1 - begPt1;
-		Eigen::Vector2d edge2 = endPt2 - begPt2;
-
-		double cross = cross2d(edge1, edge2);
-		double cross1H2 = cross2d(endPt2 - begPt2, endPt1 - begPt2);
-		double cross2H1 = cross2d(endPt1 - begPt1, endPt2 - begPt1);
-
-		if(cross1H2 < 0.0){
-			isAlwaysCross1H2Pos = false;
-		}
-		if(cross2H1 < 0.0){
-			isAlwaysCross2H1Pos = false;
-		}
-
-//		cout << "cross = " << cross << endl;
-//		cout << "cross1H2 = " << cross1H2 << endl;
-//		cout << "cross2H1 = " << cross2H1 << endl;
-
-		Eigen::Vector2d intPt1;
-		Eigen::Vector2d intPt2;
-		SegIntType intType = intersectLineSegments2d(begPt1,
-                                                     endPt1,
-                                                     begPt2,
-                                                     endPt2,
-                                                     intPt1,
-                                                     intPt2,
-                                                     eps);
-//		cout << "intType = " << intType << endl;
-//		cout << "isFirstPoint = " << isFirstPoint << endl;
-		if(intType == SegIntType::One || intType == SegIntType::Vertex){
-//			cout << "intType == SegIntType::One || intType == SegIntType::Vertex" << endl;
-			if(insideFlag == Inside::Unknown && isFirstPoint){
-//				cout << "insideFlag == Inside::Unknown && isFirstPoint" << endl;
-				adv1 = adv2 = 0;
-				isFirstPoint = false;
-			}
-//			cout << "adding point (" << intPt1.transpose() << ")" << endl;
-			intChull.push_back(intPt1);
-			if(viewer){
-				Eigen::Vector3d intPt = origin + intChull.back().x() * xAxis + intChull.back().y() * yAxis;
-				viewer->addSphere(pcl::PointXYZ(intPt.x(), intPt.y(), intPt.z()), 0.04, 1, 0, 0, string("int point") + to_string(intChull.size()), viewPort2);
-			}
-			insideFlag = newInsideFlag(insideFlag, intPt1, cross1H2, cross2H1, eps);
-//			if(insideFlag == Inside::Unknown){
-//				cout << "insideFlag = Unknown" << endl;
-//			}
-//			else if(insideFlag == Inside::First){
-//				cout << "insideFlag = First" << endl;
-//			}
-//			else{
-//				cout << "insideFlag = Second" << endl;
-//			}
-		}
-
-		// edge1 and edge2 overlap and oppositely oriented
-		if((intType == SegIntType::Collinear) && (edge1.dot(edge2) < 0.0 - eps)){
-//			cout << "edge1 and edge2 overlap and oppositely oriented" << endl;
-			intChull.push_back(intPt1);
-			if(viewer){
-				Eigen::Vector3d intPt = origin + intChull.back().x() * xAxis + intChull.back().y() * yAxis;
-				viewer->addSphere(pcl::PointXYZ(intPt.x(), intPt.y(), intPt.z()), 0.04, 1, 0, 0, string("int point") + to_string(intChull.size()), viewPort2);
-			}
-			intChull.push_back(intPt2);
-			if(viewer){
-				Eigen::Vector3d intPt = origin + intChull.back().x() * xAxis + intChull.back().y() * yAxis;
-				viewer->addSphere(pcl::PointXYZ(intPt.x(), intPt.y(), intPt.z()), 0.04, 1, 0, 0, string("int point") + to_string(intChull.size()), viewPort2);
-			}
-			break;
-		}
-		// edge1 and edge2 parallel and separated
-		if((fabs(cross) <= eps) && (cross1H2 < 0.0 - eps) && (cross2H1 < 0.0 - eps)){
-//			cout << "edge1 and edge2 parallel and separated" << endl;
-			//cout << "disjoint" << endl;
-			break;
-		}
-		// edge1 and edge2 parallel and collinear
-		else if((fabs(cross) <= eps) && (fabs(cross1H2) <= eps) && (fabs(cross2H1) <= eps)){
-//			cout << "edge1 and edge2 parallel and collinear" << endl;
-			if(insideFlag == Inside::First){
-				i2++;
-				adv2++;
-			}
-			else{
-				i1++;
-				adv1++;
-			}
-		}
-		else if(cross >= 0.0 + eps){
-//			cout << "cross >= 0.0 + eps" << endl;
-//			cout << "cross2H1 = " << cross2H1 << endl;
-			if(cross2H1 > 0.0 + eps){
-				i1++;
-				adv1++;
-				if(insideFlag == Inside::First){
-					intChull.push_back(endPt1);
-					if(viewer){
-						Eigen::Vector3d intPt = origin + intChull.back().x() * xAxis + intChull.back().y() * yAxis;
-						viewer->addSphere(pcl::PointXYZ(intPt.x(), intPt.y(), intPt.z()), 0.04, 1, 0, 0, string("int point") + to_string(intChull.size()), viewPort2);
-					}
-//					cout << "adding endPt1" << endl;
-				}
-			}
-			else{
-				i2++;
-				adv2++;
-				if(insideFlag == Inside::Second){
-					intChull.push_back(endPt2);
-					if(viewer){
-						Eigen::Vector3d intPt = origin + intChull.back().x() * xAxis + intChull.back().y() * yAxis;
-						viewer->addSphere(pcl::PointXYZ(intPt.x(), intPt.y(), intPt.z()), 0.04, 1, 0, 0, string("int point") + to_string(intChull.size()), viewPort2);
-					}
-//					cout << "adding endPt2" << endl;
-				}
-			}
-		}
-		else /* if(cross < 0.0 - eps)*/{
-//			cout << "cross < 0.0 - eps" << endl;
-//			cout << "cross1H2 = " << cross1H2 << endl;
-			if(cross1H2 > 0.0 + eps){
-				i2++;
-				adv2++;
-				if(insideFlag == Inside::Second){
-					intChull.push_back(endPt2);
-					if(viewer){
-						Eigen::Vector3d intPt = origin + intChull.back().x() * xAxis + intChull.back().y() * yAxis;
-						viewer->addSphere(pcl::PointXYZ(intPt.x(), intPt.y(), intPt.z()), 0.04, 1, 0, 0, string("int point") + to_string(intChull.size()), viewPort2);
-					}
-//					cout << "adding endPt2" << endl;
-				}
-			}
-			else{
-				i1++;
-				adv1++;
-				if(insideFlag == Inside::First){
-					intChull.push_back(endPt1);
-					if(viewer){
-						Eigen::Vector3d intPt = origin + intChull.back().x() * xAxis + intChull.back().y() * yAxis;
-						viewer->addSphere(pcl::PointXYZ(intPt.x(), intPt.y(), intPt.z()), 0.04, 1, 0, 0, string("int point") + to_string(intChull.size()), viewPort2);
-					}
-//					cout << "adding endPt1" << endl;
-				}
-			}
-		}
-
-		if(viewer){
-			Eigen::Vector3d begPt13d = origin + begPt1.x() * xAxis + begPt1.y() * yAxis;
-			Eigen::Vector3d endPt13d = origin + endPt1.x() * xAxis + endPt1.y() * yAxis;
-			Eigen::Vector3d begPt23d = origin + begPt2.x() * xAxis + begPt2.y() * yAxis;
-			Eigen::Vector3d endPt23d = origin + endPt2.x() * xAxis + endPt2.y() * yAxis;
-
-			viewer->addArrow(pcl::PointXYZ(endPt13d.x(), endPt13d.y(), endPt13d.z()), pcl::PointXYZ(begPt13d.x(), begPt13d.y(), begPt13d.z()), 1, 0, 0, false, "edge1", viewPort2);
-			viewer->addArrow(pcl::PointXYZ(endPt23d.x(), endPt23d.y(), endPt23d.z()), pcl::PointXYZ(begPt23d.x(), begPt23d.y(), begPt23d.z()), 0, 0, 1, false, "edge2", viewPort2);
-
-			// time for watching
-			viewer->resetStoppedFlag();
-
-			while (!viewer->wasStopped()){
-				viewer->spinOnce (100);
-				std::this_thread::sleep_for(std::chrono::milliseconds(50));
-			}
-
-			viewer->removeShape("edge1", viewPort2);
-			viewer->removeShape("edge2", viewPort2);
-		}
-
-	}while(((adv1 < chull2d1.size()) || (adv2 < chull2d2.size())) && (adv1 < 2*chull2d1.size()) && (adv2 < 2*chull2d2.size()));
-
-	if(insideFlag == Inside::Unknown){
-		// polygons do not intersect
-		// check if one is inside the other or if their intersection is empty
-		// first inside second -> first is a convex hull
-		if(isAlwaysCross1H2Pos){
-			intChull = chull2d1;
-		}
-		// second inside first -> second is a convex hull
-		else if(isAlwaysCross2H1Pos){
-			intChull = chull2d2;
-		}
-		// disjoint -> convex hull is empty
-		else{
-			// disjoint
-		}
-	}
-
-	for(int i = 0; i < intChull.size(); ++i){
-		Eigen::Vector2d& begPt = intChull[(i - 1 + intChull.size()) % intChull.size()];
-		Eigen::Vector2d& endPt = intChull[i];
-		areaRes += cross2d(begPt, endPt);
-	}
-	areaRes *= 0.5;
-
-	if(viewer){
-		viewer->removeCoordinateSystem("plane coord", viewPort2);
-	}
-
-	for(int p = 0; p < intChull.size(); ++p){
-		Eigen::Vector2d& curPt = intChull[p];
-		pcl::PointXYZRGB curPt3d;
-		Eigen::Vector3d curCoord = origin + curPt.x() * xAxis + curPt.y() * yAxis;
-		curPt3d.getVector3fMap() = curCoord.cast<float>();
-		curPt3d.r = 255;
-		curPt3d.g = 255;
-		curPt3d.b = 255;
-		chullRes->push_back(curPt3d);
-		polyRes.vertices.push_back(p);
-	}
-}
-
-Matching::SegIntType Matching::intersectLineSegments2d(const Eigen::Vector2d &begPt1,
-                                                       const Eigen::Vector2d &endPt1,
-                                                       const Eigen::Vector2d &begPt2,
-                                                       const Eigen::Vector2d &endPt2,
-                                                       Eigen::Vector2d &intPt1,
-                                                       Eigen::Vector2d &intPt2,
-                                                       double eps)
-{
-//	static constexpr double eps = 1e-6;
-	SegIntType intType;
-
-	Eigen::Vector2d edge1 = endPt1 - begPt1;
-	Eigen::Vector2d edge2 = endPt2 - begPt2;
-	double denom = begPt1.x() * edge2.y() +
-					-endPt1.x() * edge2.y() +
-					endPt2.x() * edge1.y() +
-					-begPt2.x() * edge1.y();
-
-	// parallel
-	if(fabs(denom) <= eps){
-		return intersectParallelLineSegments(begPt1, endPt1, begPt2, endPt2, intPt1, intPt2, eps);
-	}
-
-	double num = begPt1.x() * edge2.y() +
-				begPt2.x() * (begPt1.y() - endPt2.y()) +
-				endPt2.x() * (begPt2.y() - begPt1.y());
-	if((fabs(num) <= eps) || (fabs(num - denom) <= eps)){
-		intType = SegIntType::Vertex;
-	}
-	double s = num / denom;
-
-	num = -(begPt1.x() * (begPt2.y() - endPt1.y()) +
-			endPt1.x() * (begPt1.y() - begPt2.y()) +
-			begPt2.x() * (endPt1.y() - begPt1.y()));
-	if((fabs(num) <= eps) || (fabs(num - denom) <= eps)){
-		intType = SegIntType::Vertex;
-	}
-	double t = num / denom;
-
-	if((0.0 + eps < s) && (s < 1.0 - eps) && (0.0 + eps < t) && (t < 1.0 - eps)){
-		intType = SegIntType::One;
-	}
-	else if((s < 0.0 - eps) || (1.0 + eps < s) || (t < 0.0 - eps) || (1.0 + eps < t)){
-		intType = SegIntType::Zero;
-	}
-
-	intPt1.x() = begPt1.x() + s * (endPt1.x() - begPt1.x());
-	intPt1.y() = begPt1.y() + s * (endPt1.y() - begPt1.y());
-
-	return intType;
-}
-
-Matching::SegIntType Matching::intersectParallelLineSegments(const Eigen::Vector2d& begPt1,
-															const Eigen::Vector2d& endPt1,
-															const Eigen::Vector2d& begPt2,
-															const Eigen::Vector2d& endPt2,
-															Eigen::Vector2d& intPt1,
-															Eigen::Vector2d& intPt2,
-															double eps)
-{
-	double cross = cross2d(endPt1 - begPt1, begPt2 - begPt1);
-	if(fabs(cross) > eps){
-		return SegIntType::Zero;
-	}
-
-	if(isBetween(begPt1, endPt1, begPt2, eps) && isBetween(begPt1, endPt1, endPt2, eps)){
-		intPt1 = begPt2;
-		intPt2 = endPt2;
-		return SegIntType::Collinear;
-	}
-	if(isBetween(begPt2, endPt2, begPt1, eps) && isBetween(begPt2, endPt2, endPt1, eps)){
-		intPt1 = begPt1;
-		intPt2 = endPt1;
-		return SegIntType::Collinear;
-	}
-	if(isBetween(begPt1, endPt1, begPt2, eps) && isBetween(begPt2, endPt2, endPt1, eps)){
-		intPt1 = begPt2;
-		intPt2 = endPt1;
-		return SegIntType::Collinear;
-	}
-	if(isBetween(begPt1, endPt1, begPt2, eps) && isBetween(begPt2, endPt2, begPt1, eps)){
-		intPt1 = begPt2;
-		intPt2 = begPt1;
-		return SegIntType::Collinear;
-	}
-	if(isBetween(begPt1, endPt1, endPt2, eps) && isBetween(begPt2, endPt2, endPt1, eps)){
-		intPt1 = endPt2;
-		intPt2 = endPt1;
-		return SegIntType::Collinear;
-	}
-	if(isBetween(begPt1, endPt1, endPt2, eps) && isBetween(begPt2, endPt2, begPt1, eps)){
-		intPt1 = endPt2;
-		intPt2 = begPt1;
-		return SegIntType::Collinear;
-	}
-	return SegIntType::Zero;
-}
-
-bool Matching::isBetween(const Eigen::Vector2d& beg,
-						const Eigen::Vector2d& end,
-						const Eigen::Vector2d& pt,
-						double eps)
-{
-	if(fabs(beg.x() - end.x()) > eps){
-		return ((beg.x() <= pt.x()) && (pt.x() <= end.x())) ||
-				((beg.x() >= pt.x()) && (pt.x() >= end.x()));
-	}
-	else{
-		return ((beg.y() <= pt.y()) && (pt.y() <= end.y())) ||
-				((beg.y() >= pt.y()) && (pt.y() >= end.y()));
-	}
-}
-
-
-Matching::Inside Matching::newInsideFlag(Inside oldFlag,
-										const Eigen::Vector2d& intPt,
-										double cross1H2,
-										double cross2H1,
-										double eps)
-{
-	if(cross1H2 > 0.0 + eps){
-		return Inside::First;
-	}
-	else if(cross2H1 > 0 + eps){
-		return Inside::Second;
-	}
-	else{
-		return oldFlag;
-	}
-}
-
-
-double Matching::cross2d(const Eigen::Vector2d& v1,
-						const Eigen::Vector2d& v2)
-{
-	return v1.x() * v2.y() - v2.x() * v1.y();
-}
-
-void Matching::makeCclockwise(vectorVector2d &chull,
-                              double eps)
-{
-//	cout << "chull.size() = " << chull.size() << endl;
-	bool isCclockwise = true;
-	for(int i = 0; i < chull.size(); ++i){
-		Eigen::Vector2d pt1 = chull[(i - 2 + chull.size()) % chull.size()];
-		Eigen::Vector2d pt2 = chull[(i - 1 + chull.size()) % chull.size()];
-		Eigen::Vector2d pt3 = chull[i];
-//		cout << "points number: " << (i - 2 + chull.size()) % chull.size() << ", " << (i - 1 + chull.size()) % chull.size() << ", " << i << endl;
-//		cout << "pt1 = " << pt1.transpose() << endl;
-//		cout << "pt2 = " << pt2.transpose() << endl;
-//		cout << "pt3 = " << pt3.transpose() << endl;
-		double cross = cross2d(pt2 - pt1, pt3 - pt1);
-//		cout << "cross = " << cross << endl;
-		if(cross < 0.0 - eps){
-//			cout << "is not counterclockwise" << endl;
-			isCclockwise = false;
-			break;
-		}
-	}
-	// if not counter-clockwise then reverse
-	if(!isCclockwise){
-//		cout << "reversing chull" << endl;
-        vectorVector2d tmp(chull.rbegin(), chull.rend());
-		tmp.swap(chull);
-	}
-}
-
-
-
-

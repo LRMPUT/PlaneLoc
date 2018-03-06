@@ -21,6 +21,7 @@
 #include <pcl/impl/point_types.hpp>
 
 #include "Types.hpp"
+#include "Map.hpp"
 
 class FileGrabber{
 public:
@@ -67,6 +68,15 @@ public:
                  Vector7d &vo,
                  bool &voCorr,
 			     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloud);
+    
+    int getFrame(cv::Mat& rgb,
+                 cv::Mat& depth,
+                 std::vector<FrameObjInstance>& objInstances,
+                 std::vector<double>& accelData,
+                 Vector7d& pose,
+                 Vector7d &vo,
+                 bool &voCorr,
+                 Map &accMap);
 private:
 
 	std::vector<boost::filesystem::path> rgbPaths;
@@ -76,6 +86,10 @@ private:
 	std::vector<bool> cloudAvailable;
 
 	std::vector<boost::filesystem::path> cloudPaths;
+	
+	std::vector<bool> accAvailable;
+	
+	std::vector<boost::filesystem::path> accPaths;
 
 	std::vector<boost::filesystem::path> instancesPaths;
 

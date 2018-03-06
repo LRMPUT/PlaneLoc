@@ -185,7 +185,7 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
         {
             int pl = 0;
             for (auto it = objInstances.begin(); it != objInstances.end(); ++it, ++pl) {
-                cout << "adding plane " << pl << endl;
+//                cout << "adding plane " << pl << endl;
                 
                 ObjInstance &mapObj = *it;
                 const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = mapObj.getPoints();
@@ -269,7 +269,7 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
                                  viewer,
                                  viewPort1,
                                  viewPort2*/)) {
-                    cout << "Merging planes" << endl;
+//                    cout << "Merging planes" << endl;
         
                     matches.push_back(it);
                 }
@@ -324,7 +324,7 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
                 addPendingObj(newObj, matchedIds, settings.eolPendingInit);
             }
             
-            cout << "Multiple matches" << endl;
+//            cout << "Multiple matches" << endl;
         }
         
         if(viewer){
@@ -874,6 +874,10 @@ std::map<int, int> Map::getVisibleObjs(Vector7d pose,
     }
     
     map<int, int> idToCnt;
+    for(auto it = objInstances.begin(); it != objInstances.end(); ++it) {
+        idToCnt[it->getId()] = 0;
+    }
+    
     for(int r = 0; r < rows; ++r) {
         for (int c = 0; c < cols; ++c) {
             vector<pair<double, int>> &curPlanes = projPlanes[r][c];
@@ -885,12 +889,8 @@ std::map<int, int> Map::getVisibleObjs(Vector7d pose,
                 for(const pair<double, int> &curPair : curPlanes){
                     if(abs(minD - curPair.first) < 0.2 && curPair.first < 4.0){
                         int id = curPair.second;
-                        if(idToCnt.count(id) > 0){
-                            idToCnt.at(id) += 1;
-                        }
-                        else{
-                            idToCnt[id] = 1;
-                        }
+                        
+                        idToCnt.at(id) += 1;
                     }
                 }
             }

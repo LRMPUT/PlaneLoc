@@ -20,17 +20,20 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#include "../include/FileGrabber.hpp"
-
 #include <iterator>
 #include <algorithm>
+
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/string.hpp>
 
 #include <pcl/io/ply_io.h>
 #include <g2o/types/slam3d/se3quat.h>
 
+#include "FileGrabber.hpp"
 #include "Exceptions.hpp"
 #include "Misc.hpp"
+#include "Map.hpp"
+#include "Serialization.hpp"
 
 using namespace std;
 using namespace cv;
@@ -81,6 +84,21 @@ FileGrabber::FileGrabber(const cv::FileStorage& settings) :
 			if(boost::filesystem::is_regular_file(cloudFilePath)){
 				cloudPaths[f] = cloudFilePath;
 				cloudAvailable[f] = true;
+			}
+		}
+	}
+	{
+		cout << "reading acc paths" << endl;
+		accAvailable.resize(rgbPaths.size(), false);
+		accPaths.resize(rgbPaths.size());
+		boost::filesystem::path accDirPath = datasetDirPath / boost::filesystem::path("acc");
+		for(int f = 0; f < rgbPaths.size(); ++f){
+			char accFilename[100];
+			sprintf(accFilename, "acc%05d", f);
+			boost::filesystem::path accFilePath = accDirPath / boost::filesystem::path(accFilename);
+			if(boost::filesystem::is_regular_file(accFilePath)){
+				accPaths[f] = accFilePath;
+				accAvailable[f] = true;
 			}
 		}
 	}
@@ -301,4 +319,33 @@ int FileGrabber::getFrame(cv::Mat& rgb,
 					pose,
                     vo,
                     voCorr);
+}
+
+int FileGrabber::getFrame(cv::Mat &rgb,
+						  cv::Mat &depth,
+						  vector<FileGrabber::FrameObjInstance> &objInstances,
+						  std::vector<double> &accelData,
+						  Vector7d &pose,
+						  Vector7d &vo,
+						  bool &voCorr,
+						  Map &accMap)
+{
+	if(nextFrameIdx >= 0){
+        accMap = Map();
+        
+		if(accAvailable[nextFrameIdx]) {
+            cout << "loading map from file: " << accPaths[nextFrameIdx].c_str() << endl;
+            std::ifstream ifs(accPaths[nextFrameIdx].c_str());
+            boost::archive::text_iarchive ia(ifs);
+            ia >> accMap;
+        }
+	}
+	
+	return getFrame(rgb,
+					depth,
+					objInstances,
+					accelData,
+					pose,
+					vo,
+					voCorr);
 }

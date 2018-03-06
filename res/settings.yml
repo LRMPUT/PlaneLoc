@@ -97,7 +97,7 @@ fileGrabber:
 #
 #    imageFrame: 0
 
-    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test7"
+    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
 
     readObjLabeling: 0
 
@@ -108,17 +108,24 @@ fileGrabber:
     readVO: 1
 
 #    # test2
-#    voOffset: -2.50604 -0.0102974 -2.19215 0.998808 0.00037156 0.0435399 0.0220464
+    voOffset:
+      - -2.50604
+      - -0.0102974
+      - -2.19215
+      - 0.998808
+      - 0.00037156
+      - 0.0435399
+      - 0.0220464
 
     # test5
-    voOffset:
-      - -3.37964
-      - 0.667332
-      - -1.15169
-      - 0.118325
-      - 0.0675564
-      - -0.990661
-      - 0.0051312
+#    voOffset:
+#      - -3.37964
+#      - 0.667332
+#      - -1.15169
+#      - 0.118325
+#      - 0.0675564
+#      - -0.990661
+#      - 0.0051312
 
     depthScale: 1000
 
@@ -143,20 +150,39 @@ map:
 #    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
-  
+  mapFiles:
+    - "../res/PUT_Indoor/2017_04_04_test5/accMap"
+    - "../res/PUT_Indoor/2017_04_04_test6/accMap"
+    - "../res/PUT_Indoor/2017_04_04_test7/accMap"
+
 matching:
 
-  histDistThresh: 2.5
+  planeAppThresh: 2.5
+  lineAppThresh: 1.0000
 
+  lineToLineAngThresh: 0.26
+  planeToPlaneAngThresh: 0.26
+  planeToLineAngThresh: 0.26
   planeDistThresh: 5.0
 
-  intAreaThresh: 0.1
-
   scoreThresh: 0.00
-
   sinValsThresh: 0.001
+  planeEqDiffThresh: 0.02
+  intAreaThresh: 0.1
+  lineEqDiffThresh: 1.0000
+  intLenThresh: 1.0000
 
-  planeEqDiffThresh: 0.05
+#  histDistThresh: 2.5
+#
+#  planeDistThresh: 5.0
+#
+#  intAreaThresh: 0.1
+#
+#  scoreThresh: 0.00
+#
+#  sinValsThresh: 0.001
+#
+#  planeEqDiffThresh: 0.02
 
 planeSlam:
   # NYUv2
@@ -188,9 +214,9 @@ planeSlam:
 
   useLines: 0
 
-  globalMatching: 0
+  globalMatching: 1
 
-  incrementalMatching: 1
+  incrementalMatching: 0
 
   drawVis: 1
 
@@ -209,6 +235,8 @@ planeSlam:
   saveVis: 0
 
   framesFromPly: 0
+
+  processFrames: 0
 
 
   poseDiffThresh: 0.11

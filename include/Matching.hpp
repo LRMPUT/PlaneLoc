@@ -204,8 +204,8 @@ private:
                                      const vectorLineSeg &lineSegs2,
                                      double planeToLineAngThresh);
     
-    static std::vector<PotMatch> findPotMatches(const vectorObjInstance& objInstances1,
-                                                const vectorObjInstance& objInstances2,
+    static std::vector<PotMatch> findPotMatches(const vectorObjInstance &mapObjInstances,
+												const vectorObjInstance &frameObjInstances,
                                                 double planeAppThresh,
                                                 double lineAppThresh,
                                                 double lineToLineAngThresh,
@@ -214,8 +214,8 @@ private:
                                                 int viewPort2 = -1);
     
     static std::vector<std::vector<PotMatch> > findPotSets(std::vector<PotMatch> potMatches,
-                                                           const vectorObjInstance& objInstances1,
-                                                           const vectorObjInstance& objInstances2,
+														   const vectorObjInstance &mapObjInstances,
+														   const vectorObjInstance &frameObjInstances,
                                                            double planeDistThresh,
                                                            double lineToLineAngThresh,
                                                            double planeToPlaneAngThresh,
