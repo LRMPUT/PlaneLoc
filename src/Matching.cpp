@@ -72,7 +72,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
     double lineEqDiffThresh = (double)fs["matching"]["lineEqDiffThresh"];
     double intLenThresh = (double)fs["matching"]["intLenThresh"];
 
-    double shadingLevel = 1.0/8;
+    double shadingLevel = 1.0/16;
 
     chrono::high_resolution_clock::time_point startTime = chrono::high_resolution_clock::now();
 
@@ -90,28 +90,29 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 		viewer->removeAllShapes(viewPort1);
 		viewer->removeAllPointClouds(viewPort2);
 		viewer->removeAllShapes(viewPort2);
-
+        
+        for(int om = 0; om < mapObjInstances.size(); ++om){
+            const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = mapObjInstances[om].getPoints();
+            viewer->addPointCloud(curPl, string("plane1_") + to_string(om), viewPort2);
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                     shadingLevel,
+                                                     string("plane1_") + to_string(om),
+                                                     viewPort1);
+        }
+        
 		for(int of = 0; of < frameObjInstances.size(); ++of){
 			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = frameObjInstances[of].getPoints();
 //			pcl::PointCloud<pcl::PointXYZRGBA>::Ptr curPlFaded(new pcl::PointCloud<pcl::PointXYZRGBA>(*curPl));
 //			for(int pt = 0; pt < curPlFaded->size(); ++pt){
 //				curPlFaded->at(pt).a = 100;
 //			}
-			viewer->addPointCloud(curPl, string("plane1_") + to_string(of), viewPort1);
+			viewer->addPointCloud(curPl, string("plane2_") + to_string(of), viewPort1);
 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
 													shadingLevel,
-													string("plane1_") + to_string(of),
-													viewPort1);
-		}
-		for(int om = 0; om < mapObjInstances.size(); ++om){
-			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPl = mapObjInstances[om].getPoints();
-			viewer->addPointCloud(curPl, string("plane2_") + to_string(om), viewPort2);
-			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-													shadingLevel,
-													string("plane2_") + to_string(om),
+													string("plane2_") + to_string(of),
 													viewPort2);
 		}
-
+  
 		viewer->initCameraParameters();
 		viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
         
@@ -259,9 +260,9 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                                       planeEqDiffThresh,
                                                       lineEqDiffThresh,
                                                       intAreaThresh,
-                                                      intLenThresh,
+                                                      intLenThresh/*,
                                                       viewer,
-                                                      viewPort1, viewPort2);
+                                                      viewPort1, viewPort2*/);
             
             if(score > scoreThresh){
 				vector<double> appDiffs;
@@ -277,45 +278,45 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
             
 		}
 
-		if(viewer && isAdded){
-			for(int p = 0; p < triplets[s].size(); ++p){
-				int om = triplets[s][p].first;
-				int of = triplets[s][p].second;
-
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														1.0,
-														string("plane1_") + to_string(om),
-														viewPort1);
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														1.0,
-														string("plane2_") + to_string(of),
-														viewPort2);
-			}
-
-			// time for watching
-			viewer->resetStoppedFlag();
-
-//			viewer->initCameraParameters();
-//			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-			while (!viewer->wasStopped()){
-				viewer->spinOnce (100);
-				std::this_thread::sleep_for(std::chrono::milliseconds(50));
-			}
-
-			for(int p = 0; p < triplets[s].size(); ++p){
-				int om = triplets[s][p].first;
-				int of = triplets[s][p].second;
-
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														shadingLevel,
-														string("plane1_") + to_string(om),
-														viewPort1);
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														shadingLevel,
-														string("plane2_") + to_string(of),
-														viewPort2);
-			}
-		}
+//		if(viewer && isAdded){
+//			for(int p = 0; p < potSets[s].size(); ++p){
+//				int om = potSets[s][p].plane1;
+//				int of = potSets[s][p].plane2;
+//
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														1.0,
+//														string("plane1_") + to_string(om),
+//														viewPort1);
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														1.0,
+//														string("plane2_") + to_string(of),
+//														viewPort2);
+//			}
+//
+//			// time for watching
+//			viewer->resetStoppedFlag();
+//
+////			viewer->initCameraParameters();
+////			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+//			while (!viewer->wasStopped()){
+//				viewer->spinOnce (100);
+//				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//			}
+//
+//            for(int p = 0; p < potSets[s].size(); ++p){
+//                int om = potSets[s][p].plane1;
+//                int of = potSets[s][p].plane2;
+//
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														shadingLevel,
+//														string("plane1_") + to_string(om),
+//														viewPort1);
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														shadingLevel,
+//														string("plane2_") + to_string(of),
+//														viewPort2);
+//			}
+//		}
 	}
 
     chrono::high_resolution_clock::time_point endTransformTime = chrono::high_resolution_clock::now();
@@ -352,7 +353,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 			curScore += transforms[t].intAreaPlanes[p]/frameObjInvWeights[p]*exp(-transforms[t].matchSet[p].planeAppDiff);
 		}
 		transforms[t].score = curScore;
-//		cout << "score = " << transforms[t].score << endl;
+		cout << "score = " << transforms[t].score << endl;
 	}
 
     chrono::high_resolution_clock::time_point endScoreTime = chrono::high_resolution_clock::now();
@@ -389,8 +390,9 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 
 //	Vector7d ret;
 	if(transforms.size() > 0){
+        cout << "construct probability distribution using gaussian kernels" << endl;
 		// construct probability distribution using gaussian kernels
-		vector<ProbDistKernel> dist;
+		vectorProbDistKernel dist;
 		Eigen::Matrix<double, 6, 6> distInfMat = Eigen::Matrix<double, 6, 6>::Identity();
 		// information matrix for position
 		distInfMat.block<3, 3>(3, 3) = 10.0 * Eigen::Matrix<double, 3, 3>::Identity();
@@ -1761,7 +1763,7 @@ double Matching::checkLineSegIntersection(const LineSeg &lineSeg1,
 }
 
 double Matching::evalPoint(const Vector7d &pt,
-                           const std::vector<ProbDistKernel> &dist)
+                           const vectorProbDistKernel &dist)
 {
 	double res = 0.0;
 	for(int k = 0; k < dist.size(); ++k){

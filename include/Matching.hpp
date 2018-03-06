@@ -174,7 +174,8 @@ private:
 						double iweight);
 
 		double eval(Vector7d pt) const;
-
+		
+		EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 	private:
 		Vector7d kPt;
 
@@ -184,6 +185,8 @@ private:
 
 		double weight;
 	};
+    
+    typedef std::vector<Matching::ProbDistKernel, Eigen::aligned_allocator<Matching::ProbDistKernel> > vectorProbDistKernel;
     
     static double compAngleDiffBetweenNormals(const Eigen::Vector3d &nf1,
 											  const Eigen::Vector3d &ns1,
@@ -276,12 +279,12 @@ private:
                                              double lineEqDiffThresh,
                                              double intAreaThresh,
                                              double intLenThresh,
-                                             pcl::visualization::PCLVisualizer::Ptr viewer,
-                                             int viewPort1,
-                                             int viewPort2);
+                                             pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
+											 int viewPort1 = -1,
+											 int viewPort2 = -1);
 
 	static double evalPoint(const Vector7d &pt,
-							const std::vector<ProbDistKernel> &dist);
+							const vectorProbDistKernel &dist);
     
 	static void intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull1,
 									 const pcl::Vertices &poly1,
