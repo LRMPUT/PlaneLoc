@@ -116,7 +116,7 @@ void PlaneSlam::run(){
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudRead(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
 
 	static constexpr int frameRate = 30;
-	int framesToSkip = 0;
+	int framesToSkip = 1400;
 	int framesSkipped = 0;
 	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr) >= 0))
 	{
@@ -442,7 +442,7 @@ void PlaneSlam::run(){
             pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
             int curViewPort1 = -1;
             int curViewPort2 = -1;
-            if (visualizeMatching) {
+            if (visualizeMatching && curFrameIdx == 1400) {
                 curViewer = viewer;
                 curViewPort1 = v1;
                 curViewPort2 = v2;
@@ -456,8 +456,8 @@ void PlaneSlam::run(){
             evaluateMatching(settings,
                              accObjInstances,
                              mapObjInstances,
-                             inputResIncrFile,
-                             outputResIncrFile,
+                             inputResGlobFile,
+                             outputResGlobFile,
                              pose,
                              scoreThresh,
                              scoreDiffThresh,

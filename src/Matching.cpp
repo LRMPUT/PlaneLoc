@@ -158,7 +158,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 	std::vector<ValidTransform> transforms;
 
 	for(int s = 0; s < potSets.size(); ++s){
-		cout << "s = " << s << endl;
+//		cout << "s = " << s << endl;
         
         vectorVector3d pointsMap;
         vectorVector4d planesMap;
@@ -242,9 +242,9 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                                                         fullConstrRot,
                                                                         fullConstrTrans);
 
-        cout << "transformComp = " << transformComp.transpose() << endl;
-        cout << "fullConstrRot = " << fullConstrRot << endl;
-        cout << "fullConstrTrans = " << fullConstrTrans << endl;
+//        cout << "transformComp = " << transformComp.transpose() << endl;
+//        cout << "fullConstrRot = " << fullConstrRot << endl;
+//        cout << "fullConstrTrans = " << fullConstrTrans << endl;
 
 		bool isAdded = false;
 		if(fullConstrRot && fullConstrTrans){
@@ -278,45 +278,47 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
             
 		}
 
-//		if(viewer && isAdded){
-//			for(int p = 0; p < potSets[s].size(); ++p){
-//				int om = potSets[s][p].plane1;
-//				int of = potSets[s][p].plane2;
-//
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														1.0,
-//														string("plane1_") + to_string(om),
-//														viewPort1);
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														1.0,
-//														string("plane2_") + to_string(of),
-//														viewPort2);
-//			}
-//
-//			// time for watching
-//			viewer->resetStoppedFlag();
-//
-////			viewer->initCameraParameters();
-////			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-//			while (!viewer->wasStopped()){
-//				viewer->spinOnce (100);
-//				std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//			}
-//
-//            for(int p = 0; p < potSets[s].size(); ++p){
-//                int om = potSets[s][p].plane1;
-//                int of = potSets[s][p].plane2;
-//
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														shadingLevel,
-//														string("plane1_") + to_string(om),
-//														viewPort1);
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														shadingLevel,
-//														string("plane2_") + to_string(of),
-//														viewPort2);
-//			}
-//		}
+		if(viewer && isAdded){
+            cout << "transformComp = " << transformComp.transpose() << endl;
+            
+			for(int p = 0; p < potSets[s].size(); ++p){
+				int om = potSets[s][p].plane1;
+				int of = potSets[s][p].plane2;
+
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														1.0,
+														string("plane1_") + to_string(om),
+														viewPort1);
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														1.0,
+														string("plane2_") + to_string(of),
+														viewPort2);
+			}
+
+			// time for watching
+			viewer->resetStoppedFlag();
+
+//			viewer->initCameraParameters();
+//			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+			while (!viewer->wasStopped()){
+				viewer->spinOnce (100);
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			}
+
+            for(int p = 0; p < potSets[s].size(); ++p){
+                int om = potSets[s][p].plane1;
+                int of = potSets[s][p].plane2;
+
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														shadingLevel,
+														string("plane1_") + to_string(om),
+														viewPort1);
+				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+														shadingLevel,
+														string("plane2_") + to_string(of),
+														viewPort2);
+			}
+		}
 	}
 
     chrono::high_resolution_clock::time_point endTransformTime = chrono::high_resolution_clock::now();
@@ -353,7 +355,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 			curScore += transforms[t].intAreaPlanes[p]/frameObjInvWeights[p]*exp(-transforms[t].matchSet[p].planeAppDiff);
 		}
 		transforms[t].score = curScore;
-		cout << "score = " << transforms[t].score << endl;
+//		cout << "score = " << transforms[t].score << endl;
 	}
 
     chrono::high_resolution_clock::time_point endScoreTime = chrono::high_resolution_clock::now();
@@ -390,7 +392,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 
 //	Vector7d ret;
 	if(transforms.size() > 0){
-        cout << "construct probability distribution using gaussian kernels" << endl;
+//        cout << "construct probability distribution using gaussian kernels" << endl;
 		// construct probability distribution using gaussian kernels
 		vectorProbDistKernel dist;
 		Eigen::Matrix<double, 6, 6> distInfMat = Eigen::Matrix<double, 6, 6>::Identity();
@@ -468,16 +470,19 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                 std::vector<float> nnDists(1);
                 double fitScore = 0.0;
                 int ptCnt = 0;
+                double maxDist = 0.0;
                 for(int p = 0; p < framePcTrans->size(); ++p){
                     kdTree.nearestKSearch(framePcTrans->at(p), 1, nnIndices, nnDists);
 
                     fitScore += nnDists[0];
                     ++ptCnt;
+                    
+                    maxDist = std::max(maxDist, (double)nnDists[0]);
                 }
                 if(ptCnt > 0){
                     fitScore /= ptCnt;
                 }
-
+                cout << "maxDist = " << maxDist << endl;
 //                pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> icp;
 //                icp.setInputSource(framePc);
 //                icp.setInputTarget(mapPc);
@@ -516,6 +521,11 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                     viewer->removeAllShapes(viewPort2);
 
                     viewer->addPointCloud(framePcTrans, "cloud_out", viewPort1);
+                    viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                             1.0, 0.0, 0.0,
+                                                             "cloud_out",
+                                                             viewPort1);
+                    
                     viewer->addPointCloud(mapPc, "cloud_map", viewPort1);
 
                     viewer->resetStoppedFlag();
@@ -717,6 +727,8 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &map
                                                     int viewPort1,
                                                     int viewPort2)
 {
+    double shadingLevel = 1.0/16;
+    
     vector<PotMatch> potMatches;
     
     vector<cv::Mat> frameObjFeats;
@@ -793,12 +805,12 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &map
 //			if(viewer){
 //				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
 //														1.0,
-//														string("plane1_") + to_string(of),
+//														string("plane1_") + to_string(om),
 //														viewPort1);
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														1.0,
-//														string("plane2_") + to_string(om),
-//														viewPort2);
+//                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//                                                         1.0,
+//                                                         string("plane2_") + to_string(of),
+//                                                         viewPort2);
 //
 //				// time for watching
 //				viewer->resetStoppedFlag();
@@ -812,12 +824,12 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &map
 //
 //				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
 //														shadingLevel,
-//														string("plane1_") + to_string(of),
+//														string("plane1_") + to_string(om),
 //														viewPort1);
-//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-//														shadingLevel,
-//														string("plane2_") + to_string(om),
-//														viewPort2);
+//                viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//                                                         shadingLevel,
+//                                                         string("plane2_") + to_string(of),
+//                                                         viewPort2);
 //			}
         }
     }
@@ -1237,28 +1249,25 @@ Matching::bestTransformPointsAndDirs(const vectorVector3d &points1,
 //        cout << "evals = " << evals << endl;
 //        cout << "evectors = " << evectors << endl;
 
-        int numMaxEvals = 0;
         int maxEvalInd = 0;
         double maxEval = 0;
         for(int i = 0; i < evals.size(); ++i){
-            // if values the same for this threshold
-            if(fabs(maxEval - evals(i)) < sinValsThresh){
-                ++numMaxEvals;
-            }
-            else if(maxEval < evals(i)){
-                numMaxEvals = 1;
-                maxEval = evals[i];
+            if(maxEval < evals(i)){
+                maxEval = evals(i);
                 maxEvalInd = i;
             }
         }
-        // if constraints imposed by planes do not make computing transformation possible
-        if(numMaxEvals > 1){
-            fullConstrRot = false;
-            fullConstrTrans = false;
+        // if the greatest eigenvalue has its negative counterpart
+        for(int i = 0; i < evals.size(); ++i){
+            // if constraints imposed by planes do not make computing transformation possible
+            if(abs(maxEval + evals(i)) < sinValsThresh){
+                fullConstrRot = false;
+                fullConstrTrans = false;
+            }
         }
 
         //	Eigen::EigenSolver<Eigen::Matrix4d> es(A);
-        //	cout << "eigenvalues = " << es.eigenvalues() << endl;
+        cout << "eigenvalues = " << esolver.eigenvalues() << endl;
         //	cout << "eigenvectors = " << es.eigenvectors() << endl;
 
         Eigen::Vector4d rQuat = evectors.block<4, 1>(0, maxEvalInd);
@@ -1621,7 +1630,10 @@ double Matching::scoreTransformByProjection(const Vector7d &transform,
 //                cout << "curIntArea = " << curIntArea << endl;
 //            }
 //			cout << "intAreaThresh = " << intAreaThresh << endl;
-                    if (curIntArea < intAreaThresh) {
+//                    if (curIntArea < intAreaThresh) {
+//                        curValid = false;
+//                    }
+                    if(interScore < 0.3){
                         curValid = false;
                     }
                     allScorePlanes += interScore;

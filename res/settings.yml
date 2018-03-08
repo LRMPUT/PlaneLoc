@@ -166,7 +166,7 @@ matching:
   planeDistThresh: 5.0
 
   scoreThresh: 0.00
-  sinValsThresh: 0.001
+  sinValsThresh: 0.03
   planeEqDiffThresh: 0.02
   intAreaThresh: 0.1
   lineEqDiffThresh: 1.0000
