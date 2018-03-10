@@ -49,7 +49,7 @@ void help()
 }
 
 int main(int argc, char * argv[]){
-	try{
+//	try{
 		//settings file
 		std::string settingsFilename;
 		if (argc == 1) {
@@ -76,21 +76,21 @@ int main(int argc, char * argv[]){
 
 		PlaneSlam planeSlam(fs);
 		planeSlam.run();
-	}
-	catch(plane_exception& e){
-		cout << "Catch pgm_exception in main(): " << e.what() << endl;
-	}
-	catch(char const *str){
-		cout << "Catch const char* in main(): " << str << endl;
-		return -1;
-	}
-	catch(std::exception& e){
-		cout << "Catch std exception in main(): " << e.what() << endl;
-	}
-	catch(...){
-		cout << "Catch ... in main()" << endl;
-		return -1;
-	}
+//	}
+//	catch(plane_exception& e){
+//		cout << "Catch pgm_exception in main(): " << e.what() << endl;
+//	}
+//	catch(char const *str){
+//		cout << "Catch const char* in main(): " << str << endl;
+//		return -1;
+//	}
+//	catch(std::exception& e){
+//		cout << "Catch std exception in main(): " << e.what() << endl;
+//	}
+//	catch(...){
+//		cout << "Catch ... in main()" << endl;
+//		return -1;
+//	}
 }
 
 

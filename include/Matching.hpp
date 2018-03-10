@@ -48,6 +48,7 @@ public:
 									 vectorVector7d &bestTrans,
 									 std::vector<double> &bestTransProbs,
 									 std::vector<double> &bestTransFits,
+									 std::vector<int> &bestTransDistinct,
 									 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
 									 int viewPort1 = -1,
 									 int viewPort2 = -1);
@@ -286,62 +287,8 @@ private:
 	static double evalPoint(const Vector7d &pt,
 							const vectorProbDistKernel &dist);
     
-	static void intersectConvexHulls(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull1,
-									 const pcl::Vertices &poly1,
-									 const pcl::PointCloud<pcl::PointXYZRGB>::Ptr chull2,
-									 const pcl::Vertices &poly2,
-									 const Eigen::Vector4d &planeEq,
-									 pcl::PointCloud<pcl::PointXYZRGB>::Ptr chullRes,
-									 pcl::Vertices &polyRes,
-									 double &areaRes,
-									 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-									 int viewPort1 = -1,
-									 int viewPort2 = -1);
-	enum class SegIntType{
-		Collinear,
-		Vertex,
-		One,
-		Zero
-	};
-
-	enum class Inside{
-		First,
-		Second,
-		Unknown
-	};
-
-	static SegIntType intersectLineSegments2d(const Eigen::Vector2d &begPt1,
-                                              const Eigen::Vector2d &endPt1,
-                                              const Eigen::Vector2d &begPt2,
-                                              const Eigen::Vector2d &endPt2,
-                                              Eigen::Vector2d &intPt1,
-                                              Eigen::Vector2d &intPt2,
-                                              double eps = 1e-6);
-
-	static SegIntType intersectParallelLineSegments(const Eigen::Vector2d& begPt1,
-										const Eigen::Vector2d& endPt1,
-										const Eigen::Vector2d& begPt2,
-										const Eigen::Vector2d& endPt2,
-										Eigen::Vector2d& intPt1,
-										Eigen::Vector2d& intPt2,
-										double eps);
-
-	static bool isBetween(const Eigen::Vector2d& beg,
-						const Eigen::Vector2d& end,
-						const Eigen::Vector2d& pt,
-						double eps);
-
-	static Inside newInsideFlag(Inside oldFlag,
-								const Eigen::Vector2d& intPt,
-								double cross1H2,
-								double cross2H1,
-								double eps);
-
-	static double cross2d(const Eigen::Vector2d& v1,
-						const Eigen::Vector2d& v2);
-
-	static void makeCclockwise(vectorVector2d &chull,
-							   double eps = 1e-6);
+    static int countDifferent(const std::set<int> &setIdxs,
+                              const vectorObjInstance &objs);
 };
 
 #endif /* INCLUDE_MATCHING_HPP_ */

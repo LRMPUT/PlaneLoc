@@ -114,9 +114,10 @@ void PlaneSlam::run(){
     Vector7d voPose;
     bool voCorr = false;
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pointCloudRead(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
-
+    
+    int framesToSkip = (int)settings["planeSlam"]["framesToSkip"];
+    cout << "skipping " << framesToSkip << " frames" << endl;
 	static constexpr int frameRate = 30;
-	int framesToSkip = 1400;
 	int framesSkipped = 0;
 	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr) >= 0))
 	{
@@ -144,6 +145,7 @@ void PlaneSlam::run(){
     double scoreThresh = (double)settings["planeSlam"]["scoreThresh"];
     double scoreDiffThresh = (double)settings["planeSlam"]["scoreDiffThresh"];
     double fitThresh = (double)settings["planeSlam"]["fitThresh"];
+    double distinctThresh = (double)settings["planeSlam"]["distinctThresh"];
 
     vectorVector7d visGtPoses;
     vectorVector7d visRecPoses;
@@ -178,14 +180,14 @@ void PlaneSlam::run(){
 //    vector<ObjInstance> accObjInstances;
     Map accMap;
     Vector7d accStartFramePose;
-    int accFrames = 50;
+    int accFrames = 2270;
     
-    int processNewFrameSkip = 1;
+    int processNewFrameSkip = 5;
     
 //	ofstream logFile("../output/log.out");
 	int curFrameIdx;
     cout << "Starting the loop" << endl;
-	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr, accMap)) >= 0) {
+	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr/*, accMap*/)) >= 0) {
         cout << "curFrameIdx = " << curFrameIdx << endl;
         
         int64_t timestamp = (int64_t) curFrameIdx * 1e6 / frameRate;
@@ -200,7 +202,7 @@ void PlaneSlam::run(){
         bool localize = true;
         
         if (processFrames) {
-            if ((curFrameIdx % accFrames) % processNewFrameSkip == processNewFrameSkip - 1) {
+            if (((curFrameIdx - framesSkipped) % accFrames) % processNewFrameSkip == processNewFrameSkip - 1) {
                 g2o::SE3Quat poseSE3Quat(pose);
                 poseSE3Quat = gtOffsetSE3Quat.inverse() * poseSE3Quat;
                 pose = poseSE3Quat.toVector();
@@ -288,7 +290,7 @@ void PlaneSlam::run(){
                 if (!pointCloud->empty()) {
                     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointCloudLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
             
-                    if (!loadRes && !visualizeSegmentation) {
+                    if (!visualizeSegmentation) {
 //				PlaneSegmentation::segment(settings,
 //									pointCloudNormals,
 //									pointCloudLab,
@@ -301,7 +303,8 @@ void PlaneSlam::run(){
                                                    pointCloudLab,
                                                    curObjInstances);
                 
-                    } else if (visualizeSegmentation) {
+                    }
+                    else {
 //                PlaneSegmentation::segment(settings,
 //                                      pointCloudNormals,
 //                                      pointCloudLab,
@@ -338,7 +341,7 @@ void PlaneSlam::run(){
                     }
             
                     // if not the last frame for accumulation
-                    if (curFrameIdx % accFrames != accFrames - 1) {
+                    if ((curFrameIdx - framesSkipped) % accFrames != accFrames - 1) {
                         localize = false;
                     }
 
@@ -347,11 +350,12 @@ void PlaneSlam::run(){
 //                }
             
                     // if current frame starts accumulation
-                    if (curFrameIdx % accFrames == 0) {
+                    if ((curFrameIdx - framesSkipped) % accFrames == 0) {
                         cout << endl << "starting new accumulation" << endl << endl;
                 
                         accMap = Map();
                         accStartFramePose = voPose;
+//                        accStartFramePose = pose;
                     }
                     
                     if (voCorr) {
@@ -381,7 +385,7 @@ void PlaneSlam::run(){
                                                 v2*/);
                 
                         cout << "Merging new" << endl;
-                        if (curFrameIdx >= 1800) {
+                        if (curFrameIdx >= 2500) {
                             accMap.mergeNewObjInstances(curObjInstancesTrans,
                                                         idToCnt,
                                                         viewer,
@@ -395,8 +399,9 @@ void PlaneSlam::run(){
                 
                         // every 50th frame
                         int mergeMapFrameSkip = 50;
-                        if ((curFrameIdx % accFrames) % mergeMapFrameSkip ==
-                            mergeMapFrameSkip - 1) {
+                        if (((curFrameIdx - framesSkipped) % accFrames) % mergeMapFrameSkip ==
+                            mergeMapFrameSkip - 1)
+                        {
                             cout << "Merging map" << endl;
                             accMap.mergeMapObjInstances(/*viewer,
                                                   v1,
@@ -405,7 +410,7 @@ void PlaneSlam::run(){
                     }
             
                     // if last frame in accumulation
-                    if (curFrameIdx % accFrames == accFrames - 1) {
+                    if ((curFrameIdx - framesSkipped) % accFrames == accFrames - 1) {
                         accMap.removeObjsEolThresh(6);
                 
                         // saving
@@ -442,7 +447,7 @@ void PlaneSlam::run(){
             pcl::visualization::PCLVisualizer::Ptr curViewer = nullptr;
             int curViewPort1 = -1;
             int curViewPort2 = -1;
-            if (visualizeMatching && curFrameIdx == 1400) {
+            if (visualizeMatching) {
                 curViewer = viewer;
                 curViewPort1 = v1;
                 curViewPort2 = v2;
@@ -452,7 +457,7 @@ void PlaneSlam::run(){
             for(const ObjInstance &curObj : accMap){
                 accObjInstances.push_back(curObj);
             }
-            
+    
             evaluateMatching(settings,
                              accObjInstances,
                              mapObjInstances,
@@ -462,6 +467,7 @@ void PlaneSlam::run(){
                              scoreThresh,
                              scoreDiffThresh,
                              fitThresh,
+                             distinctThresh,
                              poseDiffThresh,
                              predTrans,
                              curRecCode,
@@ -479,6 +485,7 @@ void PlaneSlam::run(){
                 ++corrCnt;
             } else if (curRecCode == RecCode::Incorr) {
                 ++incorrCnt;
+                stopFlag |= stopWrongFrame;
             } else {
                 ++unkCnt;
             }
@@ -505,7 +512,7 @@ void PlaneSlam::run(){
                 curViewPort1 = v1;
                 curViewPort2 = v2;
             }
-            
+    
             evaluateMatching(settings,
                              curObjInstances,
                              prevObjInstances,
@@ -515,6 +522,7 @@ void PlaneSlam::run(){
                              scoreThresh,
                              scoreDiffThresh,
                              fitThresh,
+                             distinctThresh,
                              poseDiffThresh,
                              predTrans,
                              curRecCode,
@@ -532,6 +540,7 @@ void PlaneSlam::run(){
                 ++corrCnt;
             } else if (curRecCode == RecCode::Incorr) {
                 ++incorrCnt;
+                stopFlag |= stopWrongFrame;
             } else {
                 ++unkCnt;
             }
@@ -758,6 +767,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
                                  double scoreThresh,
                                  double scoreDiffThresh,
                                  double fitThresh,
+                                 double distinctThresh,
                                  double poseDiffThresh,
                                  Vector7d &predTransform,
                                  RecCode &recCode,
@@ -771,6 +781,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
     vectorVector7d planesTrans;
     vector<double> planesTransScores;
     vector<double> planesTransFits;
+    vector<int> planesTransDistinct;
     Matching::MatchType matchType = Matching::MatchType::Unknown;
     
     if(inputResFile.is_open()){
@@ -789,14 +800,16 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
                 Vector7d curTrans;
                 double curScore;
                 double curFit;
+                int curDistinct;
                 double curDiff;
                 for(int c = 0; c < 7; ++c){
                     inputResFile >> curTrans(c);
                 }
-                inputResFile >> curScore >> curFit >> curDiff;
+                inputResFile >> curScore >> curFit >> curDistinct >> curDiff;
                 planesTrans.push_back(curTrans);
                 planesTransScores.push_back(curScore);
                 planesTransFits.push_back(curFit);
+                planesTransDistinct.push_back(curDistinct);
                 // diff is recalculated later
             }
         }
@@ -813,6 +826,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
                                               planesTrans,
                                               planesTransScores,
                                               planesTransFits,
+                                              planesTransDistinct,
                                               viewer,
                                               viewPort1,
                                               viewPort2);
@@ -832,6 +846,9 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
         if(planesTransFits.front() > fitThresh){
             isUnamb = false;
         }
+        if(planesTransDistinct.front() < distinctThresh){
+            isUnamb = false;
+        }
     }
     if(planesTrans.size() > 0){
 //					stopFlag = true;
@@ -847,6 +864,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
         cout << "planesTrans[" << t << "] = " << planesTrans[t].transpose() << endl;
         cout << "planesTransScores[" << t << "] = " << planesTransScores[t] << endl;
         cout << "planesTransFits[" << t << "] = " << planesTransFits[t] << endl;
+        cout << "planesTransDistinct[" << t << "] = " << planesTransDistinct[t] << endl;
         if(std::isnan(planesTransScores[t])){
             planesTransScores[t] = 0.0;
         }
@@ -906,6 +924,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
                 outputResFile << planesTrans[t].transpose() <<
                                   " " << planesTransScores[t] <<
                                   " " << planesTransFits[t] <<
+                                  " " << planesTransDistinct[t] <<
                                   " " << planesTransDiff[t] << endl;
             }
         }

@@ -84,20 +84,8 @@ fileGrabber:
   
   #imageFrame: 8
   
-#    # NYU depth v2 living room
-#    datasetDirPath: "../res/NYUv2_living_rooms_part1/living_room_0003_proc"
-#
-#    readObjLabeling: 0
-#
-#    readAccel: 0
-#
-#    readPose: 1
-#
-#    depthScale: 5000
-#
-#    imageFrame: 0
-
-    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+    # NYU depth v2 living room
+    datasetDirPath: "../res/living_room_0003_proc"
 
     readObjLabeling: 0
 
@@ -106,6 +94,24 @@ fileGrabber:
     readPose: 1
 
     readVO: 1
+
+    depthScale: 5000
+
+    imageFrame: 0
+
+#    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+#
+#    readObjLabeling: 0
+#
+#    readAccel: 0
+#
+#    readPose: 1
+#
+#    readVO: 1
+#
+#    depthScale: 1000
+#
+#    imageFrame: 0
 
 #    # test2
     voOffset:
@@ -127,9 +133,6 @@ fileGrabber:
 #      - -0.990661
 #      - 0.0051312
 
-    depthScale: 1000
-
-    imageFrame: 0
 
 map:
   
@@ -150,10 +153,10 @@ map:
 #    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
-  mapFiles:
-    - "../res/PUT_Indoor/2017_04_04_test5/accMap"
-    - "../res/PUT_Indoor/2017_04_04_test6/accMap"
-    - "../res/PUT_Indoor/2017_04_04_test7/accMap"
+#  mapFiles:
+#    - "../res/PUT_Indoor/2017_04_04_test5/accMap"
+#    - "../res/PUT_Indoor/2017_04_04_test6/accMap"
+#    - "../res/PUT_Indoor/2017_04_04_test7/accMap"
 
 matching:
 
@@ -212,9 +215,11 @@ planeSlam:
     - 0.0
     - 1.0
 
+  framesToSkip: 0
+
   useLines: 0
 
-  globalMatching: 1
+  globalMatching: 0
 
   incrementalMatching: 0
 
@@ -222,30 +227,32 @@ planeSlam:
 
   visualizeSegmentation: 0
 
-  visualizeMatching: 1
+  visualizeMatching: 0
 
   stopEveryFrame: 0
 
   stopWrongFrame: 0
 
-  saveRes: 1
+  saveRes: 0
 
-  loadRes: 0
+  loadRes: 1
 
   saveVis: 0
 
   framesFromPly: 0
 
-  processFrames: 0
+  processFrames: 1
 
 
-  poseDiffThresh: 0.11
+  poseDiffThresh: 0.12
 
 
-  scoreThresh: 1.1
+  scoreThresh: 1.0
 
-  scoreDiffThresh: 0.2
+  scoreDiffThresh: 0.0
 
   fitThresh: 0.07
+
+  distinctThresh: 6
 
 

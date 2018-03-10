@@ -69,6 +69,8 @@ public:
 				const vectorPlaneSeg& isvs,
                 int ieol = 4);
 	
+    ObjInstance(const ObjInstance &other);
+    
 	void merge(const ObjInstance &other);
 
 	inline int getId() const {

@@ -70,6 +70,19 @@ public:
                     const Eigen::Vector3d &xAxis,
                     const Eigen::Vector3d &yAxis);
     
+    ConcaveHull(const ConcaveHull &other);
+    
+    void init(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr ipoints3d,
+              const Eigen::Vector4d &planeEq);
+    
+    void init(const std::vector<Polygon_2> &polygons,
+              const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d,
+              const Eigen::Vector3d &plNormal,
+              double plD,
+              const Eigen::Vector3d &origin,
+              const Eigen::Vector3d &xAxis,
+              const Eigen::Vector3d &yAxis);
+    
     const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &getPolygons3d() const {
         return polygons3d;
     }

@@ -27,8 +27,59 @@ ConcaveHull::ConcaveHull() : totalArea(0.0) {}
 
 ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
                          const Eigen::Vector4d &planeEq)
-    : totalArea(0.0)
 {
+    init(points3d,
+         planeEq);
+}
+
+
+ConcaveHull::ConcaveHull(const vector<ConcaveHull::Polygon_2> &ipolygons,
+                         const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &ipolygons3d,
+                         const Eigen::Vector3d &iplNormal,
+                         double iplD,
+                         const Eigen::Vector3d &iorigin,
+                         const Eigen::Vector3d &ixAxis,
+                         const Eigen::Vector3d &iyAxis)
+{
+//    computeFrame();
+//    Eigen::Vector4d planeEq;
+//    planeEq.head<3>() = plNormal;
+//    planeEq(3) = -plD;
+//    cout << "ConcaveHull::ConcaveHull, planeEq = " << planeEq.transpose() << endl;
+    
+    init(ipolygons,
+         ipolygons3d,
+         iplNormal,
+         iplD,
+         iorigin,
+         ixAxis,
+         iyAxis);
+}
+
+
+ConcaveHull::ConcaveHull(const ConcaveHull &other)
+{
+    polygons = other.polygons;
+    areas = other.areas;
+    totalArea = other.totalArea;
+//    polygons3d = other.polygons3d;
+    for(pcl::PointCloud<pcl::PointXYZRGB>::Ptr opc : other.polygons3d){
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr opcCopy(new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::copyPointCloud(*opc, *opcCopy);
+        polygons3d.push_back(opcCopy);
+    }
+    plNormal;
+    plD;
+    origin;
+    xAxis;
+    yAxis;
+}
+
+void ConcaveHull::init(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
+                       const Eigen::Vector4d &planeEq)
+{
+    totalArea = 0.0;
+    
     pcl::ModelCoefficients::Ptr mdlCoeff (new pcl::ModelCoefficients);
     mdlCoeff->values.resize(4);
     mdlCoeff->values[0] = planeEq(0);
@@ -41,7 +92,7 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
     proj.setInputCloud(points3d);
     proj.setModelCoefficients(mdlCoeff);
     proj.filter(*points3dProj);
-    
+
 //    cout << "points3dProj->size() = " << points3dProj->size() << endl;
     pcl::VoxelGrid<pcl::PointXYZRGB> downsamp;
     downsamp.setInputCloud(points3dProj);
@@ -64,7 +115,7 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
                     FTie(0.05),
                     Alpha_shape_2::GENERAL);
 //    cout << "alpha = " << A.get_alpha() << endl;
-
+    
     std::vector<Segment_2ie> segments;
     auto outIt = std::back_inserter(segments);
     Alpha_shape_edges_iterator it = A.alpha_shape_edges_begin(),
@@ -190,7 +241,7 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
             Point_2 tgt = polygons[p][s];
 
 //            Eigen::Vector2d curPtTgt(tgt.x(), tgt.y());
-
+            
             {
                 pcl::PointXYZRGB curPtTgt3d;
                 Eigen::Vector3d curCoordTgt = point2dTo3d(tgt);
@@ -198,35 +249,29 @@ ConcaveHull::ConcaveHull(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr points3d,
                 curPtTgt3d.r = 255;
                 curPtTgt3d.g = 255;
                 curPtTgt3d.b = 255;
-    
+                
                 polygons3d.back()->push_back(curPtTgt3d);
             }
         }
     }
 }
 
-
-ConcaveHull::ConcaveHull(const vector<ConcaveHull::Polygon_2> &polygons,
-                         const vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &polygons3d,
-                         const Eigen::Vector3d &plNormal,
-                         double plD,
-                         const Eigen::Vector3d &origin,
-                         const Eigen::Vector3d &xAxis,
-                         const Eigen::Vector3d &yAxis)
-        : polygons(polygons),
-          polygons3d(polygons3d),
-          plNormal(plNormal),
-          plD(plD),
-          origin(origin),
-          xAxis(xAxis),
-          yAxis(yAxis),
-          totalArea(0.0)
+void ConcaveHull::init(const vector<ConcaveHull::Polygon_2> &ipolygons,
+                       const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &ipolygons3d,
+                       const Eigen::Vector3d &iplNormal,
+                       double iplD,
+                       const Eigen::Vector3d &iorigin,
+                       const Eigen::Vector3d &ixAxis,
+                       const Eigen::Vector3d &iyAxis)
 {
-//    computeFrame();
-//    Eigen::Vector4d planeEq;
-//    planeEq.head<3>() = plNormal;
-//    planeEq(3) = -plD;
-//    cout << "ConcaveHull::ConcaveHull, planeEq = " << planeEq.transpose() << endl;
+    polygons = ipolygons;
+    polygons3d = ipolygons3d;
+    plNormal = iplNormal;
+    plD = iplD;
+    origin = iorigin;
+    xAxis = ixAxis;
+    yAxis = iyAxis;
+    totalArea = 0.0;
     
     for(const Polygon_2 &curPoly : polygons){
         double area = CGAL::to_double(curPoly.area());
@@ -575,14 +620,4 @@ ConcaveHull::Point_2ie ConcaveHull::point3dTo2die(const Eigen::Vector3d &point3d
 Eigen::Vector3d ConcaveHull::point2dTo3d(const ConcaveHull::Point_2 &point2d) const {
     return origin + CGAL::to_double(point2d.x()) * xAxis + CGAL::to_double(point2d.y()) * yAxis;
 }
-
-
-
-
-
-
-
-
-
-
 

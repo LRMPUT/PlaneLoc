@@ -51,6 +51,7 @@ ObjInstance::ObjInstance(int iid,
 	  type(itype),
 	  points(new pcl::PointCloud<pcl::PointXYZRGB>(*ipoints)),
 	  svs(isvs),
+      hull(new ConcaveHull()),
       eolCnt(ieol),
       obsCnt(1),
       trial(false)
@@ -91,10 +92,37 @@ ObjInstance::ObjInstance(int iid,
 	Misc::normalizeAndUnify(paramRep);
 
 //    cout << "points->size() = " << points->size() << endl;
-    hull.reset(new ConcaveHull(points, normal));
-//    cout << "hull.getTotalArea() = " << hull->getTotalArea() << endl;
+    hull->init(points, normal);
+//    cout << "hull.getTotalArea() = " << hull.getTotalArea() << endl;
     
     compColorHist();
+}
+
+
+ObjInstance::ObjInstance(const ObjInstance &other)
+    : hull(new ConcaveHull())
+{
+    id = other.id;
+    type = other.type;
+//    points;
+    {
+        points.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::copyPointCloud(*other.points, *points);
+    }
+    svs = other.svs;
+    paramRep = other.paramRep;
+    normal = other.normal;
+    princComp = other.princComp;
+    princCompLens = other.princCompLens;
+    shorterComp = other.shorterComp;
+    curv = other.curv;
+    colorHist = other.colorHist.clone();
+    *hull = *other.hull;
+    lineSegs = other.lineSegs;
+    planeEstimator = other.planeEstimator;
+    eolCnt = other.eolCnt;
+    obsCnt = other.obsCnt;
+    trial = other.trial;
 }
 
 bool ObjInstance::isMatching(const ObjInstance &other,
@@ -368,5 +396,3 @@ void ObjInstance::cleanDisplay(pcl::visualization::PCLVisualizer::Ptr viewer, in
     viewer->removePointCloud(string("obj_instance_") + idStr,
                              vp);
 }
-
-

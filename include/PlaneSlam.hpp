@@ -48,22 +48,23 @@ private:
     };
     
 	void evaluateMatching(const cv::FileStorage &fs,
-                          const vectorObjInstance &objInstances1,
-                          const vectorObjInstance &objInstances2,
-                          std::ifstream &inputResFile,
-                          std::ofstream &outputResFile,
-                          const Vector7d &gtTransform,
-                          double scoreThresh,
-                          double scoreDiffThresh,
-                          double fitThresh,
-                          double poseDiffThresh,
-                          Vector7d &predTransform,
-                          RecCode &recCode,
-                          double &linDist,
-                          double &angDist,
-                          pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
-                          int viewPort1 = -1,
-                          int viewPort2 = -1);
+                              const vectorObjInstance &objInstances1,
+                              const vectorObjInstance &objInstances2,
+                              std::ifstream &inputResFile,
+                              std::ofstream &outputResFile,
+                              const Vector7d &gtTransform,
+                              double scoreThresh,
+                              double scoreDiffThresh,
+                              double fitThresh,
+                              double distinctThresh,
+                              double poseDiffThresh,
+                              Vector7d &predTransform,
+                              RecCode &recCode,
+                              double &linDist,
+                              double &angDist,
+                              pcl::visualization::PCLVisualizer::Ptr viewer,
+                              int viewPort1,
+                              int viewPort2);
 	
 	FileGrabber fileGrabber;
 	Map map;

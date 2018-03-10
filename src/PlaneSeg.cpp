@@ -37,6 +37,34 @@
 
 using namespace std;
 
+PlaneSeg::PlaneSeg(const PlaneSeg &other) {
+    id = other.id;
+    label = other.label;
+//    points;
+    {
+        points.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::copyPointCloud(*other.points, *points);
+    }
+//    normals;
+    {
+        normals.reset(new pcl::PointCloud<pcl::Normal>());
+        pcl::copyPointCloud(*other.normals, *normals);
+    }
+    origPlaneSegs = other.origPlaneSegs;
+    segNormal = other.segNormal;
+    segNormalIntDiff = other.segNormalIntDiff;
+    segPlaneParams = other.segPlaneParams;
+    segCentroid = other.segCentroid;
+    segCovar = other.segCovar;
+    evecs = other.evecs;
+    evals = other.evals;
+    segCurv = other.segCurv;
+    normAlignConsistent = other.normAlignConsistent;
+    areaEst = other.areaEst;
+    adjSegs = other.adjSegs;
+}
+
+
 void PlaneSeg::calcSegProp(bool filter){
     
     if(filter && points->size() >= 3) {
@@ -234,4 +262,3 @@ PlaneSeg PlaneSeg::merge(const PlaneSeg &planeSeg, UnionFind &sets) {
     
     return merged;
 }
-

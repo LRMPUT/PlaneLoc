@@ -52,6 +52,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                               vectorVector7d &bestTrans,
                                               std::vector<double> &bestTransProbs,
                                               std::vector<double> &bestTransFits,
+                                              std::vector<int> &bestTransDistinct,
                                               pcl::visualization::PCLVisualizer::Ptr viewer,
                                               int viewPort1,
                                               int viewPort2)
@@ -278,47 +279,47 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
             
 		}
 
-		if(viewer && isAdded){
-            cout << "transformComp = " << transformComp.transpose() << endl;
-            
-			for(int p = 0; p < potSets[s].size(); ++p){
-				int om = potSets[s][p].plane1;
-				int of = potSets[s][p].plane2;
-
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														1.0,
-														string("plane1_") + to_string(om),
-														viewPort1);
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														1.0,
-														string("plane2_") + to_string(of),
-														viewPort2);
-			}
-
-			// time for watching
-			viewer->resetStoppedFlag();
-
-//			viewer->initCameraParameters();
-//			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
-			while (!viewer->wasStopped()){
-				viewer->spinOnce (100);
-				std::this_thread::sleep_for(std::chrono::milliseconds(50));
-			}
-
-            for(int p = 0; p < potSets[s].size(); ++p){
-                int om = potSets[s][p].plane1;
-                int of = potSets[s][p].plane2;
-
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														shadingLevel,
-														string("plane1_") + to_string(om),
-														viewPort1);
-				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
-														shadingLevel,
-														string("plane2_") + to_string(of),
-														viewPort2);
-			}
-		}
+//		if(viewer && isAdded){
+//            cout << "transformComp = " << transformComp.transpose() << endl;
+//
+//			for(int p = 0; p < potSets[s].size(); ++p){
+//				int om = potSets[s][p].plane1;
+//				int of = potSets[s][p].plane2;
+//
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														1.0,
+//														string("plane1_") + to_string(om),
+//														viewPort1);
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														1.0,
+//														string("plane2_") + to_string(of),
+//														viewPort2);
+//			}
+//
+//			// time for watching
+//			viewer->resetStoppedFlag();
+//
+////			viewer->initCameraParameters();
+////			viewer->setCameraPosition(0.0, 0.0, -6.0, 0.0, 1.0, 0.0);
+//			while (!viewer->wasStopped()){
+//				viewer->spinOnce (100);
+//				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//			}
+//
+//            for(int p = 0; p < potSets[s].size(); ++p){
+//                int om = potSets[s][p].plane1;
+//                int of = potSets[s][p].plane2;
+//
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														shadingLevel,
+//														string("plane1_") + to_string(om),
+//														viewPort1);
+//				viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+//														shadingLevel,
+//														string("plane2_") + to_string(of),
+//														viewPort2);
+//			}
+//		}
 	}
 
     chrono::high_resolution_clock::time_point endTransformTime = chrono::high_resolution_clock::now();
@@ -448,24 +449,35 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr curMapPc = mapObjInstances[om].getPoints();
                 mapPc->insert(mapPc->end(), curMapPc->begin(), curMapPc->end());
             }
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr framePc(new pcl::PointCloud<pcl::PointXYZRGB>());
-            for(int of = 0; of < frameObjInstances.size(); ++of){
-                pcl::PointCloud<pcl::PointXYZRGB>::Ptr curFramePc = frameObjInstances[of].getPoints();
-                framePc->insert(framePc->end(), curFramePc->begin(), curFramePc->end());
-            }
+//            pcl::PointCloud<pcl::PointXYZRGB>::Ptr framePc(new pcl::PointCloud<pcl::PointXYZRGB>());
+//            for(int of = 0; of < frameObjInstances.size(); ++of){
+//                pcl::PointCloud<pcl::PointXYZRGB>::Ptr curFramePc = frameObjInstances[of].getPoints();
+//                framePc->insert(framePc->end(), curFramePc->begin(), curFramePc->end());
+//            }
 
             pcl::KdTreeFLANN<pcl::PointXYZRGB> kdTree;
             kdTree.setInputCloud(mapPc);
 
             for(int t = 0; t < bestTrans.size(); ++t) {
                 cout << "fit score on transformation " << t << endl;
+                
+                vectorObjInstance frameObjInstancesTrans = frameObjInstances;
+                for(ObjInstance &obj : frameObjInstancesTrans){
+                    obj.transform(bestTrans[t]);
+                }
 
-                g2o::SE3Quat curTransSE3Quat(bestTrans[t]);
-                Eigen::Matrix4d curTransMat = curTransSE3Quat.to_homogeneous_matrix();
-
+//                g2o::SE3Quat curTransSE3Quat(bestTrans[t]);
+//                Eigen::Matrix4d curTransMat = curTransSE3Quat.to_homogeneous_matrix();
+//
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr framePcTrans(new pcl::PointCloud<pcl::PointXYZRGB>());
-                pcl::transformPointCloud(*framePc, *framePcTrans, curTransMat);
-
+//                pcl::transformPointCloud(*framePc, *framePcTrans, curTransMat);
+    
+                for(ObjInstance &obj : frameObjInstancesTrans){
+                    framePcTrans->insert(framePcTrans->end(),
+                                         obj.getPoints()->begin(),
+                                         obj.getPoints()->end());
+                }
+                
                 vector<int> nnIndices(1);
                 std::vector<float> nnDists(1);
                 double fitScore = 0.0;
@@ -510,6 +522,33 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 
                 bestTransFits.push_back(fitScore);
 
+                
+                {
+                    vector<pair<int, int>> matches;
+                    set<int> frameIdxsSet;
+                    set<int> mapIdxsSet;
+                    for(int of = 0; of < frameObjInstancesTrans.size(); ++of) {
+                        for (int om = 0; om < mapObjInstances.size(); ++om) {
+                            const ObjInstance &frameObj = frameObjInstancesTrans[of];
+                            const ObjInstance &mapObj = mapObjInstances[om];
+                            if(frameObj.isMatching(mapObj)){
+                                matches.emplace_back(om, of);
+                                mapIdxsSet.insert(om);
+                                frameIdxsSet.insert(of);
+                            }
+                        }
+                    }
+                    
+                    int mapDistinct = countDifferent(mapIdxsSet,
+                                                     mapObjInstances);
+                    int frameDistinct = countDifferent(frameIdxsSet,
+                                                     frameObjInstances);
+                    
+                    cout << "mapDistinct = " << mapDistinct << endl;
+                    cout << "frameDistinct = " << frameDistinct << endl;
+                    
+                    bestTransDistinct.push_back(min(mapDistinct, frameDistinct));
+                }
 //                if(fitScore < 0.1){
 //                    newBestTrans.push_back(bestTrans[t]);
 //                    newBestTransProbs.push_back(bestTransProbs[t]);
@@ -1267,7 +1306,7 @@ Matching::bestTransformPointsAndDirs(const vectorVector3d &points1,
         }
 
         //	Eigen::EigenSolver<Eigen::Matrix4d> es(A);
-        cout << "eigenvalues = " << esolver.eigenvalues() << endl;
+//        cout << "eigenvalues = " << esolver.eigenvalues() << endl;
         //	cout << "eigenvectors = " << es.eigenvectors() << endl;
 
         Eigen::Vector4d rQuat = evectors.block<4, 1>(0, maxEvalInd);
@@ -1782,6 +1821,33 @@ double Matching::evalPoint(const Vector7d &pt,
 		res += dist[k].eval(pt);
 	}
 	return res;
+}
+
+int Matching::countDifferent(const std::set<int> &setIdxs, const vectorObjInstance &objs) {
+    UnionFind ufSets(setIdxs.size());
+    vector<int> idxs;
+    for (const int &mi : setIdxs) {
+        idxs.push_back(mi);
+    }
+    for(int omi1 = 0; omi1 < idxs.size(); ++omi1){
+        for(int omi2 = omi1 + 1; omi2 < idxs.size(); ++omi2){
+            const ObjInstance &obj1 = objs[idxs[omi1]];
+            const ObjInstance &obj2 = objs[idxs[omi2]];
+            
+            double dist1 = obj1.getPlaneEstimator().distance(obj2.getPlaneEstimator());
+            double dist2 = obj2.getPlaneEstimator().distance(obj1.getPlaneEstimator());
+            if(dist1 < 0.02 && dist2 < 0.02){
+                ufSets.unionSets(omi1, omi2);
+            }
+        }
+    }
+    std::set<int> finalSetIdxs;
+    for(int omi = 0; omi < idxs.size(); ++omi){
+        int setId = ufSets.findSet(omi);
+        finalSetIdxs.insert(setId);
+    }
+    
+    return finalSetIdxs.size();
 }
 
 Matching::ProbDistKernel::ProbDistKernel(Vector7d ikPt,

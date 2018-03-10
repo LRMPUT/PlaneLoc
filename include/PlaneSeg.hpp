@@ -61,6 +61,8 @@ public:
         calcSegProp();
     }
 
+    PlaneSeg(const PlaneSeg &other);
+    
     void setId(int id) {
         PlaneSeg::id = id;
     }
