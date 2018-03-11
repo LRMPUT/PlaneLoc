@@ -180,14 +180,14 @@ void PlaneSlam::run(){
 //    vector<ObjInstance> accObjInstances;
     Map accMap;
     Vector7d accStartFramePose;
-    int accFrames = 2270;
+    int accFrames = 50;
     
-    int processNewFrameSkip = 5;
+    int processNewFrameSkip = 1;
     
 //	ofstream logFile("../output/log.out");
 	int curFrameIdx;
     cout << "Starting the loop" << endl;
-	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr/*, accMap*/)) >= 0) {
+	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr, accMap)) >= 0) {
         cout << "curFrameIdx = " << curFrameIdx << endl;
         
         int64_t timestamp = (int64_t) curFrameIdx * 1e6 / frameRate;
@@ -202,7 +202,7 @@ void PlaneSlam::run(){
         bool localize = true;
         
         if (processFrames) {
-            if (((curFrameIdx - framesSkipped) % accFrames) % processNewFrameSkip == processNewFrameSkip - 1) {
+            if ((curFrameIdx - framesSkipped) % processNewFrameSkip == 0) {
                 g2o::SE3Quat poseSE3Quat(pose);
                 poseSE3Quat = gtOffsetSE3Quat.inverse() * poseSE3Quat;
                 pose = poseSE3Quat.toVector();
@@ -350,7 +350,7 @@ void PlaneSlam::run(){
 //                }
             
                     // if current frame starts accumulation
-                    if ((curFrameIdx - framesSkipped) % accFrames == 0) {
+                    if (((curFrameIdx - framesSkipped)/processNewFrameSkip) % accFrames == 0) {
                         cout << endl << "starting new accumulation" << endl << endl;
                 
                         accMap = Map();
@@ -399,8 +399,8 @@ void PlaneSlam::run(){
                 
                         // every 50th frame
                         int mergeMapFrameSkip = 50;
-                        if (((curFrameIdx - framesSkipped) % accFrames) % mergeMapFrameSkip ==
-                            mergeMapFrameSkip - 1)
+                        if (((curFrameIdx - framesSkipped)/processNewFrameSkip)
+                                % mergeMapFrameSkip == mergeMapFrameSkip - 1)
                         {
                             cout << "Merging map" << endl;
                             accMap.mergeMapObjInstances(/*viewer,
@@ -410,7 +410,9 @@ void PlaneSlam::run(){
                     }
             
                     // if last frame in accumulation
-                    if ((curFrameIdx - framesSkipped) % accFrames == accFrames - 1) {
+                    if (((curFrameIdx - framesSkipped)/processNewFrameSkip)
+                                % accFrames == accFrames - 1)
+                    {
                         accMap.removeObjsEolThresh(6);
                 
                         // saving
@@ -418,7 +420,9 @@ void PlaneSlam::run(){
                             cout << "saving map to file" << endl;
                     
                             char buf[100];
-                            sprintf(buf, "../output/acc/acc%05d", curFrameIdx - accFrames + 1);
+                            sprintf(buf,
+                                    "../output/acc/acc%05d",
+                                    curFrameIdx - accFrames*processNewFrameSkip + 1);
                     
                             std::ofstream ofs(buf);
                             boost::archive::text_oarchive oa(ofs);
@@ -480,6 +484,8 @@ void PlaneSlam::run(){
             visRecCodes.push_back(curRecCode);
             visGtPoses.push_back(pose);
             visRecPoses.push_back(predTrans);
+            cout << "pose = " << pose.transpose() << endl;
+            cout << "predTrans = " << predTrans.transpose() << endl;
             
             if (curRecCode == RecCode::Corr) {
                 ++corrCnt;
@@ -656,7 +662,10 @@ void PlaneSlam::run(){
         viewer->removeAllPointClouds(v2);
         viewer->removeAllShapes(v2);
 
-        pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr mapPc = map.getOriginalPointCloud();
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPc(new pcl::PointCloud<pcl::PointXYZRGB>());
+        for(const ObjInstance &mObj : map){
+            mapPc->insert(mapPc->end(), mObj.getPoints()->begin(), mObj.getPoints()->end());
+        }
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPcGray(new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::copyPointCloud(*mapPc, *mapPcGray);
         for(int p = 0; p < mapPcGray->size(); ++p){
@@ -906,6 +915,8 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
         else{
             recCode = RecCode::Corr;
         }
+        
+        predTransform = planesTrans.front();
         
         linDist += planesTransDiffEucl.front();
         angDist += planesTransDiffAng.front();

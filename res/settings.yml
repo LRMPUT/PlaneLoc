@@ -157,6 +157,8 @@ map:
 #    - "../res/PUT_Indoor/2017_04_04_test5/accMap"
 #    - "../res/PUT_Indoor/2017_04_04_test6/accMap"
 #    - "../res/PUT_Indoor/2017_04_04_test7/accMap"
+  mapFiles:
+    - "../res/living_room_0003_proc/accMap"
 
 matching:
 
@@ -219,7 +221,7 @@ planeSlam:
 
   useLines: 0
 
-  globalMatching: 0
+  globalMatching: 1
 
   incrementalMatching: 0
 
@@ -241,7 +243,7 @@ planeSlam:
 
   framesFromPly: 0
 
-  processFrames: 1
+  processFrames: 0
 
 
   poseDiffThresh: 0.12
