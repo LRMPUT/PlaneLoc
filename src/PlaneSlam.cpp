@@ -484,8 +484,8 @@ void PlaneSlam::run(){
             visRecCodes.push_back(curRecCode);
             visGtPoses.push_back(pose);
             visRecPoses.push_back(predTrans);
-            cout << "pose = " << pose.transpose() << endl;
-            cout << "predTrans = " << predTrans.transpose() << endl;
+//            cout << "pose = " << pose.transpose() << endl;
+//            cout << "predTrans = " << predTrans.transpose() << endl;
             
             if (curRecCode == RecCode::Corr) {
                 ++corrCnt;
@@ -657,10 +657,9 @@ void PlaneSlam::run(){
     }
 
     if(drawVis){
-        viewer->removeAllPointClouds(v1);
-        viewer->removeAllShapes(v1);
-        viewer->removeAllPointClouds(v2);
-        viewer->removeAllShapes(v2);
+        viewer->removeAllPointClouds();
+        viewer->removeAllShapes();
+        viewer->removeAllCoordinateSystems();
 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPc(new pcl::PointCloud<pcl::PointXYZRGB>());
         for(const ObjInstance &mObj : map){

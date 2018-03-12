@@ -84,22 +84,8 @@ fileGrabber:
   
   #imageFrame: 8
   
-    # NYU depth v2 living room
-    datasetDirPath: "../res/living_room_0003_proc"
-
-    readObjLabeling: 0
-
-    readAccel: 0
-
-    readPose: 1
-
-    readVO: 1
-
-    depthScale: 5000
-
-    imageFrame: 0
-
-#    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+#    # NYU depth v2 living room
+#    datasetDirPath: "../res/living_room_0003_proc"
 #
 #    readObjLabeling: 0
 #
@@ -109,9 +95,23 @@ fileGrabber:
 #
 #    readVO: 1
 #
-#    depthScale: 1000
+#    depthScale: 5000
 #
 #    imageFrame: 0
+
+    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+
+    readObjLabeling: 0
+
+    readAccel: 0
+
+    readPose: 1
+
+    readVO: 1
+
+    depthScale: 1000
+
+    imageFrame: 0
 
 #    # test2
     voOffset:
@@ -153,12 +153,12 @@ map:
 #    - "../res/PUT_Indoor/2017_04_04_test5/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test6/cloud_merged.ply"
 #    - "../res/PUT_Indoor/2017_04_04_test7/cloud_merged.ply"
-#  mapFiles:
-#    - "../res/PUT_Indoor/2017_04_04_test5/accMap"
-#    - "../res/PUT_Indoor/2017_04_04_test6/accMap"
-#    - "../res/PUT_Indoor/2017_04_04_test7/accMap"
   mapFiles:
-    - "../res/living_room_0003_proc/accMap"
+    - "../res/PUT_Indoor/2017_04_04_test5/accMap"
+    - "../res/PUT_Indoor/2017_04_04_test6/accMap"
+    - "../res/PUT_Indoor/2017_04_04_test7/accMap"
+#  mapFiles:
+#    - "../res/living_room_0003_proc/accMap"
 
 matching:
 
@@ -235,9 +235,9 @@ planeSlam:
 
   stopWrongFrame: 0
 
-  saveRes: 0
+  saveRes: 1
 
-  loadRes: 1
+  loadRes: 0
 
   saveVis: 0
 

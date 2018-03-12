@@ -182,6 +182,13 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
             }
         }
         
+        bool fullConstrRot = true, fullConstrTrans = true;
+
+        Vector7d transformComp = Matching::bestTransformPlanes(planesMap,
+                                                               planesFrame,
+                                                               sinValsThresh,
+                                                               fullConstrRot);
+        
         vectorVector3d retPointsMap;
         vectorVector3d retVirtPointsMap;
         vectorVector3d retDirsMap;
@@ -199,7 +206,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                            retDistDirsMap,
                                            retDistPtsMap,
                                            retDistPtsDirsMap);
-        
+
         vectorVector3d retPointsFrame;
         vectorVector3d retVirtPointsFrame;
         vectorVector3d retDirsFrame;
@@ -217,12 +224,12 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                            retDistDirsFrame,
                                            retDistPtsFrame,
                                            retDistPtsDirsFrame);
-        
+
 //		Vector7d curTransform;
-		bool fullConstrRot, fullConstrTrans;
-        
-        
-        Vector7d transformComp = Matching::bestTransformPointsDirsDists(retPointsMap,
+		bool fullConstrRot2, fullConstrTrans2;
+
+
+        Vector7d transformComp2 = Matching::bestTransformPointsDirsDists(retPointsMap,
                                                                         retPointsFrame,
                                                                         vector<double>(retPointsMap.size(), 1.0),
                                                                         retVirtPointsMap,
@@ -240,8 +247,25 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                                                         retDistPtsDirsMap,
                                                                         vector<double>(retDistPtsMap.size(), 1.0),
                                                                         sinValsThresh,
-                                                                        fullConstrRot,
-                                                                        fullConstrTrans);
+                                                                        fullConstrRot2,
+                                                                        fullConstrTrans2);
+        
+        if(fullConstrRot != (fullConstrRot2 && fullConstrTrans2)){
+            cout << "constraints not consistant" << endl;
+            char a;
+            cin >> a;
+        }
+        else if(fullConstrRot){
+            double diff = Misc::transformLogDist(transformComp, transformComp2);
+            if(diff > 0.01){
+                cout << "transformation not consistent" << endl;
+                cout << transformComp.transpose() << endl;
+                cout << transformComp2.transpose() << endl;
+                
+                char a;
+                cin >> a;
+            }
+        }
 
 //        cout << "transformComp = " << transformComp.transpose() << endl;
 //        cout << "fullConstrRot = " << fullConstrRot << endl;
@@ -1114,47 +1138,71 @@ Vector7d Matching::bestTransformPlanes(const vectorVector4d& planes1,
 														planes2[i](0),
 														planes2[i](1),
 														planes2[i](2)).normalized());
+            
 //			cout << "Qt = " << Qt << endl;
 //			cout << "W = " << W << endl;
 			C1 += -2 * Qt * W;
 		}
 //		cout << "C1 = " << C1 << endl;
 		Eigen::Matrix4d C1t = C1.transpose();
-		Eigen::Matrix4d A = -0.5 * (C1 + C1t);
-//		cout << "A = " << A << endl;
+		Eigen::Matrix4d D = -0.5 * (C1 + C1t);
+//		cout << "D = " << D << endl;
 
-		Eigen::JacobiSVD<Eigen::Matrix4d> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-//		cout << "Rank = " << svd.rank() << endl;
-		Eigen::Vector4d sinVals = svd.singularValues();
+//		Eigen::JacobiSVD<Eigen::Matrix4d> svd(D, Eigen::ComputeThinU | Eigen::ComputeThinV);
+////		cout << "Rank = " << svd.rank() << endl;
+//		Eigen::Vector4d sinVals = svd.singularValues();
 
 //		cout << "singular values: " << svd.singularValues() << endl;
 //		cout << "U = " << svd.matrixU() << endl;
 //		cout << "V = " << svd.matrixV() << endl;
-		int numMaxEvals = 0;
-		int maxEvalInd = 0;
-		double maxEval = 0;
-		for(int i = 0; i < svd.singularValues().size(); ++i){
-			// if values the same for this threshold
-			if(fabs(maxEval - sinVals(i)) < sinValsThresh){
-				++numMaxEvals;
-			}
-			else if(maxEval < sinVals(i)){
-				numMaxEvals = 1;
-				maxEval = svd.singularValues()[i];
-				maxEvalInd = i;
-			}
-		}
-		// if constraints imposed by planes do not make computing transformation possible
-		if(numMaxEvals > 1){
-			fullConstr = false;
-		}
+//		int numMaxEvals = 0;
+//		int maxEvalInd = 0;
+//		double maxEval = 0;
+//		for(int i = 0; i < svd.singularValues().size(); ++i){
+//			// if values the same for this threshold
+//			if(fabs(maxEval - sinVals(i)) < sinValsThresh){
+//				++numMaxEvals;
+//			}
+//			else if(maxEval < sinVals(i)){
+//				numMaxEvals = 1;
+//				maxEval = svd.singularValues()[i];
+//				maxEvalInd = i;
+//			}
+//		}
+//		// if constraints imposed by planes do not make computing transformation possible
+//		if(numMaxEvals > 1){
+//			fullConstr = false;
+//		}
 
-	//	Eigen::EigenSolver<Eigen::Matrix4d> es(A);
+//        // singular value are square roots of eigenvalues
+//        double evalsDiff = svd.singularValues()(0)*svd.singularValues()(0)
+//                                - svd.singularValues()(1)*svd.singularValues()(1);
+//        if(abs(evalsDiff) < sinValsThresh){
+//            fullConstr = false;
+//            return retTransform;
+//        }
+        
+	//	Eigen::EigenSolver<Eigen::Matrix4d> es(D);
 	//	cout << "eigenvalues = " << es.eigenvalues() << endl;
 	//	cout << "eigenvectors = " << es.eigenvectors() << endl;
 
-		Eigen::Vector4d rot = svd.matrixU().block<4, 1>(0, maxEvalInd);
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> es(D);
+        const Eigen::Vector4d &evals = es.eigenvalues();
+        const Eigen::Matrix4d &evectors = es.eigenvectors();
+        
+        double maxEval = evals(0);
+        for(int i = 0; i < evals.size(); ++i){
+            // if constraints imposed by planes do not make computing transformation possible
+            if(abs(maxEval + evals(i)) < sinValsThresh){
+                cout << "rot constr: " << maxEval << " " << evals(i) << endl;
+                fullConstr = false;
+                return retTransform;
+            }
+        }
+        
+		Eigen::Vector4d rot = evectors.block<4, 1>(0, 0);
 		retTransform.tail<4>() = rot;
+  
 	//	for(int pl = 0; pl < planes1.size(); ++pl){
 	//		Eigen::Matrix4d Wt = matrixW(Eigen::Quaterniond(rot)).transpose();
 	//		Eigen::Matrix4d Q = matrixQ(Eigen::Quaterniond(rot));
@@ -1169,27 +1217,43 @@ Vector7d Matching::bestTransformPlanes(const vectorVector4d& planes1,
 	{
 		Eigen::MatrixXd A;
 		A.resize(planes1.size(), 3);
-		Eigen::MatrixXd Z;
-		Z.resize(1, planes1.size());
+		Eigen::MatrixXd b;
+		b.resize(planes1.size(), 1);
 		for(int pl = 0; pl < planes1.size(); ++pl){
 //			cout << "pl = " << pl << endl;
 			Eigen::Vector3d v1 = planes1[pl].head<3>();
-			double d1 = planes1[pl](3) / v1.norm();
+			double d1 = -planes1[pl](3);
 			v1.normalize();
-			double d2 = planes2[pl](3) / planes2[pl].head<3>().norm();
+			double d2 = -planes2[pl](3);
 
 //			cout << "Adding to A" << endl;
 			A.block<1, 3>(pl, 0) = v1;
-//			cout << "Adding to Z" << endl;
-			Z(pl) = d2 - d1;
+//			cout << "Adding to b" << endl;
+			b(pl) = d1 - d2;
 		}
-//		cout << "A.transpose();" << endl;
-		Eigen::MatrixXd At = A.transpose();
-//		cout << "(At * A).inverse()" << endl;
-		Eigen::MatrixXd AtAinv = (At * A).inverse();
-//		cout << "AtAinv * At * Z" << endl;
-		Eigen::Vector3d trans = AtAinv * At * Z;
+////		cout << "A.transpose();" << endl;
+//		Eigen::MatrixXd At = A.transpose();
+////		cout << "(At * A).inverse()" << endl;
+//		Eigen::MatrixXd AtAinv = (At * A).inverse();
+////		cout << "AtAinv * At * b" << endl;
+        
+//        cout << "A = " << A << endl;
+//        cout << "b = " << b << endl;
+        
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+        svd.setThreshold(0.05);
+        cout << "trans rank = " << svd.rank() << endl;
+        Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
+        lu.setThreshold(0.1);
+        if(lu.rank() < 3){
+            fullConstr = false;
+            return retTransform;
+        }
+        
+        Eigen::Vector3d trans = svd.solve(b);
+//		Eigen::Vector3d trans = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
 //		cout << "trans = " << trans << endl;
+  
 		retTransform.head<3>() = trans;
 	}
 
@@ -1300,6 +1364,8 @@ Matching::bestTransformPointsAndDirs(const vectorVector3d &points1,
         for(int i = 0; i < evals.size(); ++i){
             // if constraints imposed by planes do not make computing transformation possible
             if(abs(maxEval + evals(i)) < sinValsThresh){
+                cout << "rot constr 2: " << maxEval << " " << evals(i) << endl;
+                
                 fullConstrRot = false;
                 fullConstrTrans = false;
             }
@@ -1465,8 +1531,8 @@ Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
             }
 
 //            cout << "computing full piv LU" << endl;
-//            cout << "A = " << A << endl;
-//            cout << "b = " << b << endl;
+            cout << "A = " << A << endl;
+            cout << "b = " << b << endl;
             Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
             lu.setThreshold(0.1);
 
@@ -1478,6 +1544,7 @@ Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
 //            Eigen::Vector3d t = AtAinv * At * b;
 //		    cout << "trans = " << trans << endl;
 //            cout << "lu.rank() = " << lu.rank() << endl;
+            cout << "trans rank 2 = " << lu.rank() << endl;
             if (lu.rank() >= 3) {
                 fullConstrTrans = true;
 
