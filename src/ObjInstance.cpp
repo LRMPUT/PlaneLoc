@@ -180,7 +180,7 @@ bool ObjInstance::isMatching(const ObjInstance &other,
 //                        cout << "intArea = " << intArea << endl;
                 // if intersection of convex hulls is big enough
                 if (intScore > 0.3) {
-                    cout << "merging planes" << endl;
+//                    cout << "merging planes" << endl;
                     // merge the objects
                     return true;
                 }

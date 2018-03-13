@@ -25,6 +25,7 @@
 #include <fstream>
 #include <chrono>
 #include <thread>
+#include <tuple>
 
 #include <opencv2/opencv.hpp>
 
@@ -169,12 +170,14 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
         std::vector<Vector6d> linesFrame;
 
         for(int ch = 0; ch < potSets[s].size(); ++ch) {
+//            cout << "map " << ch << ": " << mapObjInstances[potSets[s][ch].plane1].getNormal().transpose() << endl;
             planesMap.push_back(mapObjInstances[potSets[s][ch].plane1].getNormal());
             const vectorLineSeg &allLinesMap = mapObjInstances[potSets[s][ch].plane1].getLineSegs();
             for (int lm = 0; lm < potSets[s][ch].lineSegs1.size(); ++lm) {
                 linesMap.push_back(allLinesMap[potSets[s][ch].lineSegs1[lm]].toPointNormalEq());
             }
     
+//            cout << "frame " << ch << ": " << frameObjInstances[potSets[s][ch].plane2].getNormal().transpose() << endl;
             planesFrame.push_back(frameObjInstances[potSets[s][ch].plane2].getNormal());
             const vectorLineSeg &allLinesFrame = frameObjInstances[potSets[s][ch].plane2].getLineSegs();
             for (int lf = 0; lf < potSets[s][ch].lineSegs2.size(); ++lf) {
@@ -189,83 +192,83 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                                                sinValsThresh,
                                                                fullConstrRot);
         
-        vectorVector3d retPointsMap;
-        vectorVector3d retVirtPointsMap;
-        vectorVector3d retDirsMap;
-        std::vector<double> retDistsMap;
-        vectorVector3d retDistDirsMap;
-        vectorVector3d retDistPtsMap;
-        vectorVector3d retDistPtsDirsMap;
-        Matching::convertToPointsDirsDists(pointsMap,
-                                           planesMap,
-                                           linesMap,
-                                           retPointsMap,
-                                           retVirtPointsMap,
-                                           retDirsMap,
-                                           retDistsMap,
-                                           retDistDirsMap,
-                                           retDistPtsMap,
-                                           retDistPtsDirsMap);
-
-        vectorVector3d retPointsFrame;
-        vectorVector3d retVirtPointsFrame;
-        vectorVector3d retDirsFrame;
-        std::vector<double> retDistsFrame;
-        vectorVector3d retDistDirsFrame;
-        vectorVector3d retDistPtsFrame;
-        vectorVector3d retDistPtsDirsFrame;
-        Matching::convertToPointsDirsDists(pointsFrame,
-                                           planesFrame,
-                                           linesFrame,
-                                           retPointsFrame,
-                                           retVirtPointsFrame,
-                                           retDirsFrame,
-                                           retDistsFrame,
-                                           retDistDirsFrame,
-                                           retDistPtsFrame,
-                                           retDistPtsDirsFrame);
-
-//		Vector7d curTransform;
-		bool fullConstrRot2, fullConstrTrans2;
-
-
-        Vector7d transformComp2 = Matching::bestTransformPointsDirsDists(retPointsMap,
-                                                                        retPointsFrame,
-                                                                        vector<double>(retPointsMap.size(), 1.0),
-                                                                        retVirtPointsMap,
-                                                                        retVirtPointsFrame,
-                                                                        vector<double>(retVirtPointsMap.size(), 1.0),
-                                                                        retDirsMap,
-                                                                        retDirsFrame,
-                                                                        vector<double>(retDirsMap.size(), 1.0),
-                                                                        retDistsMap,
-                                                                        retDistsFrame,
-                                                                        retDistDirsMap,
-                                                                        vector<double>(retDistsMap.size(), 1.0),
-                                                                        retDistPtsMap,
-                                                                        retDistPtsFrame,
-                                                                        retDistPtsDirsMap,
-                                                                        vector<double>(retDistPtsMap.size(), 1.0),
-                                                                        sinValsThresh,
-                                                                        fullConstrRot2,
-                                                                        fullConstrTrans2);
-        
-        if(fullConstrRot != (fullConstrRot2 && fullConstrTrans2)){
-            cout << "constraints not consistant" << endl;
-            char a;
-            cin >> a;
-        }
-        else if(fullConstrRot){
-            double diff = Misc::transformLogDist(transformComp, transformComp2);
-            if(diff > 0.01){
-                cout << "transformation not consistent" << endl;
-                cout << transformComp.transpose() << endl;
-                cout << transformComp2.transpose() << endl;
-                
-                char a;
-                cin >> a;
-            }
-        }
+//        vectorVector3d retPointsMap;
+//        vectorVector3d retVirtPointsMap;
+//        vectorVector3d retDirsMap;
+//        std::vector<double> retDistsMap;
+//        vectorVector3d retDistDirsMap;
+//        vectorVector3d retDistPtsMap;
+//        vectorVector3d retDistPtsDirsMap;
+//        Matching::convertToPointsDirsDists(pointsMap,
+//                                           planesMap,
+//                                           linesMap,
+//                                           retPointsMap,
+//                                           retVirtPointsMap,
+//                                           retDirsMap,
+//                                           retDistsMap,
+//                                           retDistDirsMap,
+//                                           retDistPtsMap,
+//                                           retDistPtsDirsMap);
+//
+//        vectorVector3d retPointsFrame;
+//        vectorVector3d retVirtPointsFrame;
+//        vectorVector3d retDirsFrame;
+//        std::vector<double> retDistsFrame;
+//        vectorVector3d retDistDirsFrame;
+//        vectorVector3d retDistPtsFrame;
+//        vectorVector3d retDistPtsDirsFrame;
+//        Matching::convertToPointsDirsDists(pointsFrame,
+//                                           planesFrame,
+//                                           linesFrame,
+//                                           retPointsFrame,
+//                                           retVirtPointsFrame,
+//                                           retDirsFrame,
+//                                           retDistsFrame,
+//                                           retDistDirsFrame,
+//                                           retDistPtsFrame,
+//                                           retDistPtsDirsFrame);
+//
+////		Vector7d curTransform;
+//		bool fullConstrRot2, fullConstrTrans2;
+//
+//
+//        Vector7d transformComp2 = Matching::bestTransformPointsDirsDists(retPointsMap,
+//                                                                        retPointsFrame,
+//                                                                        vector<double>(retPointsMap.size(), 1.0),
+//                                                                        retVirtPointsMap,
+//                                                                        retVirtPointsFrame,
+//                                                                        vector<double>(retVirtPointsMap.size(), 1.0),
+//                                                                        retDirsMap,
+//                                                                        retDirsFrame,
+//                                                                        vector<double>(retDirsMap.size(), 1.0),
+//                                                                        retDistsMap,
+//                                                                        retDistsFrame,
+//                                                                        retDistDirsMap,
+//                                                                        vector<double>(retDistsMap.size(), 1.0),
+//                                                                        retDistPtsMap,
+//                                                                        retDistPtsFrame,
+//                                                                        retDistPtsDirsMap,
+//                                                                        vector<double>(retDistPtsMap.size(), 1.0),
+//                                                                        sinValsThresh,
+//                                                                        fullConstrRot2,
+//                                                                        fullConstrTrans2);
+//
+//        if(fullConstrRot != (fullConstrRot2 && fullConstrTrans2)){
+//            cout << "constraints not consistant" << endl;
+//            char a;
+//            cin >> a;
+//        }
+//        else if(fullConstrRot){
+//            double diff = Misc::transformLogDist(transformComp, transformComp2);
+//            if(diff > 0.01){
+//                cout << "transformation not consistent" << endl;
+//                cout << transformComp.transpose() << endl;
+//                cout << transformComp2.transpose() << endl;
+//
+//                char a;
+//                cin >> a;
+//            }
+//        }
 
 //        cout << "transformComp = " << transformComp.transpose() << endl;
 //        cout << "fullConstrRot = " << fullConstrRot << endl;
@@ -897,10 +900,28 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &map
         }
     }
     
+    if(potMatches.size() > 200) {
+        vector<double> histDists;
+        for (const PotMatch &pm : potMatches) {
+            histDists.push_back(pm.planeAppDiff);
+        }
+        sort(histDists.begin(), histDists.end());
+        
+        double newPlaneAppThresh = histDists[200];
+        
+        vector<PotMatch> newPotMatches;
+        for (const PotMatch &pm : potMatches) {
+            if(pm.planeAppDiff < newPlaneAppThresh){
+                newPotMatches.push_back(pm);
+            }
+        }
+        potMatches.swap(newPotMatches);
+    }
+    
     return potMatches;
 }
 
-vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMatch> potMatches,
+vector<vector<Matching::PotMatch>> Matching::findPotSets(const vector<PotMatch> &potMatches,
                                                          const vectorObjInstance &mapObjInstances,
                                                          const vectorObjInstance &frameObjInstances,
                                                          double planeDistThresh,
@@ -912,96 +933,227 @@ vector<vector<Matching::PotMatch>> Matching::findPotSets(vector<Matching::PotMat
                                                          int viewPort2)
 {
     vector<vector<PotMatch> > potSets;
+    vector<vector<int>> potSetsIdxs;
     
     vector<vector<double>> frameObjDistances;
     compObjDistances(frameObjInstances, frameObjDistances);
     vector<vector<double>> mapObjDistances;
     compObjDistances(mapObjInstances, mapObjDistances);
     
-    for(int ne = 1; ne <= min(3, (int)potMatches.size()); ++ne){
-        vector<int> curChoice;
-        for(int i = 0; i < ne; ++i){
-            curChoice.push_back(i);
-        }
-        do{
-        
-//			cout << "curChoice = " << curChoice << endl;
-            vector<PotMatch> curSet;
-            set<int> planesMapSet;
-            set<int> planesFrameSet;
-            bool valid = true;
-            int numPlanePairs = 0;
-            int numLinePairs = 0;
-            for(int ch = 0; ch < curChoice.size(); ++ch){
-                curSet.push_back(potMatches[curChoice[ch]]);
-                // if same plane is in more than one pair than not valid
-                if(planesMapSet.count(potMatches[curChoice[ch]].plane1) != 0 ||
-                   planesFrameSet.count(potMatches[curChoice[ch]].plane2) != 0)
-                {
-                    valid = false;
-                }
-                ++numPlanePairs;
-                numLinePairs += potMatches[curChoice[ch]].lineSegs1.size();
-                
-                planesMapSet.insert(potMatches[curChoice[ch]].plane1);
-                planesFrameSet.insert(potMatches[curChoice[ch]].plane2);
-            }
-            if(numPlanePairs + numLinePairs < 3){
-                valid = false;
-            }
-            if(valid){
-                // if planes are not close enough
-                for(int p1 = 0; p1 < curChoice.size(); ++p1) {
-                    for (int p2 = p1 + 1; p2 < curChoice.size(); ++p2) {
-                        int pm1 = potMatches[curChoice[p1]].plane1;
-                        int pm2 = potMatches[curChoice[p2]].plane1;
-                        if (mapObjDistances[pm1][pm2] > planeDistThresh) {
-                            valid = false;
-                        }
-                        int pf1 = potMatches[curChoice[p1]].plane2;
-                        int pf2 = potMatches[curChoice[p2]].plane2;
-                        if (frameObjDistances[pf1][pf2] > planeDistThresh) {
-                            valid = false;
-                        }
-                    }
-                }
-            }
-            if(valid){
-                // check angles between planes and lines
-                
-                vectorVector4d planesMap;
-                vectorLineSeg linesMap;
-                vectorVector4d planesFrame;
-                vectorLineSeg linesFrame;
-                for(int ch = 0; ch < curSet.size(); ++ch){
-                    planesMap.push_back(mapObjInstances[curSet[ch].plane1].getNormal());
-                    const vectorLineSeg &allLinesMap = mapObjInstances[curSet[ch].plane1].getLineSegs();
-                    for(int lm = 0; lm < curSet[ch].lineSegs1.size(); ++lm){
-                        linesMap.push_back(allLinesMap[curSet[ch].lineSegs1[lm]]);
-                    }
-                    
-                    planesFrame.push_back(frameObjInstances[curSet[ch].plane2].getNormal());
-                    const vectorLineSeg &allLinesFrame = frameObjInstances[curSet[ch].plane2].getLineSegs();
-                    for(int lf = 0; lf < curSet[ch].lineSegs2.size(); ++lf){
-                        linesFrame.push_back(allLinesFrame[curSet[ch].lineSegs2[lf]]);
-                    }
-                }
-                
-                if(!checkLineToLineAng(linesMap, linesFrame, lineToLineAngThresh)){
-                    valid = false;
-                }
-                if(!checkPlaneToPlaneAng(planesMap, planesFrame, planeToPlaneAngThresh)){
-                    valid = false;
-                }
-                if(!checkPlaneToLineAng(planesMap, linesMap, planesFrame, linesFrame, planeToLineAngThresh)){
-                    valid = false;
-                }
-                if(valid) {
-                    potSets.push_back(curSet);
-                }
-            }
-        }while(Misc::nextChoice(curChoice, potMatches.size()));
+    // initialize with single matches
+    potSets.resize(potMatches.size());
+    for(int p = 0; p < potMatches.size(); ++p){
+        potSets[p].push_back(potMatches[p]);
+        potSetsIdxs.push_back(vector<int>{p});
     }
+    // generate dublets and triplets
+    for(int ne = 2; ne <= 3; ++ne){
+//        cout << "ne = " << ne << endl;
+//        cout << "potSets.size() = " << potSets.size() << endl;
+        
+        vector<vector<PotMatch> > newPotSets;
+        vector<vector<int>> newPotSetsIdxs;
+        unordered_set<uint64_t> newPotSetsIdxsSet;
+
+        for(int s = 0; s < potSets.size(); ++s){
+            
+            for(int p = 0; p < potMatches.size(); ++p){
+                vector<PotMatch> curSet = potSets[s];
+                curSet.push_back(potMatches[p]);
+//                cout << "matches:" << endl;
+//                for(int ch = 0; ch < curSet.size(); ++ch){
+//                    cout << curSet[ch].plane1 << " " << curSet[ch].plane2 << endl;
+//                }
+                vector<int> curIdxs = potSetsIdxs[s];
+                curIdxs.push_back(p);
+                sort(curIdxs.begin(), curIdxs.end());
+                
+                static constexpr int mult = 10000;
+                int curMult = 1;
+                uint64_t curHashValue = 0;
+                for(int i = 0; i < curIdxs.size(); ++i){
+                    curHashValue += curIdxs[i] * curMult;
+                    curMult *= mult;
+                }
+                
+                bool valid = true;
+                // if there was the same combination
+                if(newPotSetsIdxsSet.count(curHashValue) > 0){
+                    valid = false;
+                }
+
+                if(valid) {
+                    set<int> planesMapSet;
+                    set<int> planesFrameSet;
+                    int numPlanePairs = 0;
+                    int numLinePairs = 0;
+                    for (int ch = 0; ch < curSet.size(); ++ch) {
+                        // if same plane is in more than one pair than not valid
+                        if (planesMapSet.count(curSet[ch].plane1) != 0 ||
+                            planesFrameSet.count(curSet[ch].plane2) != 0) {
+                            valid = false;
+                        }
+                        ++numPlanePairs;
+                        numLinePairs += curSet[ch].lineSegs1.size();
+        
+                        planesMapSet.insert(curSet[ch].plane1);
+                        planesFrameSet.insert(curSet[ch].plane2);
+                    }
+//                if(ne == 3 && numPlanePairs + numLinePairs < 3){
+//                    valid = false;
+//                }
+                }
+                if(valid){
+                    // if planes are not close enough
+                    for(int p1 = 0; p1 < curSet.size(); ++p1) {
+                        for (int p2 = p1 + 1; p2 < curSet.size(); ++p2) {
+                            int pm1 = curSet[p1].plane1;
+                            int pm2 = curSet[p2].plane1;
+                            if (mapObjDistances[pm1][pm2] > planeDistThresh) {
+                                valid = false;
+                            }
+                            int pf1 = curSet[p1].plane2;
+                            int pf2 = curSet[p2].plane2;
+                            if (frameObjDistances[pf1][pf2] > planeDistThresh) {
+                                valid = false;
+                            }
+                        }
+                    }
+                }
+                if(valid){
+                    // check angles between planes and lines
+
+                    vectorVector4d planesMap;
+                    vectorLineSeg linesMap;
+                    vectorVector4d planesFrame;
+                    vectorLineSeg linesFrame;
+                    for(int ch = 0; ch < curSet.size(); ++ch){
+                        planesMap.push_back(mapObjInstances[curSet[ch].plane1].getNormal());
+                        const vectorLineSeg &allLinesMap = mapObjInstances[curSet[ch].plane1].getLineSegs();
+                        for(int lm = 0; lm < curSet[ch].lineSegs1.size(); ++lm){
+                            linesMap.push_back(allLinesMap[curSet[ch].lineSegs1[lm]]);
+                        }
+
+                        planesFrame.push_back(frameObjInstances[curSet[ch].plane2].getNormal());
+                        const vectorLineSeg &allLinesFrame = frameObjInstances[curSet[ch].plane2].getLineSegs();
+                        for(int lf = 0; lf < curSet[ch].lineSegs2.size(); ++lf){
+                            linesFrame.push_back(allLinesFrame[curSet[ch].lineSegs2[lf]]);
+                        }
+                    }
+
+                    if(!checkLineToLineAng(linesMap, linesFrame, lineToLineAngThresh)){
+                        valid = false;
+                    }
+                    if(!checkPlaneToPlaneAng(planesMap, planesFrame, planeToPlaneAngThresh)){
+                        valid = false;
+                    }
+                    if(!checkPlaneToLineAng(planesMap, linesMap, planesFrame, linesFrame, planeToLineAngThresh)){
+                        valid = false;
+                    }
+                    if(valid) {
+                        newPotSets.push_back(curSet);
+                        newPotSetsIdxs.push_back(curIdxs);
+                        newPotSetsIdxsSet.insert(curHashValue);
+                    }
+                }
+            }
+        }
+        
+        potSets.swap(newPotSets);
+        potSetsIdxs.swap(newPotSetsIdxs);
+    }
+    
+//    vector<vector<PotMatch> > potSetsComp;
+//
+//    int considered = 0;
+//    for(int ne = 1; ne <= min(3, (int)potMatches.size()); ++ne){
+//        vector<int> curChoice;
+//        for(int i = 0; i < ne; ++i){
+//            curChoice.push_back(i);
+//        }
+//        do{
+//            ++considered;
+////			cout << "curChoice = " << curChoice << endl;
+//            vector<PotMatch> curSet;
+//            set<int> planesMapSet;
+//            set<int> planesFrameSet;
+//            bool valid = true;
+//            int numPlanePairs = 0;
+//            int numLinePairs = 0;
+//            for(int ch = 0; ch < curChoice.size(); ++ch){
+//                curSet.push_back(potMatches[curChoice[ch]]);
+//                // if same plane is in more than one pair than not valid
+//                if(planesMapSet.count(potMatches[curChoice[ch]].plane1) != 0 ||
+//                   planesFrameSet.count(potMatches[curChoice[ch]].plane2) != 0)
+//                {
+//                    valid = false;
+//                }
+//                ++numPlanePairs;
+//                numLinePairs += potMatches[curChoice[ch]].lineSegs1.size();
+//
+//                planesMapSet.insert(potMatches[curChoice[ch]].plane1);
+//                planesFrameSet.insert(potMatches[curChoice[ch]].plane2);
+//            }
+//            if(numPlanePairs + numLinePairs < 3){
+//                valid = false;
+//            }
+//            if(valid){
+//                // if planes are not close enough
+//                for(int p1 = 0; p1 < curChoice.size(); ++p1) {
+//                    for (int p2 = p1 + 1; p2 < curChoice.size(); ++p2) {
+//                        int pm1 = potMatches[curChoice[p1]].plane1;
+//                        int pm2 = potMatches[curChoice[p2]].plane1;
+//                        if (mapObjDistances[pm1][pm2] > planeDistThresh) {
+//                            valid = false;
+//                        }
+//                        int pf1 = potMatches[curChoice[p1]].plane2;
+//                        int pf2 = potMatches[curChoice[p2]].plane2;
+//                        if (frameObjDistances[pf1][pf2] > planeDistThresh) {
+//                            valid = false;
+//                        }
+//                    }
+//                }
+//            }
+//            if(valid){
+//                // check angles between planes and lines
+//
+//                vectorVector4d planesMap;
+//                vectorLineSeg linesMap;
+//                vectorVector4d planesFrame;
+//                vectorLineSeg linesFrame;
+//                for(int ch = 0; ch < curSet.size(); ++ch){
+//                    planesMap.push_back(mapObjInstances[curSet[ch].plane1].getNormal());
+//                    const vectorLineSeg &allLinesMap = mapObjInstances[curSet[ch].plane1].getLineSegs();
+//                    for(int lm = 0; lm < curSet[ch].lineSegs1.size(); ++lm){
+//                        linesMap.push_back(allLinesMap[curSet[ch].lineSegs1[lm]]);
+//                    }
+//
+//                    planesFrame.push_back(frameObjInstances[curSet[ch].plane2].getNormal());
+//                    const vectorLineSeg &allLinesFrame = frameObjInstances[curSet[ch].plane2].getLineSegs();
+//                    for(int lf = 0; lf < curSet[ch].lineSegs2.size(); ++lf){
+//                        linesFrame.push_back(allLinesFrame[curSet[ch].lineSegs2[lf]]);
+//                    }
+//                }
+//
+//                if(!checkLineToLineAng(linesMap, linesFrame, lineToLineAngThresh)){
+//                    valid = false;
+//                }
+//                if(!checkPlaneToPlaneAng(planesMap, planesFrame, planeToPlaneAngThresh)){
+//                    valid = false;
+//                }
+//                if(!checkPlaneToLineAng(planesMap, linesMap, planesFrame, linesFrame, planeToLineAngThresh)){
+//                    valid = false;
+//                }
+//                if(valid) {
+//                    potSetsComp.push_back(curSet);
+//                }
+//            }
+//        }while(Misc::nextChoice(curChoice, potMatches.size()));
+//    }
+//
+//    cout << "potSets.size() = " << potSets.size() << endl;
+//    cout << "potSetsComp.size() = " << potSetsComp.size() << endl;
+//    cout << "considered = " << considered << endl;
     
     return potSets;
 }
@@ -1115,16 +1267,8 @@ Vector7d Matching::bestTransformPlanes(const vectorVector4d& planes1,
                                        bool &fullConstr)
 {
 	Vector7d retTransform;
+    retTransform << 0, 0, 0, 0, 0, 0, 1;
 	fullConstr = true;
-
-//	cout << "planes1 = " << endl;
-//	for(int pl = 0; pl < planes1.size(); ++pl){
-//		cout << planes1[pl].coeffs().transpose() << endl;
-//	}
-//	cout << "planes2 = " << endl;
-//	for(int pl = 0; pl < planes2.size(); ++pl){
-//		cout << planes2[pl].coeffs().transpose() << endl;
-//	}
 
 	{
 		Eigen::Matrix4d C1 = Eigen::Matrix4d::Zero();
@@ -1148,70 +1292,25 @@ Vector7d Matching::bestTransformPlanes(const vectorVector4d& planes1,
 		Eigen::Matrix4d D = -0.5 * (C1 + C1t);
 //		cout << "D = " << D << endl;
 
-//		Eigen::JacobiSVD<Eigen::Matrix4d> svd(D, Eigen::ComputeThinU | Eigen::ComputeThinV);
-////		cout << "Rank = " << svd.rank() << endl;
-//		Eigen::Vector4d sinVals = svd.singularValues();
-
-//		cout << "singular values: " << svd.singularValues() << endl;
-//		cout << "U = " << svd.matrixU() << endl;
-//		cout << "V = " << svd.matrixV() << endl;
-//		int numMaxEvals = 0;
-//		int maxEvalInd = 0;
-//		double maxEval = 0;
-//		for(int i = 0; i < svd.singularValues().size(); ++i){
-//			// if values the same for this threshold
-//			if(fabs(maxEval - sinVals(i)) < sinValsThresh){
-//				++numMaxEvals;
-//			}
-//			else if(maxEval < sinVals(i)){
-//				numMaxEvals = 1;
-//				maxEval = svd.singularValues()[i];
-//				maxEvalInd = i;
-//			}
-//		}
-//		// if constraints imposed by planes do not make computing transformation possible
-//		if(numMaxEvals > 1){
-//			fullConstr = false;
-//		}
-
-//        // singular value are square roots of eigenvalues
-//        double evalsDiff = svd.singularValues()(0)*svd.singularValues()(0)
-//                                - svd.singularValues()(1)*svd.singularValues()(1);
-//        if(abs(evalsDiff) < sinValsThresh){
-//            fullConstr = false;
-//            return retTransform;
-//        }
-        
-	//	Eigen::EigenSolver<Eigen::Matrix4d> es(D);
-	//	cout << "eigenvalues = " << es.eigenvalues() << endl;
-	//	cout << "eigenvectors = " << es.eigenvectors() << endl;
-
         Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> es(D);
         const Eigen::Vector4d &evals = es.eigenvalues();
         const Eigen::Matrix4d &evectors = es.eigenvectors();
         
-        double maxEval = evals(0);
+//        cout << "evals 1 = " << es.eigenvalues() << endl;
+//        cout << "evectors 1 = " << es.eigenvectors() << endl;
+        
+        double maxEval = evals(3);
         for(int i = 0; i < evals.size(); ++i){
             // if constraints imposed by planes do not make computing transformation possible
             if(abs(maxEval + evals(i)) < sinValsThresh){
-                cout << "rot constr: " << maxEval << " " << evals(i) << endl;
+//                cout << "rot constr 1: " << maxEval << " " << evals(i) << endl;
                 fullConstr = false;
                 return retTransform;
             }
         }
         
-		Eigen::Vector4d rot = evectors.block<4, 1>(0, 0);
+		Eigen::Vector4d rot = evectors.block<4, 1>(0, 3);
 		retTransform.tail<4>() = rot;
-  
-	//	for(int pl = 0; pl < planes1.size(); ++pl){
-	//		Eigen::Matrix4d Wt = matrixW(Eigen::Quaterniond(rot)).transpose();
-	//		Eigen::Matrix4d Q = matrixQ(Eigen::Quaterniond(rot));
-	////		cout << "Wt = " << Wt << endl;
-	////		cout << "Q = " << Q << endl;
-	////		cout << "Wt * Q = " << Wt * Q << endl;
-	//		cout << "transposed = " << (Wt * Q * planes1[pl].coeffs()).transpose() << endl;
-	//		cout << "plane2 = " << planes2[pl].coeffs().transpose() << endl;
-	//	}
 	}
 
 	{
@@ -1231,28 +1330,23 @@ Vector7d Matching::bestTransformPlanes(const vectorVector4d& planes1,
 //			cout << "Adding to b" << endl;
 			b(pl) = d1 - d2;
 		}
-////		cout << "A.transpose();" << endl;
-//		Eigen::MatrixXd At = A.transpose();
-////		cout << "(At * A).inverse()" << endl;
-//		Eigen::MatrixXd AtAinv = (At * A).inverse();
-////		cout << "AtAinv * At * b" << endl;
-        
-//        cout << "A = " << A << endl;
-//        cout << "b = " << b << endl;
+  
+//        cout << "A 1 = " << A << endl;
+//        cout << "b 1 = " << b << endl;
         
         Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
         svd.setThreshold(0.05);
-        cout << "trans rank = " << svd.rank() << endl;
-        Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
-        lu.setThreshold(0.1);
-        if(lu.rank() < 3){
+//        cout << "sin vals = " << svd.singularValues() << endl;
+//        Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
+//        lu.setThreshold(0.1);
+//        cout << "trans rank 1 = " << svd.rank() << endl;
+        if(svd.rank() < 3){
             fullConstr = false;
             return retTransform;
         }
-        
+        svd.setThreshold(Eigen::Default_t());
         Eigen::Vector3d trans = svd.solve(b);
-//		Eigen::Vector3d trans = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-//		cout << "trans = " << trans << endl;
+//		cout << "trans 1 = " << trans << endl;
   
 		retTransform.head<3>() = trans;
 	}
@@ -1349,8 +1443,8 @@ Matching::bestTransformPointsAndDirs(const vectorVector3d &points1,
         Eigen::EigenSolver<Eigen::Matrix4d> esolver(A);
         Eigen::Vector4d evals = esolver.eigenvalues().real();
         Eigen::Matrix4d evectors = esolver.eigenvectors().real();
-//        cout << "evals = " << evals << endl;
-//        cout << "evectors = " << evectors << endl;
+        cout << "evals 2 = " << evals << endl;
+        cout << "evectors 2 = " << evectors << endl;
 
         int maxEvalInd = 0;
         double maxEval = 0;
@@ -1531,11 +1625,13 @@ Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
             }
 
 //            cout << "computing full piv LU" << endl;
-            cout << "A = " << A << endl;
-            cout << "b = " << b << endl;
+            cout << "A 2 = " << A << endl;
+            cout << "b 2 = " << b << endl;
             Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
             lu.setThreshold(0.1);
 
+            Eigen::MatrixXd matLU = lu.matrixLU().triangularView<Eigen::Upper>();
+            cout << "pivots = " << matLU.diagonal() << endl;
 //            cout << "A.transpose();" << endl;
 //            Eigen::MatrixXd At = A.transpose();
 //            cout << "(At * A)" << endl;
@@ -1550,7 +1646,7 @@ Vector7d Matching::bestTransformPointsDirsDists(const vectorVector3d &points1,
 
 //                cout << "solving equation" << endl;
                 Eigen::Vector3d t = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(b);
-//                cout << "t = " << t << endl;
+                cout << "t 2 = " << t << endl;
 //                cout << "error = " << (A * t - b) << endl;
 
                 retTransform.head<3>() = t;

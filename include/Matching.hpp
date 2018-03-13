@@ -217,9 +217,9 @@ private:
                                                 int viewPort1 = -1,
                                                 int viewPort2 = -1);
     
-    static std::vector<std::vector<PotMatch> > findPotSets(std::vector<PotMatch> potMatches,
-														   const vectorObjInstance &mapObjInstances,
-														   const vectorObjInstance &frameObjInstances,
+    static std::vector<std::vector<PotMatch> > findPotSets(const std::vector<PotMatch> &potMatches,
+                                                           const vectorObjInstance &mapObjInstances,
+                                                           const vectorObjInstance &frameObjInstances,
                                                            double planeDistThresh,
                                                            double lineToLineAngThresh,
                                                            double planeToPlaneAngThresh,
