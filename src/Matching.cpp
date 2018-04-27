@@ -900,14 +900,15 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &map
         }
     }
     
-    if(potMatches.size() > 200) {
+    static constexpr int potMatchesThresh = 275;
+    if(potMatches.size() > potMatchesThresh) {
         vector<double> histDists;
         for (const PotMatch &pm : potMatches) {
             histDists.push_back(pm.planeAppDiff);
         }
         sort(histDists.begin(), histDists.end());
         
-        double newPlaneAppThresh = histDists[200];
+        double newPlaneAppThresh = histDists[potMatchesThresh];
         
         vector<PotMatch> newPotMatches;
         for (const PotMatch &pm : potMatches) {
@@ -966,7 +967,14 @@ vector<vector<Matching::PotMatch>> Matching::findPotSets(const vector<PotMatch> 
 //                }
                 vector<int> curIdxs = potSetsIdxs[s];
                 curIdxs.push_back(p);
-                sort(curIdxs.begin(), curIdxs.end());
+//                sort(curIdxs.begin(), curIdxs.end());
+                for(int i = 0; i < curIdxs.size() - 1; ++i){
+                    for(int j = 0; j < curIdxs.size() - i - 1; ++j){
+                        if(curIdxs[j] > curIdxs[j+1]){
+                            swap(curIdxs[i], curIdxs[j]);
+                        }
+                    }
+                }
                 
                 static constexpr int mult = 10000;
                 int curMult = 1;

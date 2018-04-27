@@ -55,7 +55,7 @@ using namespace cv;
 
 PlaneSlam::PlaneSlam(const cv::FileStorage& isettings) :
 	settings(isettings),
-	fileGrabber(isettings),
+	fileGrabber(isettings["fileGrabber"]),
 	map(isettings)
 //	viewer("3D Viewer")
 {
@@ -139,6 +139,7 @@ void PlaneSlam::run(){
     bool useLines = bool((int)settings["planeSlam"]["useLines"]);
     bool processFrames = bool((int)settings["planeSlam"]["processFrames"]);
 //    bool localize = bool((int)settings["planeSlam"]["localize"]);
+    bool compRes = true;
 
     double poseDiffThresh = (double)settings["planeSlam"]["poseDiffThresh"];
 
@@ -150,6 +151,10 @@ void PlaneSlam::run(){
     vectorVector7d visGtPoses;
     vectorVector7d visRecPoses;
     vector<RecCode> visRecCodes;
+    vector<int> visRecFrameIdxs;
+    vectorVector7d visGtCompPoses;
+    vectorVector7d visRecCompPoses;
+    vector<RecCode> visRecCompCodes;
 
 	ofstream outputResGlobFile;
     ofstream outputResIncrFile;
@@ -175,7 +180,11 @@ void PlaneSlam::run(){
             inputResIncrFile.open("../output/res_incr.in");
         }
 	}
-    
+	ifstream inputResGlobCompFile;
+    if(compRes){
+        inputResGlobCompFile.open("../output/res_comp.in");
+    }
+	
     // variables used for accumulation
 //    vector<ObjInstance> accObjInstances;
     Map accMap;
@@ -200,6 +209,45 @@ void PlaneSlam::run(){
         std::map<int, int> idToCnt;
         
         bool localize = true;
+        
+        if(inputResGlobCompFile.is_open()){
+            int code;
+            inputResGlobCompFile >> code;
+            
+//            cout << "code = " << code << endl;
+            
+            visGtCompPoses.push_back(pose);
+            if(code == -1){
+                visRecCompCodes.push_back(RecCode::Unk);
+                visRecCompPoses.push_back(Vector7d::Zero());
+            }
+            else{
+                Vector7d compTrans;
+                for(int i = 0; i < 7; ++i){
+                    inputResGlobCompFile >> compTrans(i);
+                }
+                
+                g2o::SE3Quat compTransSE3Quat(compTrans);
+                g2o::SE3Quat gtTransformSE3Quat(pose);
+                
+//                cout << "compTrans = " << compTrans.transpose() << endl;
+//                cout << "pose = " << pose.transpose() << endl;
+                
+                g2o::SE3Quat diffSE3Quat = compTransSE3Quat.inverse() * gtTransformSE3Quat;
+//                    g2o::SE3Quat diffInvSE3Quat = poseSE3Quat * planesTransSE3Quat.inverse();
+                Vector6d diffLog = diffSE3Quat.log();
+//                cout << "diffLog = " << diffSE3Quat.log().transpose() << endl;
+//                    cout << "diffInvLog = " << diffInvSE3Quat.log().transpose() << endl;
+                double diff = diffLog.transpose() * diffLog;
+                if(diff > poseDiffThresh){
+                    visRecCompCodes.push_back(RecCode::Incorr);
+                }
+                else{
+                    visRecCompCodes.push_back(RecCode::Corr);
+                }
+                visRecCompPoses.push_back(compTrans);
+            }
+        }
         
         if (processFrames) {
             if ((curFrameIdx - framesSkipped) % processNewFrameSkip == 0) {
@@ -484,6 +532,8 @@ void PlaneSlam::run(){
             visRecCodes.push_back(curRecCode);
             visGtPoses.push_back(pose);
             visRecPoses.push_back(predTrans);
+            visRecFrameIdxs.push_back(curFrameIdx);
+            
 //            cout << "pose = " << pose.transpose() << endl;
 //            cout << "predTrans = " << predTrans.transpose() << endl;
             
@@ -557,6 +607,10 @@ void PlaneSlam::run(){
                 ++meanCnt;
             }
         }
+        
+//        if(curFrameIdx == 950){
+//            stopFlag = true;
+//        }
         
         
         if (drawVis) {
@@ -701,6 +755,7 @@ void PlaneSlam::run(){
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr corrPoses(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::PointCloud<pcl::PointXYZ>::Ptr incorrPoses(new pcl::PointCloud<pcl::PointXYZ>());
+        
         for(int f = 0; f < visRecCodes.size(); ++f){
             if(visRecCodes[f] == RecCode::Corr || visRecCodes[f] == RecCode::Incorr){
                 pcl::PointXYZ curPose(visGtPoses[f][0],
@@ -711,10 +766,13 @@ void PlaneSlam::run(){
                                       visRecPoses[f][2]);
                 if(visRecCodes[f] == RecCode::Corr) {
                     corrPoses->push_back(curRecPose);
+                    cout << "correct for " << visRecFrameIdxs[f] << endl;
                 }
                 else/* if(visRecCodes[f] == RecCode::Incorr) */ {
                     incorrPoses->push_back(curRecPose);
+                    cout << "incorrect for " << visRecFrameIdxs[f] << endl;
                 }
+                
 
                 viewer->addLine(curPose, curRecPose, 0.0, 1.0, 0.0, string("line_pose_") + to_string(f), v1);
                 viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
@@ -732,10 +790,6 @@ void PlaneSlam::run(){
                                                  5,
                                                  "corr_poses_cloud",
                                                  v1);
-//        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
-//                                                 pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
-//                                                 "corr_poses_cloud",
-//                                                 v1);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
                                                  0.0, 0.0, 1.0,
                                                  "corr_poses_cloud",
@@ -749,6 +803,62 @@ void PlaneSlam::run(){
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
                                                  1.0, 0.0, 1.0,
                                                  "incorr_poses_cloud",
+                                                 v1);
+    
+        pcl::PointCloud<pcl::PointXYZ>::Ptr corrCompPoses(new pcl::PointCloud<pcl::PointXYZ>());
+        pcl::PointCloud<pcl::PointXYZ>::Ptr incorrCompPoses(new pcl::PointCloud<pcl::PointXYZ>());
+        for(int f = 0; f < visRecCompCodes.size(); ++f){
+            if(f % 10 == 0) {
+                if (visRecCompCodes[f] == RecCode::Corr || visRecCompCodes[f] == RecCode::Incorr) {
+                    pcl::PointXYZ curPose(visGtCompPoses[f][0],
+                                          visGtCompPoses[f][1],
+                                          visGtCompPoses[f][2]);
+                    pcl::PointXYZ curRecPose(visRecCompPoses[f][0],
+                                             visRecCompPoses[f][1],
+                                             visRecCompPoses[f][2]);
+                    if (visRecCompCodes[f] == RecCode::Corr) {
+                        corrCompPoses->push_back(curRecPose);
+                    } else/* if(visRecCodes[f] == RecCode::Incorr) */ {
+                        incorrCompPoses->push_back(curRecPose);
+                    }
+        
+                    viewer->addLine(curPose,
+                                    curRecPose,
+                                    0.0,
+                                    1.0,
+                                    1.0,
+                                    string("line_comp_pose_") + to_string(f),
+                                    v1);
+                    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
+                                                        4,
+                                                        string("line_comp_pose_") + to_string(f),
+                                                        v1);
+                    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+                                                        pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
+                                                        string("line_comp_pose_") + to_string(f),
+                                                        v1);
+                }
+            }
+        }
+        
+        viewer->addPointCloud(corrCompPoses, "corr_comp_poses_cloud", v1);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                 5,
+                                                 "corr_comp_poses_cloud",
+                                                 v1);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                 1.0, 1.0, 0.0,
+                                                 "corr_comp_poses_cloud",
+                                                 v1);
+    
+        viewer->addPointCloud(incorrCompPoses, "incorr_comp_poses_cloud", v1);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                 5,
+                                                 "incorr_comp_poses_cloud",
+                                                 v1);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                 1.0, 0.0, 1.0,
+                                                 "incorr_comp_poses_cloud",
                                                  v1);
 
         viewer->resetStoppedFlag();
@@ -895,7 +1005,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
         double diff = diffLog.transpose() * diffLog;
         double diffEucl = diffSE3Quat.toVector().head<3>().norm();
         Eigen::Vector3d diffLogAng = Misc::logMap(diffSE3Quat.rotation());
-        double diffAng = diffLogAng.transpose() * diffLogAng;
+        double diffAng = diffLogAng.norm();
 //                    Eigen::Vector3d diffAngEuler = diffInvSE3Quat.rotation().toRotationMatrix().eulerAngles(1, 0, 2);
 //                    cout << "diffAngEuler = " << diffAngEuler.transpose() << endl;
 //                    double diffAng = std::min(diffAngEuler[0], pi - diffAngEuler[0]);

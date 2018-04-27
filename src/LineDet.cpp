@@ -187,7 +187,7 @@ void LineDet::detectLineSegments(const cv::FileStorage &settings,
             }
             // Add line segment to plane instance(s)
             // 0.4 m assuming uniform distribution with variance (b - a)^2/12
-            static constexpr double shorterCompThresh = 0.4/sqrt(12);
+            static const double shorterCompThresh = 0.4/sqrt(12);
             Eigen::Vector3d planeLp1(0, 0, 0);
             Eigen::Vector3d planeLp2(0, 0, 0);
             cout << "bestPlaneL = " << bestPlaneL << endl;

@@ -50,7 +50,7 @@ public:
 		cv::Mat mask;
 	};
 
-	FileGrabber(const cv::FileStorage& settings);
+	FileGrabber(const cv::FileNode &settings);
 
 	int getFrame(cv::Mat& rgb,
                  cv::Mat& depth,
@@ -77,6 +77,8 @@ public:
                  Vector7d &vo,
                  bool &voCorr,
                  Map &accMap);
+    
+    boost::filesystem::path getRgbFilePath(int idx);
 private:
 
 	std::vector<boost::filesystem::path> rgbPaths;
