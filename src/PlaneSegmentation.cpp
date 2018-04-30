@@ -560,10 +560,13 @@ void PlaneSegmentation::makeSupervoxels(const cv::FileStorage &fs,
 //        svs[sv].calcSegProp();
 //    }
     
-    cv::Mat segCol = Misc::colorIdsWithLabels(rgbSegments);
+//    cv::Mat segCol = Misc::colorIdsWithLabels(rgbSegments);
+    cv::Mat segCol = Misc::colorIds(rgbSegments);
     
-//    cv::imshow("original", rgb);
-//    cv::imshow("rgb segments", segCol);
+    cv::Mat bgr;
+    cv::cvtColor(rgb, bgr, cv::COLOR_RGB2BGR);
+    cv::imshow("original", bgr);
+    cv::imshow("rgb segments", segCol);
 }
 
 void PlaneSegmentation::makeObjInstances(const vectorPlaneSeg &svs,
@@ -1209,7 +1212,7 @@ void PlaneSegmentation::visualizeSegmentation(const vectorPlaneSeg &svs,
     }
     
     viewer->addPointCloud(pcColPlanes, "cloudColPlanes", viewPort2);
-    viewer->addPointCloudNormals<pcl::PointNormal>(pcNormalsSv, 1, 0.1, "cloudNormalsSv", viewPort2);
+//    viewer->addPointCloudNormals<pcl::PointNormal>(pcNormalsSv, 1, 0.1, "cloudNormalsSv", viewPort2);
 
 
 //        cout << "pcNormals->size() = " << pcNormalsSv->size() << endl;

@@ -608,7 +608,7 @@ void PlaneSlam::run(){
             }
         }
         
-//        if(curFrameIdx == 950){
+//        if(curFrameIdx == 150 || curFrameIdx == 700 || curFrameIdx == 1150){
 //            stopFlag = true;
 //        }
         
@@ -637,7 +637,7 @@ void PlaneSlam::run(){
             viewer->removeAllShapes();
             viewer->removeAllCoordinateSystems();
             
-            viewer->addCoordinateSystem();
+//            viewer->addCoordinateSystem();
             
             {
                 g2o::SE3Quat accPoseIncrSE3Quat =
