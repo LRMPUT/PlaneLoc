@@ -12,18 +12,16 @@ Prerequesties:
 
 ### Building:  
 
-Tested on Ubuntu 14.04.  
-1. Install Boost and Eigen:
+Tested on Ubuntu 16.04.  
+1. Install Boost, Eigen, and CGAL:
 ```commandline
-sudo apt-get install libboost-system-dev libboost-filesystem-dev libeigen3-dev
+sudo apt-get install libboost-system-dev libboost-filesystem-dev libeigen3-dev libcgal-dev
 ```
-Please ensure that your Eigen version is not beta version. Version 3.3 beta contains a bug that causes system to produce wrong results.
-
 2. Build PCL from sources and install it:
 ```commandline
 sudo apt-get install libvtk6-dev libflann-dev libxi-dev libxmu-dev libgtest-dev libproj-dev
-wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.0.tar.gz
-tar xvfj pcl-pcl-1.8.0.tar.gz && cd pcl-pcl-1.8.0
+wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.1.tar.gz
+tar xvfj pcl-pcl-1.8.1.tar.gz && cd pcl-pcl-1.8.1
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
