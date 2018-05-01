@@ -211,18 +211,20 @@ void PlaneSlam::run(){
         bool localize = true;
         
         if(inputResGlobCompFile.is_open()){
-            int code;
-            inputResGlobCompFile >> code;
+            int codeVal;
+            inputResGlobCompFile >> codeVal;
             
 //            cout << "code = " << code << endl;
             
-            visGtCompPoses.push_back(pose);
-            if(code == -1){
-                visRecCompCodes.push_back(RecCode::Unk);
-                visRecCompPoses.push_back(Vector7d::Zero());
+//            visGtCompPoses.push_back(pose);
+            RecCode code = RecCode::Unk;
+            Vector7d compTrans = Vector7d::Zero();
+            if(codeVal == -1){
+//                visRecCompCodes.push_back(RecCode::Unk);
+//                visRecCompPoses.push_back(Vector7d::Zero());
             }
             else{
-                Vector7d compTrans;
+//                Vector7d compTrans;
                 for(int i = 0; i < 7; ++i){
                     inputResGlobCompFile >> compTrans(i);
                 }
@@ -240,11 +242,18 @@ void PlaneSlam::run(){
 //                    cout << "diffInvLog = " << diffInvSE3Quat.log().transpose() << endl;
                 double diff = diffLog.transpose() * diffLog;
                 if(diff > poseDiffThresh){
-                    visRecCompCodes.push_back(RecCode::Incorr);
+                    code = RecCode::Incorr;
+//                    visRecCompCodes.push_back(RecCode::Incorr);
                 }
                 else{
-                    visRecCompCodes.push_back(RecCode::Corr);
+                    code = RecCode::Corr;
+//                    visRecCompCodes.push_back(RecCode::Corr);
                 }
+//                visRecCompPoses.push_back(compTrans);
+            }
+            if(curFrameIdx % 10 == 0){
+                visGtCompPoses.push_back(pose);
+                visRecCompCodes.push_back(code);
                 visRecCompPoses.push_back(compTrans);
             }
         }
@@ -808,7 +817,7 @@ void PlaneSlam::run(){
         pcl::PointCloud<pcl::PointXYZ>::Ptr corrCompPoses(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::PointCloud<pcl::PointXYZ>::Ptr incorrCompPoses(new pcl::PointCloud<pcl::PointXYZ>());
         for(int f = 0; f < visRecCompCodes.size(); ++f){
-            if(f % 10 == 0) {
+            /*if(f % 10 == 0) */{
                 if (visRecCompCodes[f] == RecCode::Corr || visRecCompCodes[f] == RecCode::Incorr) {
                     pcl::PointXYZ curPose(visGtCompPoses[f][0],
                                           visGtCompPoses[f][1],

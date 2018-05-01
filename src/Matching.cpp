@@ -621,6 +621,9 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
     static chrono::milliseconds totalTransformTime = chrono::milliseconds::zero();
     static chrono::milliseconds totalScoreTime = chrono::milliseconds::zero();
     static chrono::milliseconds totalFitTime = chrono::milliseconds::zero();
+    static double meanTriTransTime = 0;
+    static double m2TriTransTime = 0;
+    static double maxTriTransTime = 0;
     static int totalCnt = 0;
 
     totalAppTime += chrono::duration_cast<chrono::milliseconds>(endAppTime - startTime);
@@ -630,6 +633,21 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
     totalFitTime += chrono::duration_cast<chrono::milliseconds>(endTime - endScoreTime);
     ++totalCnt;
 
+    {
+        double newVal = chrono::duration_cast<chrono::milliseconds>(endTransformTime - endAppTime).count();
+        maxTriTransTime = max(maxTriTransTime, newVal);
+        double delta = newVal - meanTriTransTime;
+        meanTriTransTime += delta/totalCnt;
+        double delta2 = newVal - meanTriTransTime;
+        m2TriTransTime += delta*delta2;
+        
+        if(totalCnt > 1) {
+            double var = m2TriTransTime / (totalCnt - 1);
+            cout << "triplets + transform std dev = " << sqrt(var) << endl;
+            cout << "triplets + transform max = " << maxTriTransTime << endl;
+        }
+    }
+    
     cout << "Mean matching app time: " << (totalAppTime.count() / totalCnt) << endl;
     cout << "Mean matching triplets time: " << (totalTripletsTime.count() / totalCnt) << endl;
     cout << "Mean matching transform time: " << (totalTransformTime.count() / totalCnt) << endl;
