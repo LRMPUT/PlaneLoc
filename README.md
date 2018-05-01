@@ -17,8 +17,11 @@ Tested on Ubuntu 14.04.
 ```commandline
 sudo apt-get install libboost-system-dev libboost-filesystem-dev libeigen3-dev
 ```
+Please ensure that your Eigen version is not beta version. Version 3.3 beta contains a bug that causes system to produce wrong results.
+
 2. Build PCL from sources and install it:
 ```commandline
+sudo apt-get install libvtk6-dev libflann-dev libxi-dev libxmu-dev libgtest-dev libproj-dev
 wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.8.0.tar.gz
 tar xvfj pcl-pcl-1.8.0.tar.gz && cd pcl-pcl-1.8.0
 mkdir build && cd build
@@ -53,7 +56,7 @@ make -j$(nproc)
 
 ### Launching:  
 
-1. Adjust settings file in _res/settings.xml_ for your dataset.  
+1. Adjust settings file in _res/settings.yml_ for your dataset.  
 2. Launch demo:
 
 ```commandline
