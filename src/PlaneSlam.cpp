@@ -42,6 +42,7 @@
 #include <g2o/types/slam3d/se3quat.h>
 #include <LineSeg.hpp>
 #include <LineDet.hpp>
+#include <pcl/common/transforms.h>
 
 #include "PlaneSlam.hpp"
 #include "Misc.hpp"
@@ -82,22 +83,15 @@ void PlaneSlam::run(){
 	int frameCnt = 0;
 
 	pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-
 	int v1 = 0;
 	int v2 = 0;
-	viewer->createViewPort(0.0, 0.0, 0.5, 1.0, v1);
-	viewer->createViewPort(0.5, 0.0, 1.0, 1.0, v2);
+    viewer->createViewPort(0.0, 0.0, 1.0, 1.0, v1);
+//	viewer->createViewPort(0.0, 0.0, 0.5, 1.0, v1);
+//	viewer->createViewPort(0.5, 0.0, 1.0, 1.0, v2);
 //	viewer->addCoordinateSystem();
-
-	int corrCnt = 0;
-	int incorrCnt = 0;
-	int unkCnt = 0;
-
-    double meanDist = 0.0;
-    double meanAngDist = 0.0;
-    int meanCnt = 0;
-
-	// Map
+ 
+   
+    // Map
 	cout << "Getting object instances from map" << endl;
     vectorObjInstance mapObjInstances;
     for(auto it = map.begin(); it != map.end(); ++it){
@@ -119,7 +113,8 @@ void PlaneSlam::run(){
     cout << "skipping " << framesToSkip << " frames" << endl;
 	static constexpr int frameRate = 30;
 	int framesSkipped = 0;
-	while((framesSkipped < framesToSkip) && (fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr) >= 0))
+    int curFrameIdx = -1;
+	while((framesSkipped < framesToSkip) && ((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr)) >= 0))
 	{
         ++framesSkipped;
 	}
@@ -170,6 +165,10 @@ void PlaneSlam::run(){
 //	if(saveVis){
 //		visFile.open("../output/vis");
 //	}
+    cv::VideoWriter visVideo;
+    if(saveVis){
+	   visVideo.open("../output/rec/vis.avi", VideoWriter::fourcc('X','2','6','4'), 2, Size(1280, 720));
+	}
 	ifstream inputResGlobFile;
     ifstream inputResIncrFile;
 	if(loadRes){
@@ -193,8 +192,31 @@ void PlaneSlam::run(){
     
     int processNewFrameSkip = 1;
     
+    
+    int corrCnt = 0;
+    int incorrCnt = 0;
+    int unkCnt = 0;
+    
+    double meanDist = 0.0;
+    double meanAngDist = 0.0;
+    int meanCnt = 0;
+    
+    int prevCorrFrameIdx = curFrameIdx;
+    int longestUnk = 0;
+    
+    
+    int corrCntComp = 0;
+    int incorrCntComp = 0;
+    int unkCntComp = 0;
+    int meanCntComp = 0;
+    
+    double meanDistComp = 0;
+    double meanAngDistComp = 0;
+    
+    int prevCorrFrameIdxComp = curFrameIdx;
+    int longestUnkComp = 0;
+    
 //	ofstream logFile("../output/log.out");
-	int curFrameIdx;
     cout << "Starting the loop" << endl;
 	while((curFrameIdx = fileGrabber.getFrame(rgb, depth, objInstances, accelData, pose, voPose, voCorr, accMap)) >= 0) {
         cout << "curFrameIdx = " << curFrameIdx << endl;
@@ -219,42 +241,65 @@ void PlaneSlam::run(){
 //            visGtCompPoses.push_back(pose);
             RecCode code = RecCode::Unk;
             Vector7d compTrans = Vector7d::Zero();
-            if(codeVal == -1){
-//                visRecCompCodes.push_back(RecCode::Unk);
-//                visRecCompPoses.push_back(Vector7d::Zero());
-            }
-            else{
+            if(codeVal != -1) {
 //                Vector7d compTrans;
-                for(int i = 0; i < 7; ++i){
+                for (int i = 0; i < 7; ++i) {
                     inputResGlobCompFile >> compTrans(i);
                 }
+            }
+            
+            if(curFrameIdx % 10 == 0) {
+                visGtCompPoses.push_back(pose);
                 
-                g2o::SE3Quat compTransSE3Quat(compTrans);
-                g2o::SE3Quat gtTransformSE3Quat(pose);
-                
+                if(codeVal == -1) {
+                    visRecCompCodes.push_back(RecCode::Unk);
+                    visRecCompPoses.push_back(Vector7d::Zero());
+            
+                    ++unkCntComp;
+                }
+                else {
+                    
+                    g2o::SE3Quat compTransSE3Quat(compTrans);
+                    g2o::SE3Quat gtTransformSE3Quat(pose);
+
 //                cout << "compTrans = " << compTrans.transpose() << endl;
 //                cout << "pose = " << pose.transpose() << endl;
-                
-                g2o::SE3Quat diffSE3Quat = compTransSE3Quat.inverse() * gtTransformSE3Quat;
+    
+                    g2o::SE3Quat diffSE3Quat = compTransSE3Quat.inverse() * gtTransformSE3Quat;
 //                    g2o::SE3Quat diffInvSE3Quat = poseSE3Quat * planesTransSE3Quat.inverse();
-                Vector6d diffLog = diffSE3Quat.log();
+                    Vector6d diffLog = diffSE3Quat.log();
 //                cout << "diffLog = " << diffSE3Quat.log().transpose() << endl;
 //                    cout << "diffInvLog = " << diffInvSE3Quat.log().transpose() << endl;
-                double diff = diffLog.transpose() * diffLog;
-                if(diff > poseDiffThresh){
-                    code = RecCode::Incorr;
-//                    visRecCompCodes.push_back(RecCode::Incorr);
+                    double diff = diffLog.transpose() * diffLog;
+    
+                    double diffEucl = diffSE3Quat.toVector().head<3>().norm();
+                    Eigen::Vector3d diffLogAng = Misc::logMap(diffSE3Quat.rotation());
+                    double diffAng = diffLogAng.norm();
+    
+                    meanDistComp += diffEucl;
+                    meanAngDistComp += diffAng;
+                    ++meanCntComp;
+    
+                    if (diff > poseDiffThresh) {
+                        code = RecCode::Incorr;
+                        
+                        ++incorrCntComp;
+                    } else {
+                        code = RecCode::Corr;
+                        
+                        int unkLenComp = curFrameIdx - prevCorrFrameIdxComp;
+                        if(unkLenComp > longestUnkComp){
+                            longestUnkComp = unkLenComp;
+                        }
+    
+                        prevCorrFrameIdxComp = curFrameIdx;
+                        
+                        ++corrCntComp;
+                    }
+    
+                    visRecCompCodes.push_back(code);
+                    visRecCompPoses.push_back(compTrans);
                 }
-                else{
-                    code = RecCode::Corr;
-//                    visRecCompCodes.push_back(RecCode::Corr);
-                }
-//                visRecCompPoses.push_back(compTrans);
-            }
-            if(curFrameIdx % 10 == 0){
-                visGtCompPoses.push_back(pose);
-                visRecCompCodes.push_back(code);
-                visRecCompPoses.push_back(compTrans);
             }
         }
         
@@ -424,7 +469,7 @@ void PlaneSlam::run(){
 //                    g2o::SE3Quat accPoseIncrSE3Quat = g2o::SE3Quat(pose);
                         Vector7d accPoseIncr = accPoseIncrSE3Quat.toVector();
 
-//                cout << "accPoseIncr = " << accPoseIncr.transpose() << endl;
+                        cout << "accPoseIncr = " << accPoseIncr.transpose() << endl;
                 
                         vectorObjInstance curObjInstancesTrans = curObjInstances;
                         for (ObjInstance &curObj : curObjInstancesTrans) {
@@ -548,6 +593,13 @@ void PlaneSlam::run(){
             
             if (curRecCode == RecCode::Corr) {
                 ++corrCnt;
+                
+                int unkLen = curFrameIdx - prevCorrFrameIdx;
+                if(unkLen > longestUnk){
+                    longestUnk = unkLen;
+                }
+                
+                prevCorrFrameIdx = curFrameIdx;
             } else if (curRecCode == RecCode::Incorr) {
                 ++incorrCnt;
                 stopFlag |= stopWrongFrame;
@@ -558,6 +610,7 @@ void PlaneSlam::run(){
             if (curRecCode != RecCode::Unk) {
                 meanDist += linDist;
                 meanAngDist += angDist;
+                
                 ++meanCnt;
             }
         }
@@ -622,7 +675,7 @@ void PlaneSlam::run(){
 //        }
         
         
-        if (drawVis) {
+        if (drawVis && accMap.size() > 0) {
             cout << "visualization" << endl;
 
 //                // saving
@@ -647,6 +700,101 @@ void PlaneSlam::run(){
             viewer->removeAllCoordinateSystems();
             
 //            viewer->addCoordinateSystem();
+    
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPc(new pcl::PointCloud<pcl::PointXYZRGB>());
+            for(const ObjInstance &mObj : map){
+                mapPc->insert(mapPc->end(), mObj.getPoints()->begin(), mObj.getPoints()->end());
+            }
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr mapPcGray(new pcl::PointCloud<pcl::PointXYZRGB>());
+            pcl::copyPointCloud(*mapPc, *mapPcGray);
+            for(int p = 0; p < mapPcGray->size(); ++p){
+                int gray = mapPcGray->at(p).r * 0.21 +
+                           mapPcGray->at(p).g * 0.72 +
+                           mapPcGray->at(p).b * 0.07;
+                gray = min(gray, 255);
+                mapPcGray->at(p).r = gray;
+                mapPcGray->at(p).g = gray;
+                mapPcGray->at(p).b = gray;
+            }
+            viewer->addPointCloud(mapPcGray, "map_cloud", v1);
+    
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
+                                                     0.5,
+                                                     "map_cloud",
+                                                     v1);
+
+//        pcl::PointCloud<pcl::PointXYZ>::Ptr trajLine(new pcl::PointCloud<pcl::PointXYZ>());
+            for(int f = 1; f < visGtPoses.size(); ++f){
+                pcl::PointXYZ prevPose(visGtPoses[f-1][0],
+                                       visGtPoses[f-1][1],
+                                       visGtPoses[f-1][2]);
+                pcl::PointXYZ curPose(visGtPoses[f][0],
+                                      visGtPoses[f][1],
+                                      visGtPoses[f][2]);
+//            trajLine->push_back(curPose);
+                viewer->addLine(prevPose, curPose, 1.0, 0.0, 0.0, string("line_traj_") + to_string(f), v1);
+                viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
+                                                    4,
+                                                    string("line_traj_") + to_string(f),
+                                                    v1);
+                viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+                                                    pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
+                                                    string("line_traj_") + to_string(f),
+                                                    v1);
+            }
+//        viewer->addPolygon<pcl::PointXYZ>(trajLine, 0.0, 1.0, 0.0, "traj_poly", v1);
+    
+            pcl::PointCloud<pcl::PointXYZ>::Ptr corrPoses(new pcl::PointCloud<pcl::PointXYZ>());
+            pcl::PointCloud<pcl::PointXYZ>::Ptr incorrPoses(new pcl::PointCloud<pcl::PointXYZ>());
+    
+            for(int f = 0; f < visRecCodes.size(); ++f){
+                if(visRecCodes[f] == RecCode::Corr || visRecCodes[f] == RecCode::Incorr){
+                    pcl::PointXYZ curPose(visGtPoses[f][0],
+                                          visGtPoses[f][1],
+                                          visGtPoses[f][2]);
+                    pcl::PointXYZ curRecPose(visRecPoses[f][0],
+                                             visRecPoses[f][1],
+                                             visRecPoses[f][2]);
+                    if(visRecCodes[f] == RecCode::Corr) {
+                        corrPoses->push_back(curRecPose);
+//                        cout << "correct for " << visRecFrameIdxs[f] << endl;
+                    }
+                    else/* if(visRecCodes[f] == RecCode::Incorr) */ {
+                        incorrPoses->push_back(curRecPose);
+//                        cout << "incorrect for " << visRecFrameIdxs[f] << endl;
+                    }
+            
+            
+                    viewer->addLine(curPose, curRecPose, 0.0, 1.0, 0.0, string("line_pose_") + to_string(f), v1);
+                    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH,
+                                                        4,
+                                                        string("line_pose_") + to_string(f),
+                                                        v1);
+                    viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_SHADING,
+                                                        pcl::visualization::PCL_VISUALIZER_SHADING_FLAT,
+                                                        string("line_pose_") + to_string(f),
+                                                        v1);
+                }
+            }
+            viewer->addPointCloud(corrPoses, "corr_poses_cloud", v1);
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                     5,
+                                                     "corr_poses_cloud",
+                                                     v1);
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                     0.0, 0.0, 1.0,
+                                                     "corr_poses_cloud",
+                                                     v1);
+    
+            viewer->addPointCloud(incorrPoses, "incorr_poses_cloud", v1);
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                     5,
+                                                     "incorr_poses_cloud",
+                                                     v1);
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,
+                                                     1.0, 0.0, 1.0,
+                                                     "incorr_poses_cloud",
+                                                     v1);
             
             {
                 g2o::SE3Quat accPoseIncrSE3Quat =
@@ -661,46 +809,44 @@ void PlaneSlam::run(){
             int o = 0;
             for (auto it = accMap.begin(); it != accMap.end(); ++it, ++o) {
                 const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPc = it->getPoints();
-                viewer->addPointCloud(curPc, "cloud_" + to_string(o), v1);
+                const pcl::PointCloud<pcl::PointXYZRGB>::Ptr curPcTrans(new pcl::PointCloud<pcl::PointXYZRGB>());
+                g2o::SE3Quat poseSE3Quat;
+                poseSE3Quat.fromVector(pose);
                 
-                it->display(viewer, v1, 2.0 / 8);
+                pcl::transformPointCloud(*curPc, *curPcTrans, poseSE3Quat.to_homogeneous_matrix());
+                viewer->addPointCloud(curPcTrans, "cloud_" + to_string(o), v1);
                 
-                if (!idToCnt.empty()) {
-                    int cnt = 0;
-                    if (idToCnt.count(it->getId()) > 0) {
-                        cnt = idToCnt.at(it->getId());
-                    }
-                    Eigen::Vector3d cent = it->getPlaneEstimator().getCentroid();
-                    viewer->addText3D("id: " + to_string(it->getId()) +
-                                      ", cnt: " + to_string(cnt) +
-                                      ", eol: " + to_string(it->getEolCnt()),
-                                      pcl::PointXYZ(cent(0), cent(1), cent(2)),
-                                      0.05,
-                                      1.0, 1.0, 1.0,
-                                      string("plane_text_ba_") + to_string(it->getId()),
-                                      v1);
-                }
-                
-                int colIdx = (o % (sizeof(colors) / sizeof(uint8_t) / 3));
-                pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> colHan(
-                        curPc,
-                        colors[colIdx][0],
-                        colors[colIdx][1],
-                        colors[colIdx][2]);
-                viewer->addPointCloud(curPc, colHan, "cloud_col_" + to_string(o), v2);
             }
             
             viewer->resetStoppedFlag();
             static bool cameraInit = false;
             if (!cameraInit) {
                 viewer->initCameraParameters();
-                viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
+                viewer->setSize(1280, 720);
+//                viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
                 cameraInit = true;
+            }
+            {
+                g2o::SE3Quat poseSE3Quat;
+                poseSE3Quat.fromVector(pose);
+    
+                Eigen::Vector3d t = poseSE3Quat.translation();
+                Eigen::Vector3d dt;
+                dt << 0.0, -2.0, -4.0;
+                Eigen::Vector3d tc = t + poseSE3Quat.rotation().toRotationMatrix() * dt;
+                viewer->setCameraPosition(tc(0), tc(1), tc(2), t(0), t(1), t(2), 0.0, 1.0, 0.0);
             }
             viewer->spinOnce(100);
             while (stopFlag && !viewer->wasStopped()) {
                 viewer->spinOnce(100);
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            if(saveVis){
+                char buf[100];
+                sprintf(buf, "../output/rec/vis%04d.png", curFrameIdx);
+                viewer->saveScreenshot(buf);
+                cv::Mat image = cv::imread(buf);
+                visVideo << image;
             }
             viewer->close();
         }
@@ -718,7 +864,29 @@ void PlaneSlam::run(){
         cout << "meanDist = " << meanDist / meanCnt << " m " << endl;
         cout << "meanAngDist = " << meanAngDist * 180.0 / pi / meanCnt << " deg" << endl;
     }
-
+    {
+        int unkLen = fileGrabber.getNumFrames() - prevCorrFrameIdx;
+        if(unkLen > longestUnk){
+            longestUnk = unkLen;
+        }
+    }
+    cout << "longestUnk = " << longestUnk << endl;
+    
+    cout << "corrCntComp = " << corrCntComp << endl;
+    cout << "incorrCnt = " << incorrCntComp << endl;
+    cout << "unkCntComp = " << unkCntComp << endl;
+    if(meanCnt > 0){
+        cout << "meanDistComp = " << meanDistComp / meanCntComp << " m " << endl;
+        cout << "meanAngDistComp = " << meanAngDistComp * 180.0 / pi / meanCntComp << " deg" << endl;
+    }
+    {
+        int unkLenComp = fileGrabber.getNumFrames() - prevCorrFrameIdxComp;
+        if(unkLenComp > longestUnkComp){
+            longestUnkComp = unkLenComp;
+        }
+    }
+    cout << "longestUnkComp = " << longestUnkComp << endl;
+    
     if(drawVis){
         viewer->removeAllPointClouds();
         viewer->removeAllShapes();
@@ -775,11 +943,11 @@ void PlaneSlam::run(){
                                       visRecPoses[f][2]);
                 if(visRecCodes[f] == RecCode::Corr) {
                     corrPoses->push_back(curRecPose);
-                    cout << "correct for " << visRecFrameIdxs[f] << endl;
+//                    cout << "correct for " << visRecFrameIdxs[f] << endl;
                 }
                 else/* if(visRecCodes[f] == RecCode::Incorr) */ {
                     incorrPoses->push_back(curRecPose);
-                    cout << "incorrect for " << visRecFrameIdxs[f] << endl;
+//                    cout << "incorrect for " << visRecFrameIdxs[f] << endl;
                 }
                 
 
@@ -813,11 +981,11 @@ void PlaneSlam::run(){
                                                  1.0, 0.0, 1.0,
                                                  "incorr_poses_cloud",
                                                  v1);
-    
+        
         pcl::PointCloud<pcl::PointXYZ>::Ptr corrCompPoses(new pcl::PointCloud<pcl::PointXYZ>());
         pcl::PointCloud<pcl::PointXYZ>::Ptr incorrCompPoses(new pcl::PointCloud<pcl::PointXYZ>());
         for(int f = 0; f < visRecCompCodes.size(); ++f){
-            /*if(f % 10 == 0) */{
+            /*if(f % 10 == 0)*/ {
                 if (visRecCompCodes[f] == RecCode::Corr || visRecCompCodes[f] == RecCode::Incorr) {
                     pcl::PointXYZ curPose(visGtCompPoses[f][0],
                                           visGtCompPoses[f][1],
@@ -830,6 +998,7 @@ void PlaneSlam::run(){
                     } else/* if(visRecCodes[f] == RecCode::Incorr) */ {
                         incorrCompPoses->push_back(curRecPose);
                     }
+                    
         
                     viewer->addLine(curPose,
                                     curRecPose,
@@ -1036,8 +1205,8 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
         
         predTransform = planesTrans.front();
         
-        linDist += planesTransDiffEucl.front();
-        angDist += planesTransDiffAng.front();
+        linDist = planesTransDiffEucl.front();
+        angDist = planesTransDiffAng.front();
     }
     else{
         recCode = RecCode::Unk;

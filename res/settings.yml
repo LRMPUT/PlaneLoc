@@ -99,7 +99,7 @@ fileGrabber:
 #
 #    imageFrame: 0
 
-    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test1"
+    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
 
     readObjLabeling: 0
 
@@ -239,7 +239,7 @@ planeSlam:
 
   loadRes: 1
 
-  saveVis: 0
+  saveVis: 1
 
   framesFromPly: 0
 
@@ -255,6 +255,6 @@ planeSlam:
 
   fitThresh: 0.07
 
-  distinctThresh: 0
+  distinctThresh: 6
 
 

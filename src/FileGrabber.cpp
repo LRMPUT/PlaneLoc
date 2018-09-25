@@ -28,6 +28,8 @@
 
 #include <pcl/io/ply_io.h>
 #include <g2o/types/slam3d/se3quat.h>
+#include <FileGrabber.hpp>
+
 
 #include "FileGrabber.hpp"
 #include "Exceptions.hpp"
@@ -352,4 +354,8 @@ int FileGrabber::getFrame(cv::Mat &rgb,
 
 boost::filesystem::path FileGrabber::getRgbFilePath(int idx) {
     return rgbPaths[idx];
+}
+
+int FileGrabber::getNumFrames() {
+    return rgbPaths.size();
 }

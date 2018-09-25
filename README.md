@@ -8,7 +8,8 @@ Prerequesties:
 -Eigen  
 -PCL 1.8  
 -OpenCV >= 3.0  
--g2o
+-g2o  
+-CGAL
 
 ### Building:  
 

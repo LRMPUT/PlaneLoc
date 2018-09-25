@@ -7,9 +7,9 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE PATH "Configuration types")
 #set(CMAKE_BUILD_TYPE "Debug" CACHE PATH "Current build configuration")
 
-# PUTSLAM Project configuration
+# PlaneLoc Project configuration
 project(PlaneLoc)
-set(CMAKE_CXX_FLAGS "-std=c++11 -pthread -g")
+#set(CMAKE_CXX_FLAGS "-std=c++11 -pthread -g")
 #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -o3")
 
 LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
@@ -93,22 +93,6 @@ target_link_libraries(unitTests
         ${G2O_TYPES_SBA}
         ${CGAL_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES})
-
-#-------------------------------------------------------
-
-if(BUILD_DEMO_OBJEXTRACT)
-	set(demoObjExtract_SOURCES
-		demos/demoExtract.cpp)
-	add_executable(demoObjExtract
-					${demoObjExtract_SOURCES})
-	target_link_libraries(demoObjExtract
-						PlaneSlam
-						${OpenCV_LIBS}
-						${Boost_LIBRARIES}
-						${PCL_LIBRARIES}
-						${OPENGM_LIBRARIES})
-					
-endif(BUILD_DEMO_OBJEXTRACT)
 
 #-------------------------------------------------------
 

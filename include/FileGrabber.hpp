@@ -79,6 +79,8 @@ public:
                  Map &accMap);
     
     boost::filesystem::path getRgbFilePath(int idx);
+    
+    int getNumFrames();
 private:
 
 	std::vector<boost::filesystem::path> rgbPaths;

@@ -178,6 +178,8 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
     
     static const int cntThreshMerge = 1000;
     
+    chrono::high_resolution_clock::time_point startTime = chrono::high_resolution_clock::now();
+    
     if(viewer){
         viewer->removeAllPointClouds();
         viewer->removeAllShapes();
@@ -358,12 +360,24 @@ void Map::mergeNewObjInstances(vectorObjInstance &newObjInstances,
         }
     }
     removeObjsEol();
+    
+    chrono::high_resolution_clock::time_point endTime = chrono::high_resolution_clock::now();
+    
+    static chrono::milliseconds totalTime = chrono::milliseconds::zero();
+    static int totalCnt = 0;
+    
+    totalTime += chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
+    ++totalCnt;
+    
+    cout << "Mean mergeNewObjInstances time: " << (totalTime.count() / totalCnt) << endl;
 }
 
 void Map::mergeMapObjInstances(pcl::visualization::PCLVisualizer::Ptr viewer,
                                int viewPort1,
                                int viewPort2)
 {
+    chrono::high_resolution_clock::time_point startTime = chrono::high_resolution_clock::now();
+    
     if(viewer) {
         for (auto it = objInstances.begin(); it != objInstances.end(); ++it) {
             it->display(viewer, viewPort1);
@@ -428,6 +442,16 @@ void Map::mergeMapObjInstances(pcl::visualization::PCLVisualizer::Ptr viewer,
         
         it = range.second;
     }
+    
+    chrono::high_resolution_clock::time_point endTime = chrono::high_resolution_clock::now();
+    
+    static chrono::milliseconds totalTime = chrono::milliseconds::zero();
+    static int totalCnt = 0;
+    
+    totalTime += chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
+    ++totalCnt;
+    
+    cout << "Mean mergeMapObjInstances time: " << (totalTime.count() / totalCnt) << endl;
 }
 
 void Map::addPendingObj(ObjInstance &obj,
@@ -698,6 +722,8 @@ std::map<int, int> Map::getVisibleObjs(Vector7d pose,
 {
     static constexpr double shadingLevel = 1.0/8;
     
+    chrono::high_resolution_clock::time_point startTime = chrono::high_resolution_clock::now();
+    
     g2o::SE3Quat poseSE3Quat(pose);
     Eigen::Matrix4d poseMat = poseSE3Quat.to_homogeneous_matrix();
     Eigen::Matrix4d poseInvMat = poseSE3Quat.inverse().to_homogeneous_matrix();
@@ -905,6 +931,16 @@ std::map<int, int> Map::getVisibleObjs(Vector7d pose,
             it->cleanDisplay(viewer, viewPort1);
         }
     }
+    
+    chrono::high_resolution_clock::time_point endTime = chrono::high_resolution_clock::now();
+    
+    static chrono::milliseconds totalTime = chrono::milliseconds::zero();
+    static int totalCnt = 0;
+    
+    totalTime += chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
+    ++totalCnt;
+    
+    cout << "Mean getVisibleObjs time: " << (totalTime.count() / totalCnt) << endl;
     
     return idToCnt;
 }
