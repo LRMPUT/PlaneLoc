@@ -227,7 +227,7 @@ planeSlam:
 
   drawVis: 1
 
-  visualizeSegmentation: 0
+  visualizeSegmentation: 1
 
   visualizeMatching: 0
 
@@ -237,7 +237,7 @@ planeSlam:
 
   saveRes: 0
 
-  loadRes: 1
+  loadRes: 0
 
   saveVis: 1
 

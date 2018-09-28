@@ -41,7 +41,67 @@ public:
 		Ok,
 		Unknown
 	};
-
+    
+    struct PotMatch{
+        PotMatch() {}
+        
+        PotMatch(int plane1,
+                 const std::vector<int> &lineSegs1,
+                 int plane2,
+                 const std::vector<int> &lineSegs2)
+                : plane1(plane1),
+                  lineSegs1(lineSegs1),
+                  plane2(plane2),
+                  lineSegs2(lineSegs2) {}
+        
+        PotMatch(int plane1,
+                 const std::vector<int> &lineSegs1,
+                 int plane2,
+                 const std::vector<int> &lineSegs2,
+                 double planeAppDiff,
+                 const std::vector<double> &lineSegAppDiffs)
+                : plane1(plane1),
+                  lineSegs1(lineSegs1),
+                  plane2(plane2),
+                  lineSegs2(lineSegs2),
+                  planeAppDiff(planeAppDiff),
+                  lineSegAppDiffs(lineSegAppDiffs) {}
+        
+        int plane1;
+        
+        std::vector<int> lineSegs1;
+        
+        int plane2;
+        
+        std::vector<int> lineSegs2;
+        
+        double planeAppDiff;
+        
+        std::vector<double> lineSegAppDiffs;
+    };
+	
+    struct ValidTransform{
+        ValidTransform()
+        {}
+        
+        ValidTransform(const Vector7d& itransform,
+                       const std::vector<Matching::PotMatch> &imatchSet,
+                       const std::vector<double>& iintAreaPlanes,
+                       const std::vector<std::vector<double>>& iintLenLines)
+                : transform(itransform),
+                  matchSet(imatchSet),
+                  intAreaPlanes(iintAreaPlanes),
+                  intLenLines(iintLenLines),
+                  score(0.0)
+        
+        {}
+        Vector7d transform;
+        double score;
+        std::vector<Matching::PotMatch> matchSet;
+        std::vector<double> intAreaPlanes;
+        std::vector<std::vector<double> > intLenLines;
+    };
+	
 	static MatchType matchFrameToMap(const cv::FileStorage &fs,
 									 const vectorObjInstance &frameObjInstances,
 									 const vectorObjInstance &mapObjInstances,
@@ -49,6 +109,7 @@ public:
 									 std::vector<double> &bestTransProbs,
 									 std::vector<double> &bestTransFits,
 									 std::vector<int> &bestTransDistinct,
+									 std::vector<Matching::ValidTransform> &retTransforms,
 									 pcl::visualization::PCLVisualizer::Ptr viewer = nullptr,
 									 int viewPort1 = -1,
 									 int viewPort2 = -1);
@@ -107,66 +168,6 @@ public:
                                         vectorVector3d &retDistPtsDirs);
     
 private:
-    
-    struct PotMatch{
-        PotMatch() {}
-        
-        PotMatch(int plane1,
-                 const std::vector<int> &lineSegs1,
-                 int plane2,
-                 const std::vector<int> &lineSegs2)
-                : plane1(plane1),
-                  lineSegs1(lineSegs1),
-                  plane2(plane2),
-                  lineSegs2(lineSegs2) {}
-        
-        PotMatch(int plane1,
-                 const std::vector<int> &lineSegs1,
-                 int plane2,
-                 const std::vector<int> &lineSegs2,
-                 double planeAppDiff,
-                 const std::vector<double> &lineSegAppDiffs)
-                : plane1(plane1),
-                  lineSegs1(lineSegs1),
-                  plane2(plane2),
-                  lineSegs2(lineSegs2),
-                  planeAppDiff(planeAppDiff),
-                  lineSegAppDiffs(lineSegAppDiffs) {}
-        
-        int plane1;
-        
-        std::vector<int> lineSegs1;
-        
-        int plane2;
-        
-        std::vector<int> lineSegs2;
-        
-        double planeAppDiff;
-        
-        std::vector<double> lineSegAppDiffs;
-    };
-    
-    struct ValidTransform{
-        ValidTransform()
-        {}
-
-        ValidTransform(const Vector7d& itransform,
-                       const std::vector<Matching::PotMatch> &imatchSet,
-                       const std::vector<double>& iintAreaPlanes,
-                       const std::vector<std::vector<double>>& iintLenLines)
-                : transform(itransform),
-                  matchSet(imatchSet),
-                  intAreaPlanes(iintAreaPlanes),
-                  intLenLines(iintLenLines),
-                  score(0.0)
-                  
-        {}
-        Vector7d transform;
-        double score;
-        std::vector<Matching::PotMatch> matchSet;
-        std::vector<double> intAreaPlanes;
-        std::vector<std::vector<double> > intLenLines;
-    };
 
 	class ProbDistKernel{
 	public:

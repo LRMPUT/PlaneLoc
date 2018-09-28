@@ -1078,6 +1078,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
     vector<double> planesTransScores;
     vector<double> planesTransFits;
     vector<int> planesTransDistinct;
+    vector<Matching::ValidTransform> transforms;
     Matching::MatchType matchType = Matching::MatchType::Unknown;
     
     if(inputResFile.is_open()){
@@ -1123,6 +1124,7 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
                                               planesTransScores,
                                               planesTransFits,
                                               planesTransDistinct,
+                                              transforms,
                                               viewer,
                                               viewPort1,
                                               viewPort2);
@@ -1201,6 +1203,11 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
         }
         else{
             recCode = RecCode::Corr;
+            
+            static float numTransforms = 0;
+            static int numTransformsCnt = 0;
+            numTransforms += transforms.size();
+            cout << "mean number of transforms: " << numTransforms / ++numTransformsCnt << endl;
         }
         
         predTransform = planesTrans.front();

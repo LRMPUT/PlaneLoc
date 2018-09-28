@@ -54,6 +54,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
                                               std::vector<double> &bestTransProbs,
                                               std::vector<double> &bestTransFits,
                                               std::vector<int> &bestTransDistinct,
+                                              std::vector<Matching::ValidTransform> &retTransforms,
                                               pcl::visualization::PCLVisualizer::Ptr viewer,
                                               int viewPort1,
                                               int viewPort2)
@@ -353,6 +354,7 @@ Matching::MatchType Matching::matchFrameToMap(const cv::FileStorage &fs,
 
 
 	cout << "transforms.size() = " << transforms.size() << endl;
+	retTransforms = transforms;
 	for(int t = 0; t < transforms.size(); ++t){
 		// weight depending on a number of times the object was matched weighted with distance
 		// the more matches in a vicinity the lesser the overall weight
@@ -838,7 +840,7 @@ vector<Matching::PotMatch> Matching::findPotMatches(const vectorObjInstance &map
                 int numComb = (1 << potLineMatches.size());
     
                 // TODO Add line appearance difference computation
-                vector<double> linesAppDiffs(0.0, potLineMatches.size());
+                vector<double> linesAppDiffs(potLineMatches.size(), 0.0);
                 
                 for(int c = 0; c < numComb; ++c){
                     bool addFlag = true;
