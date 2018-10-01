@@ -38,6 +38,7 @@
 #include <pcl/impl/point_types.hpp>
 #include <pcl/features/normal_3d.h>
 #include <pcl/features/integral_image_normal.h>
+#include <pcl/visualization/point_cloud_color_handlers.h>
 
 #include <g2o/types/slam3d/se3quat.h>
 #include <LineSeg.hpp>
@@ -670,9 +671,9 @@ void PlaneSlam::run(){
             }
         }
         
-//        if(curFrameIdx == 150 || curFrameIdx == 700 || curFrameIdx == 1150){
-//            stopFlag = true;
-//        }
+        if(curFrameIdx == 850 || curFrameIdx == 890){
+            stopFlag = true;
+        }
         
         
         if (drawVis && accMap.size() > 0) {
@@ -717,13 +718,13 @@ void PlaneSlam::run(){
                 mapPcGray->at(p).b = gray;
             }
             viewer->addPointCloud(mapPcGray, "map_cloud", v1);
-    
+
             viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY,
                                                      0.5,
                                                      "map_cloud",
                                                      v1);
 
-//        pcl::PointCloud<pcl::PointXYZ>::Ptr trajLine(new pcl::PointCloud<pcl::PointXYZ>());
+        pcl::PointCloud<pcl::PointXYZ>::Ptr trajLine(new pcl::PointCloud<pcl::PointXYZ>());
             for(int f = 1; f < visGtPoses.size(); ++f){
                 pcl::PointXYZ prevPose(visGtPoses[f-1][0],
                                        visGtPoses[f-1][1],
@@ -742,7 +743,7 @@ void PlaneSlam::run(){
                                                     string("line_traj_") + to_string(f),
                                                     v1);
             }
-//        viewer->addPolygon<pcl::PointXYZ>(trajLine, 0.0, 1.0, 0.0, "traj_poly", v1);
+        viewer->addPolygon<pcl::PointXYZ>(trajLine, 0.0, 1.0, 0.0, "traj_poly", v1);
     
             pcl::PointCloud<pcl::PointXYZ>::Ptr corrPoses(new pcl::PointCloud<pcl::PointXYZ>());
             pcl::PointCloud<pcl::PointXYZ>::Ptr incorrPoses(new pcl::PointCloud<pcl::PointXYZ>());
@@ -785,7 +786,7 @@ void PlaneSlam::run(){
                                                      0.0, 0.0, 1.0,
                                                      "corr_poses_cloud",
                                                      v1);
-    
+
             viewer->addPointCloud(incorrPoses, "incorr_poses_cloud", v1);
             viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                      5,
@@ -804,7 +805,7 @@ void PlaneSlam::run(){
                 Eigen::Affine3f trans = Eigen::Affine3f::Identity();
 //                        trans.matrix() = poseSE3Quat.to_homogeneous_matrix().cast<float>();
                 trans.matrix() = accPoseIncrSE3Quat.to_homogeneous_matrix().cast<float>();
-                viewer->addCoordinateSystem(0.5, trans, "camera_coord");
+//                viewer->addCoordinateSystem(0.5, trans, "camera_coord");
             }
             int o = 0;
             for (auto it = accMap.begin(); it != accMap.end(); ++it, ++o) {
@@ -814,27 +815,56 @@ void PlaneSlam::run(){
                 poseSE3Quat.fromVector(pose);
                 
                 pcl::transformPointCloud(*curPc, *curPcTrans, poseSE3Quat.to_homogeneous_matrix());
-                viewer->addPointCloud(curPcTrans, "cloud_" + to_string(o), v1);
-                
+    
+                const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr curPcTransLab(new pcl::PointCloud<pcl::PointXYZRGBL>());
+                pcl::copyPointCloud(*curPcTrans, *curPcTransLab);
+                for(auto itPts = curPcTransLab->begin(); itPts != curPcTransLab->end(); ++itPts){
+                    itPts->label = it->getId();
+                }
+//                pcl::visualization::PointCloudColorHandlerLabelField<pcl::PointXYZRGBL>::Ptr
+//                        colorHandler(new pcl::visualization::PointCloudColorHandlerLabelField<pcl::PointXYZRGBL>(curPcTransLab));
+                pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBL>::Ptr
+                        colorHandler(new pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBL>(curPcTransLab));
+                viewer->addPointCloud<pcl::PointXYZRGBL>(curPcTransLab, *colorHandler, "cloud_lab_" + to_string(o), v1);
             }
+            
             
             viewer->resetStoppedFlag();
             static bool cameraInit = false;
             if (!cameraInit) {
                 viewer->initCameraParameters();
                 viewer->setSize(1280, 720);
+//                viewer->setSize(640, 480);
 //                viewer->setCameraPosition(0.0, 0.0, -4.0, 0.0, -1.0, 0.0);
                 cameraInit = true;
             }
             {
                 g2o::SE3Quat poseSE3Quat;
+//                if(curFrameIdx == 850){
+//                    Vector7d endPose;
+//                    endPose << -1.4574, 0.618103, -2.37465, 0.851687, 0.0842968, -0.497145, 0.142725;
+//                    poseSE3Quat.fromVector(endPose);
+//                }
+//                else if(curFrameIdx == 890){
+//                    Vector7d endPose;
+//                    endPose << -1.59232, 0.632686, -2.83519, 0.794182, 0.0810181, -0.592532, 0.107778;
+//                    poseSE3Quat.fromVector(endPose);
+//                }
+//                else {
+//                    poseSE3Quat.fromVector(pose);
+//                }
                 poseSE3Quat.fromVector(pose);
     
-                Eigen::Vector3d t = poseSE3Quat.translation();
-                Eigen::Vector3d dt;
-                dt << 0.0, -2.0, -4.0;
-                Eigen::Vector3d tc = t + poseSE3Quat.rotation().toRotationMatrix() * dt;
+                Eigen::Vector3d dtFocal;
+                dtFocal << 0.0, 0.0, 0.0;
+//                dtFocal << 0.0, 0.0, 1.0;
+                Eigen::Vector3d t = poseSE3Quat.translation() + poseSE3Quat.rotation().toRotationMatrix() * dtFocal;
+                Eigen::Vector3d dtPose;
+                dtPose << 0.0, -2.0, -4.0;
+//                dtPose << 0.0, 0.0, 0.0;
+                Eigen::Vector3d tc = poseSE3Quat.translation() + poseSE3Quat.rotation().toRotationMatrix() * dtPose;
                 viewer->setCameraPosition(tc(0), tc(1), tc(2), t(0), t(1), t(2), 0.0, 1.0, 0.0);
+                viewer->setCameraClipDistances(0.2, 20.0);
             }
             viewer->spinOnce(100);
             while (stopFlag && !viewer->wasStopped()) {

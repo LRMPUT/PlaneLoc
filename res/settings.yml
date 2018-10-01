@@ -99,7 +99,7 @@ fileGrabber:
 #
 #    imageFrame: 0
 
-    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test2"
+    datasetDirPath: "../res/PUT_Indoor/2017_04_04_test1"
 
     readObjLabeling: 0
 
@@ -217,7 +217,7 @@ planeSlam:
     - 0.0
     - 1.0
 
-  framesToSkip: 0
+  framesToSkip: 850
 
   useLines: 0
 
@@ -239,7 +239,7 @@ planeSlam:
 
   loadRes: 0
 
-  saveVis: 1
+  saveVis: 0
 
   framesFromPly: 0
 
