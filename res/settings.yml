@@ -237,7 +237,7 @@ planeSlam:
 
   saveRes: 0
 
-  loadRes: 0
+  loadRes: 1
 
   saveVis: 0
 

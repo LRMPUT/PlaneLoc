@@ -79,20 +79,20 @@ add_library(PlaneSlam
 
 #-------------------------------------------------------
 
-set(unitTests_SOURCES
-        tests/Tests.cpp)
-add_executable(unitTests
-        ${unitTests_SOURCES})
-target_link_libraries(unitTests
-        PlaneSlam
-        ${OpenCV_LIBS}
-        ${Boost_LIBRARIES}
-        ${PCL_LIBRARIES}
-        ${OPENGM_LIBRARIES}
-        ${G2O_TYPES_SLAM3D}
-        ${G2O_TYPES_SBA}
-        ${CGAL_LIBRARIES}
-        ${CGAL_3RD_PARTY_LIBRARIES})
+#set(unitTests_SOURCES
+#        tests/Tests.cpp)
+#add_executable(unitTests
+#        ${unitTests_SOURCES})
+#target_link_libraries(unitTests
+#        PlaneSlam
+#        ${OpenCV_LIBS}
+#        ${Boost_LIBRARIES}
+#        ${PCL_LIBRARIES}
+#        ${OPENGM_LIBRARIES}
+#        ${G2O_TYPES_SLAM3D}
+#        ${G2O_TYPES_SBA}
+#        ${CGAL_LIBRARIES}
+#        ${CGAL_3RD_PARTY_LIBRARIES})
 
 #-------------------------------------------------------
 

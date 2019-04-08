@@ -11,6 +11,24 @@ Prerequesties:
 -g2o  
 -CGAL
 
+### Paper
+
+If you find PlaneLoc useful in your academic work please cite the following paper:
+
+    @article{wietrzykowski2019,
+        title = {{PlaneLoc}: Probabilistic global localization in {3-D} using local planar features},
+        author = {Jan Wietrzykowski and Piotr Skrzypczy\'{n}ski},
+        journal = {Robotics and Autonomous Systems},
+        volume = {113},
+        pages = {160 - 173},
+        year = {2019},
+        issn = {0921-8890},
+        doi = {https://doi.org/10.1016/j.robot.2019.01.008},
+        url = {http://www.sciencedirect.com/science/article/pii/S0921889018303701},
+        keywords = {Global localization, SLAM, Planar segments, RGB-D data},
+    }
+
+
 ### Building:  
 
 Tested on Ubuntu 16.04.  

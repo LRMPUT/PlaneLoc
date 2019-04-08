@@ -546,8 +546,8 @@ void PlaneSlam::run(){
             cout << "global matching" << endl;
             
             RecCode curRecCode;
-            g2o::SE3Quat gtTransSE3Quat =
-                    g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
+//            g2o::SE3Quat gtTransSE3Quat =
+//                    g2o::SE3Quat(prevPose).inverse() * g2o::SE3Quat(pose);
             Vector7d predTrans;
             double linDist, angDist;
             
@@ -614,6 +614,25 @@ void PlaneSlam::run(){
                 
                 ++meanCnt;
             }
+    
+            if(visRecCodes.back() == RecCode::Corr && visRecCompCodes.back() == RecCode::Unk){
+                cout << "Recognized where ORB-SLAM2 not recognized" << endl;
+                g2o::SE3Quat planesTransSE3Quat;
+                planesTransSE3Quat.fromVector(predTrans);
+                g2o::SE3Quat gtTransformSE3Quat;
+                gtTransformSE3Quat.fromVector(pose);
+                
+                g2o::SE3Quat diffSE3Quat = planesTransSE3Quat.inverse() * gtTransformSE3Quat;
+//                    g2o::SE3Quat diffInvSE3Quat = poseSE3Quat * planesTransSE3Quat.inverse();
+                Vector6d diffLog = diffSE3Quat.log();
+//                    cout << "diffLog = " << diffSE3Quat.log().transpose() << endl;
+//                    cout << "diffInvLog = " << diffInvSE3Quat.log().transpose() << endl;
+                double diff = diffLog.transpose() * diffLog;
+//                double diffEucl = diffSE3Quat.toVector().head<3>().norm();
+//                Eigen::Vector3d diffLogAng = Misc::logMap(diffSE3Quat.rotation());
+//                double diffAng = diffLogAng.norm();
+                cout << "diff = " << diff << endl;
+            }
         }
         
         if (incrementalMatching && !prevObjInstances.empty() && localize) {
@@ -671,9 +690,9 @@ void PlaneSlam::run(){
             }
         }
         
-        if(curFrameIdx == 850 || curFrameIdx == 890){
-            stopFlag = true;
-        }
+//        if(curFrameIdx == 850 || curFrameIdx == 890){
+//            stopFlag = true;
+//        }
         
         
         if (drawVis && accMap.size() > 0) {
@@ -1234,10 +1253,29 @@ void PlaneSlam::evaluateMatching(const cv::FileStorage &fs,
         else{
             recCode = RecCode::Corr;
             
-            static float numTransforms = 0;
+            // computing mean and standard deviation
+            static float refNumTransforms = 0;
+            static float expNumTransforms = 0;
+            static float expNumTransformsSq = 0;
             static int numTransformsCnt = 0;
-            numTransforms += transforms.size();
-            cout << "mean number of transforms: " << numTransforms / ++numTransformsCnt << endl;
+            if(numTransformsCnt == 0){
+                refNumTransforms = transforms.size();
+            }
+            expNumTransforms += transforms.size() - refNumTransforms;
+            expNumTransformsSq += (transforms.size() - refNumTransforms) * (transforms.size() - refNumTransforms);
+            ++numTransformsCnt;
+            cout << "refNumTransforms = " << refNumTransforms << endl;
+            cout << "expNumTransforms = " << expNumTransforms << endl;
+            cout << "expNumTransformsSq = " << expNumTransformsSq << endl;
+            cout << "numTransformsCnt = " << numTransformsCnt << endl;
+            cout << "mean number of transforms: " << refNumTransforms +
+                                                        expNumTransforms/numTransformsCnt << endl;
+            if(numTransformsCnt > 1) {
+                cout << "std dev = " << sqrt((expNumTransformsSq -
+                                              expNumTransforms * expNumTransforms /
+                                              numTransformsCnt) /
+                                             (numTransformsCnt - 1)) << endl;
+            }
         }
         
         predTransform = planesTrans.front();
