@@ -71,6 +71,10 @@ cmake ..
 make -j$(nproc)
 ```
 
+### Dataset
+
+Dataset is available [here](http://lrm.put.poznan.pl/rgbdw/).
+
 ### Launching:  
 
 1. Adjust settings file in _res/settings.yml_ for your dataset.  
