@@ -144,6 +144,8 @@ void PlaneSlam::run(){
     double fitThresh = (double)settings["planeSlam"]["fitThresh"];
     double distinctThresh = (double)settings["planeSlam"]["distinctThresh"];
 
+    int accFrames = (int)settings["planeSlam"]["accFrames"];
+
     vectorVector7d visGtPoses;
     vectorVector7d visRecPoses;
     vector<RecCode> visRecCodes;
@@ -189,7 +191,6 @@ void PlaneSlam::run(){
 //    vector<ObjInstance> accObjInstances;
     Map accMap;
     Vector7d accStartFramePose;
-    int accFrames = 50;
     
     int processNewFrameSkip = 1;
     
@@ -488,7 +489,7 @@ void PlaneSlam::run(){
                                                 v2*/);
                 
                         cout << "Merging new" << endl;
-                        if (curFrameIdx >= 2500) {
+                        if (curFrameIdx >= 4500) {
                             accMap.mergeNewObjInstances(curObjInstancesTrans,
                                                         idToCnt,
                                                         viewer,
